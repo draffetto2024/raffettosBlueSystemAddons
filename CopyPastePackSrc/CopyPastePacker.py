@@ -711,6 +711,9 @@ def choose_option():
                 incompletephrases.append(row[1])  # Assuming 'phrases' is the 2nd column
                 secondarykeywords.append(row[2])  # Assuming 'positions' is the 3rd column
 
+                print(incompletephrases)
+                print(secondarykeywords)
+
             order_dict = enter_text(acceptable_phrases)
             
             # Get the current date and time

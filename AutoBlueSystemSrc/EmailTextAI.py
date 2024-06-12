@@ -23,14 +23,14 @@ def closest_product(phrase, product_list, threshold=2):
     
     for product in product_list:
         distance = Levenshtein.distance(phrase, product)
-        print(f"Comparing '{phrase}' to '{product}' - Distance: {distance}")  # Debug statement
+        #print(f"Comparing '{phrase}' to '{product}' - Distance: {distance}")  # Debug statement
         if distance <= threshold:
             # Prioritize longer, more complex product names
             if (distance < min_distance) or (distance == min_distance and len(product) > max_length):
                 min_distance = distance
                 max_length = len(product)
                 closest_match = product
-                print(f"New closest match: {closest_match} with distance {min_distance} and length {max_length}")  # Debug statement
+                #print(f"New closest match: {closest_match} with distance {min_distance} and length {max_length}")  # Debug statement
                 
     return closest_match
 
@@ -49,7 +49,7 @@ def clean_line(line):
 # Function to process each line and extract order details
 def process_line(line):
     cleaned_line = clean_line(line)
-    print(f"Processing line: {cleaned_line}")  # Debug statement
+    #print(f"Processing line: {cleaned_line}")  # Debug statement
     words = word_tokenize(cleaned_line)
     count = None
     product = None
@@ -57,30 +57,30 @@ def process_line(line):
     for i, word in enumerate(words):
         if word.isdigit():
             count = int(word)
-            print(f"Found count: {count}")  # Debug statement
+            #print(f"Found count: {count}")  # Debug statement
             potential_product_words = words[i+1:]
-            print(f"Potential product words: {potential_product_words}")  # Debug statement
+            #print(f"Potential product words: {potential_product_words}")  # Debug statement
             all_permutations = generate_permutations(potential_product_words)
             for permutation in all_permutations:
                 permutation_phrase = " ".join(permutation)
-                print(f"Testing permutation: {permutation_phrase}")  # Debug statement
+                #print(f"Testing permutation: {permutation_phrase}")  # Debug statement
                 product = closest_product(permutation_phrase, product_list)
                 if product:
-                    print(f"Match found: {product}")  # Debug statement
+                    #print(f"Match found: {product}")  # Debug statement
                     return count, product  # Exit as soon as a match is found
             break
     
     if count is None:
         # Assume 1 case if no count is provided
         count = 1
-        print(f"Default count: {count}")  # Debug statement
+        #print(f"Default count: {count}")  # Debug statement
         all_permutations = generate_permutations(words)
         for permutation in all_permutations:
             permutation_phrase = " ".join(permutation)
-            print(f"Testing permutation: {permutation_phrase}")  # Debug statement
+            #print(f"Testing permutation: {permutation_phrase}")  # Debug statement
             product = closest_product(permutation_phrase, product_list)
             if product:
-                print(f"Match found: {product}")  # Debug statement
+                #print(f"Match found: {product}")  # Debug statement
                 return count, product  # Exit as soon as a match is found
     
     return count, product
@@ -95,7 +95,7 @@ def extract_orders(email_text):
             count, product = process_line(line)
             if product:
                 orders.append((count, product))
-            input("Press Enter to continue...")  # Pause for debugging
+            #input("Press Enter to continue...")  # Pause for debugging
     
     return orders
 
