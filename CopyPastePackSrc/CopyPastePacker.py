@@ -376,7 +376,7 @@ def enter_text(acceptable_phrases):
     order_dict = {}
     packaged_order_dict = {}
     
-    text_input = text_input.lower()
+    text_input = (text_input.lower()).strip()
     
     # Connect to the database (create it if it doesn't exist)
     conn = sqlite3.connect(path_to_db)
@@ -516,8 +516,10 @@ def enter_text(acceptable_phrases):
                     incompletekeyword = secondarykeywords[incompindex]
             
             if incompletekeyword:
+                print("phrasequantity " + str(phrasequantity))
                 for _ in range(phrasequantity):
                     modified_phrases.append(phrase + " " + incompletekeyword)
+                    print((phrase + " " + incompletekeyword).strip())
             
             global exactphrases
             global exactphraseitems_2d
@@ -538,7 +540,7 @@ def enter_text(acceptable_phrases):
                     modified_phrases.append(phrase)
             i +=1
            
-         #Fix extra LASAGNE IN ORDER     
+         #Fix extra LASAGNE IN ORDER
            
         for modified_phrase in modified_phrases:
             for acceptable_phrase in acceptable_phrases:
@@ -706,10 +708,10 @@ def choose_option():
             rows = c.fetchall()
             # Loop through each row and append the values to the respective lists
             for row in rows:
-                incompletephrase = row[1].lower()  # Convert to lowercase
-                secondarykeyword = row[2].lower()  # Convert to lowercase
-                incompletephrases.append(row[1])  # Assuming 'phrases' is the 2nd column
-                secondarykeywords.append(row[2])  # Assuming 'positions' is the 3rd column
+                incompletephrase = (row[1].lower()).strip()  # Convert to lowercase
+                secondarykeyword = (row[2].lower()).strip()  # Convert to lowercase
+                incompletephrases.append(incompletephrase)  # Assuming 'phrases' is the 2nd column
+                secondarykeywords.append(secondarykeyword)  # Assuming 'positions' is the 3rd column
 
                 print(incompletephrases)
                 print(secondarykeywords)
