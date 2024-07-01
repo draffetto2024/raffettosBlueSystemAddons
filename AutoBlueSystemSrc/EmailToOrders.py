@@ -95,7 +95,7 @@ def process_line(line, product_list, product_ids, lbs_per_case):
                 permutation_phrase = " ".join(permutation)
                 product, product_id, product_lbs_per_case = closest_match(permutation_phrase, product_list, product_ids, lbs_per_case)
                 if product:
-                    if count_type == 'lbs' and product_lbs_per_case > 0:
+                    if count_type == 'lbs' and product_lbs_per_case > 0:   
                         count = math.ceil(count / product_lbs_per_case)
                         count_type = 'cases'
                     return count, count_type, product, product_id  # Exit as soon as a match is found
