@@ -35,17 +35,6 @@ def load_customer_emails(excel_file):
 
 customer_emails = load_customer_emails('customer_emails.xlsx')
 
-def rotate_image(image_path):
-    image = cv2.imread(image_path)
-    rotated_image = image
-
-    # Display the rotated image
-    cv2.imshow("Rotated Image", rotated_image)
-    cv2.waitKey(0)  # Wait for a key press to close the image window
-    cv2.destroyAllWindows()
-
-    return rotated_image
-
 def extract_text_and_positions(image):
     _, encoded_image = cv2.imencode('.jpg', image)
     content = encoded_image.tobytes()
@@ -88,11 +77,6 @@ def is_in_position(box1, box2, position, threshold):
 
 def is_six_alphanumeric(s):
     return len(s) == 6 and s.isalnum()
-
-def is_mixed_string(s):
-    has_digit = any(char.isdigit() for char in s)
-    has_alpha = any(char.isalpha() for char in s)
-    return has_digit and has_alpha
 
 def is_date_format(s):
     pattern = re.compile(r'^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/([0-9]{2})$')
@@ -186,8 +170,8 @@ def process_invoice(invoice_path):
 
     for image_path in image_paths:
         print(f"DEBUG: Processing image: {image_path}")
-        rotated_image = rotate_image(image_path)
-        texts = extract_text_and_positions(rotated_image)
+        image = cv2.imread(image_path)
+        texts = extract_text_and_positions(image)
 
         invoice_num = find_text_near_keyphrase(texts, "Invoice", "below", 10)
         customer_num = find_text_near_keyphrase(texts, "Account", "below", 100)
@@ -196,7 +180,7 @@ def process_invoice(invoice_path):
         print(f"DEBUG: Found invoice_num: {invoice_num}, customer_num: {customer_num}, date_num: {date_num}")
         
         if (invoice_num and is_six_alphanumeric(invoice_num) and
-            customer_num and is_six_alphanumeric(customer_num) and   #cust id an invoice are 6 digit strings
+            customer_num and is_six_alphanumeric(customer_num) and
             date_num and is_date_format(date_num)):
             print(f"DEBUG: All conditions met, copying image to sorted folder")
             copy_image_to_sorted_folder(image_path, invoice_num, customer_num, date_num)
@@ -207,6 +191,10 @@ def process_invoice(invoice_path):
         if invoice_path.lower().endswith('.pdf'):
             os.remove(image_path)  # Remove temporary image file
             print(f"DEBUG: Removed temporary image: {image_path}")
+
+    # Delete the original invoice after processing
+    os.remove(invoice_path)
+    print(f"DEBUG: Deleted original invoice: {invoice_path}")
 
     print("="*40)  # Separator for readability
 
