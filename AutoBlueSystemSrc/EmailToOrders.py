@@ -260,7 +260,7 @@ from tkinter import messagebox
 def create_gui(db_path):
     root = tk.Tk()
     root.title("Email Order Processor")
-    root.geometry("1600x600")  # Increased width to accommodate new column
+    root.geometry("1600x600")
 
     # Create main frame
     main_frame = ttk.Frame(root)
@@ -296,6 +296,14 @@ def create_gui(db_path):
 
     # Function to retrieve data from the database and populate the grid
     def populate_grid():
+        for widget in scrollable_frame.winfo_children():
+            widget.destroy()
+
+        # Recreate headers
+        for col, header in enumerate(headers):
+            label = ttk.Label(scrollable_frame, text=header, font=("Arial", 10, "bold"))
+            label.grid(row=0, column=col, padx=5, pady=5, sticky="nsew")
+
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
@@ -392,41 +400,81 @@ def create_gui(db_path):
             messagebox.showinfo("Info", "Selected orders have been marked as entered.")
             # Move processed emails to the ProcessedEmails inbox
             for raw_email in selected_raw_emails:
-                move_email_by_content(raw_email, "EnteredIntoABS")
+                move_email_by_content(raw_email, "ProcessedEmails")
             # Refresh the grid to reflect changes
-            for widget in scrollable_frame.winfo_children():
-                widget.destroy()
             populate_grid()
         else:
             print("No rows selected.")
             messagebox.showwarning("Warning", "No rows selected.")
 
-    # Function to move emails based on their content
-    def move_email_by_content(raw_email_content, destination_folder):
-        mail = imaplib.IMAP4_SSL("imap.gmail.com")
-        mail.login(username, password)
-        mail.select("EnteredIntoABS")
-        status, messages = mail.search(None, "ALL")
-        messages = messages[0].split()
-        for msg_id in messages:
-            status, msg_data = mail.fetch(msg_id, "(RFC822)")
-            for response_part in msg_data:
-                if isinstance(response_part, tuple):
-                    msg = email.message_from_bytes(response_part[1])
-                    body = get_email_content(msg)
-                    if body.strip() == raw_email_content:
-                        move_email(mail, msg_id, destination_folder)
-        mail.close()
-        mail.logout()
+    # Function to auto-enter all unentered emails
+    def auto_enter_all():
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+        SELECT raw_email FROM orders WHERE entered_status = 0
+        ''')
+        unentered_emails = [row[0] for row in cursor.fetchall()]
+        
+        if unentered_emails:
+            update_entered_status(db_path, unentered_emails)
+            for raw_email in unentered_emails:
+                move_email_by_content(raw_email, "ProcessedEmails")
+            messagebox.showinfo("Info", f"{len(unentered_emails)} orders have been marked as entered.")
+            populate_grid()
+        else:
+            messagebox.showinfo("Info", "No unentered orders found.")
+        
+        conn.close()
 
-    # Add a button to auto-enter selected rows
-    auto_enter_button = ttk.Button(main_frame, text="Auto Enter Selected Rows", command=auto_enter_selected)
-    auto_enter_button.pack(pady=10)
+    # Add buttons to auto-enter selected rows and all unentered emails
+    button_frame = ttk.Frame(main_frame)
+    button_frame.pack(pady=10)
+
+    auto_enter_button = ttk.Button(button_frame, text="Auto Enter Selected Rows", command=auto_enter_selected)
+    auto_enter_button.pack(side=tk.LEFT, padx=5)
+
+    auto_enter_all_button = ttk.Button(button_frame, text="Auto Enter All Unentered", command=auto_enter_all)
+    auto_enter_all_button.pack(side=tk.LEFT, padx=5)
 
     # Populate the grid with data from the database
     populate_grid()
 
     root.mainloop()
+
+# Update these functions to handle the case when there are no more emails to process
+def update_entered_status(db_path, raw_emails):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    for raw_email in raw_emails:
+        # Update the entered_status to 1 for matching orders
+        cursor.execute('''
+        UPDATE orders
+        SET entered_status = 1
+        WHERE raw_email = ?
+        ''', (raw_email,))
+
+    conn.commit()
+    conn.close()
+
+def move_email_by_content(raw_email_content, destination_folder):
+    mail = imaplib.IMAP4_SSL("imap.gmail.com")
+    mail.login(username, password)
+    mail.select("EnteredIntoABS")
+    status, messages = mail.search(None, "ALL")
+    messages = messages[0].split()
+    for msg_id in messages:
+        status, msg_data = mail.fetch(msg_id, "(RFC822)")
+        for response_part in msg_data:
+            if isinstance(response_part, tuple):
+                msg = email.message_from_bytes(response_part[1])
+                body = get_email_content(msg)
+                if body.strip() == raw_email_content:
+                    move_email(mail, msg_id, destination_folder)
+    mail.close()
+    mail.logout()
 
 if __name__ == "__main__":
     # Read product list and IDs from Excel
@@ -448,9 +496,6 @@ if __name__ == "__main__":
     try:
         # Login to your account
         mail.login(username, password)
-
-        # Ensure the "ProcessedOrders" folder exists
-        mail.create("ProcessedOrders")
 
         # Select the "Orders" mailbox
         mail.select("Orders")
@@ -480,8 +525,8 @@ if __name__ == "__main__":
                                 process_result = process_email(from_, body, product_list, product_ids, lbs_per_case, customer_list, customer_ids, db_path, mail, email_uid)
                                 print(f"Email processed: {process_result}")
 
-                                # Move the processed email to "ProcessedOrders" folder
-                                mail.uid('copy', email_uid, "ProcessedOrders")
+                                # Move the processed email to "EnteredintoABS" folder
+                                mail.uid('copy', email_uid, "EnteredIntoABS")
                                 mail.uid('store', email_uid, '+FLAGS', '\\Deleted')
                                 mail.expunge()
 
