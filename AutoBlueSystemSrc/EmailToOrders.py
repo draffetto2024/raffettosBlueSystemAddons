@@ -11,8 +11,9 @@ import pandas as pd
 from nltk.tokenize import word_tokenize
 from itertools import permutations, combinations
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
+from tkcalendar import DateEntry
 
 # Function to read product names, IDs, and lbs per case from an Excel file
 def read_product_list_from_excel(file_path):
@@ -127,12 +128,12 @@ def extract_orders(email_text, product_list, product_ids, lbs_per_case):
     
     return orders
 
-# Function to write orders to a SQL database
-def write_orders_to_db(db_path, customer, customer_id, orders, raw_email):
+# Modify the write_orders_to_db function to include email_sent_date
+def write_orders_to_db(db_path, customer, customer_id, orders, raw_email, email_sent_date):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
-    # Create table if it doesn't exist
+    # Create table if it doesn't exist (add email_sent_date column)
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS orders (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -145,7 +146,8 @@ def write_orders_to_db(db_path, customer, customer_id, orders, raw_email):
         date_generated TEXT,
         date_processed TEXT,
         entered_status INTEGER DEFAULT 0,
-        raw_email TEXT
+        raw_email TEXT,
+        email_sent_date TEXT
     )
     ''')
     
@@ -156,9 +158,9 @@ def write_orders_to_db(db_path, customer, customer_id, orders, raw_email):
         cases = count if count_type == 'cases' else 0
         lbs = count if count_type == 'lbs' else 0.0
         cursor.execute('''
-        INSERT INTO orders (customer, customer_id, cases, lbs, item, item_id, date_generated, date_processed, entered_status, raw_email)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (customer, customer_id, cases, lbs, product, product_id, date_generated, date_processed, 0, raw_email))
+        INSERT INTO orders (customer, customer_id, cases, lbs, item, item_id, date_generated, date_processed, entered_status, raw_email, email_sent_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (customer, customer_id, cases, lbs, product, product_id, date_generated, date_processed, 0, raw_email, email_sent_date))
     
     conn.commit()
     conn.close()
@@ -220,8 +222,8 @@ def extract_email_address(from_field):
     name, email_address = parseaddr(from_field)
     return email_address
 
-# Function to process the email and perform a task
-def process_email(from_, body, product_list, product_ids, lbs_per_case, customer_list, customer_ids, db_path, mail, msg_id):
+# Modify the process_email function to extract and pass the email sent date
+def process_email(from_, body, product_list, product_ids, lbs_per_case, customer_list, customer_ids, db_path, mail, msg_id, email_sent_date):
     email_address = extract_email_address(from_)
     
     # Find the closest matching customer
@@ -232,8 +234,8 @@ def process_email(from_, body, product_list, product_ids, lbs_per_case, customer
         orders = extract_orders(body, product_list, product_ids, lbs_per_case)
         print(f"Orders extracted: {orders}")
         
-        # Write orders to the SQL database
-        write_orders_to_db(db_path, customer, customer_id, orders, body)
+        # Write orders to the SQL database (now including email_sent_date)
+        write_orders_to_db(db_path, customer, customer_id, orders, body, email_sent_date)
         
         # Move the email to the EnteredIntoABS inbox
         move_email(mail, msg_id, "EnteredIntoABS")
@@ -260,11 +262,25 @@ from tkinter import messagebox
 def create_gui(db_path):
     root = tk.Tk()
     root.title("Email Order Processor")
-    root.geometry("1600x600")
+    root.geometry("1800x700")  # Increased height to accommodate new controls
 
     # Create main frame
     main_frame = ttk.Frame(root)
     main_frame.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
+
+    # Create a frame for date selection
+    date_frame = ttk.Frame(main_frame)
+    date_frame.pack(pady=10, fill=tk.X)
+
+    # Add date selection label and entry
+    ttk.Label(date_frame, text="Select Date:").pack(side=tk.LEFT, padx=(0, 10))
+    date_entry = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2, date_pattern='yyyy-mm-dd')
+    date_entry.pack(side=tk.LEFT)
+    date_entry.set_date(datetime.now().date())  # Set default date to today
+
+    # Add a button to refresh the grid based on the selected date
+    refresh_button = ttk.Button(date_frame, text="Refresh", command=lambda: populate_grid(date_entry.get_date()))
+    refresh_button.pack(side=tk.LEFT, padx=(10, 0))
 
     # Create a canvas with a scrollbar
     canvas = tk.Canvas(main_frame)
@@ -288,14 +304,11 @@ def create_gui(db_path):
     # Dictionary to store the state of checkboxes
     checkbox_vars = {}
 
-    # Create headers
-    headers = ["Raw Email Content", "Matched Products", "Cases", "Lbs", "Product Codes", "Customer", "Entered Status", "Select"]
-    for col, header in enumerate(headers):
-        label = ttk.Label(scrollable_frame, text=header, font=("Arial", 10, "bold"))
-        label.grid(row=0, column=col, padx=5, pady=5, sticky="nsew")
+    # Update headers to include Email Sent Date
+    headers = ["Raw Email Content", "Matched Products", "Cases", "Lbs", "Product Codes", "Customer", "Email Sent Date", "Entered Status", "Select"]
 
-    # Function to retrieve data from the database and populate the grid
-    def populate_grid():
+    # Function to populate the grid with data from the database
+    def populate_grid(filter_date=None):
         for widget in scrollable_frame.winfo_children():
             widget.destroy()
 
@@ -307,17 +320,39 @@ def create_gui(db_path):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        cursor.execute('''
-        SELECT raw_email, customer, item, cases, lbs, item_id, entered_status
-        FROM orders
-        WHERE entered_status = 0
-        ''')
+        # Check if email_sent_date column exists
+        cursor.execute("PRAGMA table_info(orders)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'email_sent_date' in columns:
+            if filter_date:
+                next_date = filter_date + timedelta(days=1)
+                cursor.execute('''
+                SELECT raw_email, customer, item, cases, lbs, item_id, email_sent_date, entered_status
+                FROM orders
+                WHERE email_sent_date >= ? AND email_sent_date < ?
+                ORDER BY entered_status ASC, email_sent_date ASC
+                ''', (filter_date.strftime('%Y-%m-%d'), next_date.strftime('%Y-%m-%d')))
+            else:
+                cursor.execute('''
+                SELECT raw_email, customer, item, cases, lbs, item_id, email_sent_date, entered_status
+                FROM orders
+                WHERE email_sent_date IS NOT NULL
+                ORDER BY entered_status ASC, email_sent_date ASC
+                ''')
+        else:
+            cursor.execute('''
+            SELECT raw_email, customer, item, cases, lbs, item_id, entered_status
+            FROM orders
+            ORDER BY entered_status ASC
+            ''')
+        
         orders = cursor.fetchall()
         conn.close()
 
         email_to_orders = {}
         for order in orders:
-            raw_email, customer, item, cases, lbs, item_id, entered_status = order
+            raw_email = order[0]
             if raw_email not in email_to_orders:
                 email_to_orders[raw_email] = []
             email_to_orders[raw_email].append(order)
@@ -334,15 +369,18 @@ def create_gui(db_path):
             lbs_list = []
             product_codes = []
             customers = set()
-            entered_status = order_list[0][6]
+            email_sent_date = "N/A"
+            entered_status = order_list[0][-1]  # Last item is always entered_status
 
             for order in order_list:
-                _, customer, item, cases, lbs, item_id, _ = order
+                _, customer, item, cases, lbs, item_id = order[:6]  # First 6 items are always the same
                 matched_products.append(item)
                 cases_list.append(str(cases) if cases else "N/A")
                 lbs_list.append(str(lbs) if lbs else "N/A")
                 product_codes.append(str(item_id))
                 customers.add(customer)
+                if len(order) > 7:  # If email_sent_date exists
+                    email_sent_date = order[6]
 
             # Matched Products
             products_text = tk.Text(scrollable_frame, wrap=tk.WORD, width=30, height=5)
@@ -372,14 +410,18 @@ def create_gui(db_path):
             customer_label = ttk.Label(scrollable_frame, text=", ".join(customers))
             customer_label.grid(row=row, column=5, padx=5, pady=5, sticky="nsew")
 
+            # Email Sent Date
+            email_sent_date_label = ttk.Label(scrollable_frame, text=email_sent_date)
+            email_sent_date_label.grid(row=row, column=6, padx=5, pady=5, sticky="nsew")
+
             # Entered Status
             entered_status_label = ttk.Label(scrollable_frame, text="Entered" if entered_status else "Not Entered")
-            entered_status_label.grid(row=row, column=6, padx=5, pady=5, sticky="nsew")
+            entered_status_label.grid(row=row, column=7, padx=5, pady=5, sticky="nsew")
 
             # Checkbox
             var = tk.BooleanVar()
             checkbox = ttk.Checkbutton(scrollable_frame, variable=var)
-            checkbox.grid(row=row, column=7, padx=5, pady=5, sticky="nsew")
+            checkbox.grid(row=row, column=8, padx=5, pady=5, sticky="nsew")
             checkbox_vars[row] = var
 
     # Function to print selected rows and update the status
@@ -402,19 +444,24 @@ def create_gui(db_path):
             for raw_email in selected_raw_emails:
                 move_email_by_content(raw_email, "ProcessedEmails")
             # Refresh the grid to reflect changes
-            populate_grid()
+            populate_grid(date_entry.get_date())
         else:
             print("No rows selected.")
             messagebox.showwarning("Warning", "No rows selected.")
 
-    # Function to auto-enter all unentered emails
+    # Function to auto-enter all unentered emails for the selected date
     def auto_enter_all():
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
+        filter_date = date_entry.get_date()
+        next_date = filter_date + timedelta(days=1)
+        
         cursor.execute('''
-        SELECT raw_email FROM orders WHERE entered_status = 0
-        ''')
+        SELECT raw_email FROM orders 
+        WHERE entered_status = 0 AND email_sent_date >= ? AND email_sent_date < ?
+        ''', (filter_date.strftime('%Y-%m-%d'), next_date.strftime('%Y-%m-%d')))
+        
         unentered_emails = [row[0] for row in cursor.fetchall()]
         
         if unentered_emails:
@@ -422,9 +469,9 @@ def create_gui(db_path):
             for raw_email in unentered_emails:
                 move_email_by_content(raw_email, "ProcessedEmails")
             messagebox.showinfo("Info", f"{len(unentered_emails)} orders have been marked as entered.")
-            populate_grid()
+            populate_grid(filter_date)
         else:
-            messagebox.showinfo("Info", "No unentered orders found.")
+            messagebox.showinfo("Info", "No unentered orders found for the selected date.")
         
         conn.close()
 
@@ -438,11 +485,10 @@ def create_gui(db_path):
     auto_enter_all_button = ttk.Button(button_frame, text="Auto Enter All Unentered", command=auto_enter_all)
     auto_enter_all_button.pack(side=tk.LEFT, padx=5)
 
-    # Populate the grid with data from the database
-    populate_grid()
+    # Populate the grid with today's date
+    populate_grid(datetime.now().date())
 
     root.mainloop()
-
 # Update these functions to handle the case when there are no more emails to process
 def update_entered_status(db_path, raw_emails):
     conn = sqlite3.connect(db_path)
@@ -522,7 +568,14 @@ if __name__ == "__main__":
                                 from_ = msg.get("From")
                                 email_address = extract_email_address(from_)
 
-                                process_result = process_email(from_, body, product_list, product_ids, lbs_per_case, customer_list, customer_ids, db_path, mail, email_uid)
+                                # Extract the email sent date
+                                date_tuple = email.utils.parsedate_tz(msg.get('Date'))
+                                if date_tuple:
+                                    email_sent_date = datetime.fromtimestamp(email.utils.mktime_tz(date_tuple)).strftime('%Y-%m-%d %H:%M:%S')
+                                else:
+                                    email_sent_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Use current time if date parsing fails
+
+                                process_result = process_email(from_, body, product_list, product_ids, lbs_per_case, customer_list, customer_ids, db_path, mail, email_uid, email_sent_date)
                                 print(f"Email processed: {process_result}")
 
                                 # Move the processed email to "EnteredintoABS" folder
