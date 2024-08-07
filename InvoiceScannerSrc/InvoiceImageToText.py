@@ -13,27 +13,49 @@ from google.cloud import vision
 from google.cloud.vision_v1 import types
 from datetime import datetime
 
-# Directly set the path to the service account key file
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\Derek\Downloads\caramel-compass-429017-h3-c2d4e157e809.json"
+# Path to the service account key file
+service_account_key = "./caramel-compass-429017-h3-c2d4e157e809.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = service_account_key
 
 # Initialize the Vision API client
 client = vision.ImageAnnotatorClient()
 
-# Path to the folders
-invoice_folder = r'C:\Users\Derek\Documents\Invoices\InvoicePictures'
-destination_base_folder = r'C:\Users\Derek\Documents\Invoices\SortedInvoices'
-unsorted_base_folder = r'C:\Users\Derek\Documents\Invoices\UnsortedInvoices'
+# Paths to the folders
+invoice_folder = "./Invoices/InvoicePictures"
+destination_base_folder = "./Invoices/SortedInvoices"
+unsorted_base_folder = "./Invoices/UnsortedInvoices"
+customer_emails_file = "./customer_emails.xlsx"
 
 # Email details
 sender_email = "gingoso2@gmail.com"
 app_password = "soiz avjw bdtu hmtn"
+
+# Validate paths
+def validate_paths():
+    paths = {
+        "Service Account Key": service_account_key,
+        "Invoice Folder": invoice_folder,
+        "Destination Base Folder": destination_base_folder,
+        "Unsorted Base Folder": unsorted_base_folder,
+        "Customer Emails File": customer_emails_file
+    }
+    for name, path in paths.items():
+        if not os.path.exists(path):
+            print(f"ERROR: Path does not exist: {name} - {path}")
+        else:
+            print(f"Path exists: {name} - {path}")
+    return all(os.path.exists(path) for path in paths.values())
+
+if not validate_paths():
+    print("Exiting due to invalid paths.")
+    exit(1)
 
 def load_customer_emails(excel_file):
     df = pd.read_excel(excel_file, header=None)  # No header row
     customer_emails = dict(zip(df.iloc[:, 0], df.iloc[:, 1]))  # First column as keys, second as values
     return customer_emails
 
-customer_emails = load_customer_emails('customer_emails.xlsx')
+customer_emails = load_customer_emails(customer_emails_file)
 
 def extract_text_and_positions(image):
     _, encoded_image = cv2.imencode('.jpg', image)
@@ -72,7 +94,7 @@ def is_in_position(box1, box2, position, threshold):
     elif position == 'left':
         return (box2_right < box1_left) and (abs(box2_top - box1_top) < threshold or abs(box2_bottom - box1_bottom) < threshold)
     elif position == 'right':
-        return (box2_left > box1_right) and (abs(box2_top - box1_top) < threshold or abs(box2_bottom - box1_bottom) < threshold)
+        return (box2_left > box1_right) and (abs(box2_top - box1.top) < threshold or abs(box2_bottom - box1.bottom) < threshold)
     return False
 
 def is_six_alphanumeric(s):
@@ -200,11 +222,20 @@ def process_invoice(invoice_path):
 
 def process_invoices(invoice_folder):
     print(f"DEBUG: Processing invoices in folder: {invoice_folder}")
+    if not os.path.exists(invoice_folder):
+        print(f"ERROR: Invoice folder does not exist: {invoice_folder}")
+        return
+
     for filename in os.listdir(invoice_folder):
+        print(f"DEBUG: Found file: {filename}")
+
         if filename.lower().endswith(('.pdf', '.png', '.jpg', '.jpeg')):
+            print("DEBUG: Processing a valid invoice file")
             invoice_path = os.path.join(invoice_folder, filename)
             print(f"DEBUG: Found invoice: {invoice_path}")
             process_invoice(invoice_path)
+        else:
+            print(f"DEBUG: Skipped non-invoice file: {filename}")
 
 def add_customer_email(excel_file, customer_id, email):
     df = pd.read_excel(excel_file, header=None)  # No header row
@@ -228,4 +259,8 @@ def remove_customer_email(excel_file, customer_id):
 if __name__ == "__main__":
     print("DEBUG: Starting invoice processing")
     process_invoices(invoice_folder)
+    print("Program execution completed.")
+
+    input("Press Enter to exit...")
+    
     print("DEBUG: Finished invoice processing")
