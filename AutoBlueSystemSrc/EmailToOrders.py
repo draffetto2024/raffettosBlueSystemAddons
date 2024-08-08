@@ -30,23 +30,19 @@ def read_customer_list_from_excel(file_path):
     customer_ids = df.iloc[:, 1].tolist()  # Assuming customer IDs are in the second column
     return customer_list, customer_ids
 
-# Function to find the closest match using Levenshtein distance
-def closest_match(phrase, match_list, match_ids, lbs_per_case, threshold=2):
+# The closest_match function also needs to be simplified:
+def closest_match(phrase, match_list, threshold=2):
     closest_match = None
-    closest_id = None
-    closest_lbs_per_case = None
     min_distance = float('inf')
     
-    for item, item_id, item_lbs_per_case in zip(match_list, match_ids, lbs_per_case):
+    for item in match_list:
         if isinstance(phrase, str) and isinstance(item, str):
             distance = Levenshtein.distance(phrase, item)
             if distance <= threshold and distance < min_distance:
                 min_distance = distance
                 closest_match = item
-                closest_id = item_id
-                closest_lbs_per_case = item_lbs_per_case
                 
-    return closest_match, closest_id, closest_lbs_per_case
+    return closest_match
 
 # Function to find the closest match using Levenshtein distance
 def closest_customer_match(phrase, match_list, match_ids, threshold=2):
@@ -76,15 +72,12 @@ def generate_permutations(words):
 def clean_line(line):
     return re.sub(r'[^a-zA-Z0-9 ]', '', line).lower()
 
-# Function to process each line and extract order details
-def process_line(line, product_list, product_ids, lbs_per_case):
+def process_line(line, product_names, product_list):
     cleaned_line = clean_line(line)
     words = word_tokenize(cleaned_line)
     count = None
     count_type = 'cases'  # Default count type
     product = None
-    product_id = None
-    product_lbs_per_case = 0
     
     for i, word in enumerate(words):
         if word.isdigit():
@@ -95,12 +88,9 @@ def process_line(line, product_list, product_ids, lbs_per_case):
             all_permutations = generate_permutations(potential_product_words)
             for permutation in all_permutations:
                 permutation_phrase = " ".join(permutation)
-                product, product_id, product_lbs_per_case = closest_match(permutation_phrase, product_list, product_ids, lbs_per_case)
+                product = closest_match(permutation_phrase, product_names)
                 if product:
-                    if count_type == 'lbs' and product_lbs_per_case > 0:   
-                        count = math.ceil(count / product_lbs_per_case)
-                        count_type = 'cases'
-                    return count, count_type, product, product_id  # Exit as soon as a match is found
+                    return count, count_type, product
             break
     
     if count is None:
@@ -109,54 +99,37 @@ def process_line(line, product_list, product_ids, lbs_per_case):
         all_permutations = generate_permutations(words)
         for permutation in all_permutations:
             permutation_phrase = " ".join(permutation)
-            product, product_id, product_lbs_per_case = closest_match(permutation_phrase, product_list, product_ids, lbs_per_case)
+            product = closest_match(permutation_phrase, product_names)
             if product:
-                return count, count_type, product, product_id  # Exit as soon as a match is found
+                return count, count_type, product
     
-    return count, count_type, product, product_id
+    return count, count_type, product
 
-# Main function to extract orders from email text
-def extract_orders(email_text, product_list, product_ids, lbs_per_case):
+def extract_orders(email_text, product_names, customer_codes, product_list, product_ids, lbs_per_case):
     orders = []
     lines = email_text.strip().split('\n')
     
     for line in lines:
         if line.strip():  # Skip empty lines
-            count, count_type, product, product_id = process_line(line, product_list, product_ids, lbs_per_case)
+            count, count_type, product = process_line(line, product_names, product_list)
             if product:
-                orders.append((count, count_type, product, product_id))
+                product_id = customer_codes.get(product)
+                if product_id:
+                    lbs = lbs_per_case[product_list.index(product)] if product in product_list else 0
+                    orders.append((count, count_type, product, product_id, lbs))
     
     return orders
 
-# Modify the write_orders_to_db function to include email_sent_date
 def write_orders_to_db(db_path, customer, customer_id, orders, raw_email, email_sent_date):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
-    # Create table if it doesn't exist (add email_sent_date column)
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS orders (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        customer TEXT,
-        customer_id INTEGER,
-        cases INTEGER,
-        lbs FLOAT,
-        item TEXT,
-        item_id INTEGER,
-        date_generated TEXT,
-        date_processed TEXT,
-        entered_status INTEGER DEFAULT 0,
-        raw_email TEXT,
-        email_sent_date TEXT
-    )
-    ''')
-    
     date_generated = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     date_processed = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    for count, count_type, product, product_id in orders:
+    for count, count_type, product, product_id, lbs in orders:
         cases = count if count_type == 'cases' else 0
-        lbs = count if count_type == 'lbs' else 0.0
+        lbs = count if count_type == 'lbs' else lbs
         cursor.execute('''
         INSERT INTO orders (customer, customer_id, cases, lbs, item, item_id, date_generated, date_processed, entered_status, raw_email, email_sent_date)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -164,6 +137,7 @@ def write_orders_to_db(db_path, customer, customer_id, orders, raw_email, email_
     
     conn.commit()
     conn.close()
+
 
 # Function to update the entered status of orders in the database
 def update_entered_status(db_path, raw_emails):
@@ -222,20 +196,19 @@ def extract_email_address(from_field):
     name, email_address = parseaddr(from_field)
     return email_address
 
-# Modify the process_email function to extract and pass the email sent date
-def process_email(from_, body, product_list, product_ids, lbs_per_case, customer_list, customer_ids, db_path, mail, msg_id, email_sent_date):
+def process_email(from_, body, product_names, customer_product_codes, db_path, mail, msg_id, email_sent_date, product_list, product_ids, lbs_per_case):
     email_address = extract_email_address(from_)
     
-    # Find the closest matching customer
-    customer, customer_id = closest_customer_match(email_address, customer_list, customer_ids)
-    
-    if customer:
+    if email_address in customer_product_codes:
+        customer = email_address
+        customer_codes = customer_product_codes[customer]
+        
         # Extract orders from the email body
-        orders = extract_orders(body, product_list, product_ids, lbs_per_case)
+        orders = extract_orders(body, product_names, customer_codes, product_list, product_ids, lbs_per_case)
         print(f"Orders extracted: {orders}")
         
-        # Write orders to the SQL database (now including email_sent_date)
-        write_orders_to_db(db_path, customer, customer_id, orders, body, email_sent_date)
+        # Write orders to the SQL database
+        write_orders_to_db(db_path, customer, customer, orders, body, email_sent_date)
         
         # Move the email to the EnteredIntoABS inbox
         move_email(mail, msg_id, "EnteredIntoABS")
@@ -246,6 +219,7 @@ def process_email(from_, body, product_list, product_ids, lbs_per_case, customer
         
         return False  # Customer not found
 
+
 # Function to move an email to another folder
 def move_email(mail, msg_id, destination_folder):
     result = mail.copy(msg_id, destination_folder)
@@ -254,6 +228,31 @@ def move_email(mail, msg_id, destination_folder):
         mail.expunge()
     else:
         print(f"Failed to move email ID {msg_id} to {destination_folder}")
+
+def initialize_database(db_path):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Create table if it doesn't exist
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer TEXT,
+        customer_id TEXT,
+        cases INTEGER,
+        lbs FLOAT,
+        item TEXT,
+        item_id TEXT,
+        date_generated TEXT,
+        date_processed TEXT,
+        entered_status INTEGER DEFAULT 0,
+        raw_email TEXT,
+        email_sent_date TEXT
+    )
+    ''')
+    
+    conn.commit()
+    conn.close()
 
 import tkinter as tk
 from tkinter import ttk
@@ -522,12 +521,34 @@ def move_email_by_content(raw_email_content, destination_folder):
     mail.close()
     mail.logout()
 
-if __name__ == "__main__":
-    # Read product list and IDs from Excel
-    product_list, product_ids, lbs_per_case = read_product_list_from_excel('products.xlsx')
+def read_grid_excel(file_path):
+    # Read the Excel file
+    df = pd.read_excel(file_path, header=0, index_col=0)
+    
+    # Extract product names from the first row (column names), excluding the index
+    product_names = df.columns.tolist()
+    
+    # Initialize dictionary to store customer-specific product codes
+    customer_product_codes = {}
+    
+    # Iterate through each row (customer)
+    for customer_email, row in df.iterrows():
+        customer_codes = {}
+        for product, code in row.items():
+            if pd.notna(code):  # Check if the code is not NaN
+                customer_codes[product] = code
+        customer_product_codes[customer_email] = customer_codes
+    
+    return product_names, customer_product_codes
 
-    # Read customer list and IDs from Excel
-    customer_list, customer_ids = read_customer_list_from_excel('customers.xlsx')
+if __name__ == "__main__":
+    # Read product names and customer-specific codes from the grid Excel sheet
+    product_names, customer_product_codes = read_grid_excel('customer_product_grid.xlsx')
+    
+    # For backward compatibility, create product_list, product_ids, and lbs_per_case
+    product_list = product_names
+    product_ids = list(range(1, len(product_names) + 1))  # Assign sequential IDs
+    lbs_per_case = [0] * len(product_names)  # Initialize with 0, update if you have this information
 
     # Email details
     username = "gingoso2@gmail.com"
@@ -535,6 +556,9 @@ if __name__ == "__main__":
 
     # Database path
     db_path = 'orders.db'
+
+    # Initialize the database
+    initialize_database(db_path)
 
     # Connect to the server
     mail = imaplib.IMAP4_SSL("imap.gmail.com")
@@ -575,7 +599,7 @@ if __name__ == "__main__":
                                 else:
                                     email_sent_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Use current time if date parsing fails
 
-                                process_result = process_email(from_, body, product_list, product_ids, lbs_per_case, customer_list, customer_ids, db_path, mail, email_uid, email_sent_date)
+                                process_result = process_email(from_, body, product_names, customer_product_codes, db_path, mail, email_uid, email_sent_date, product_list, product_ids, lbs_per_case)
                                 print(f"Email processed: {process_result}")
 
                                 # Move the processed email to "EnteredintoABS" folder
