@@ -15,13 +15,16 @@ from datetime import datetime, timedelta
 import time
 from tkcalendar import DateEntry
 
-# Function to read product names, IDs, and lbs per case from an Excel file
 def read_product_list_from_excel(file_path):
     df = pd.read_excel(file_path, header=None)
     product_list = df.iloc[:, 0].str.lower().tolist()  # Assuming product names are in the first column
     product_ids = df.iloc[:, 1].tolist()  # Assuming product IDs are in the second column
     lbs_per_case = df.iloc[:, 2].fillna(0).tolist()  # Assuming lbs per case are in the third column, 0 if not specified
-    return product_list, product_ids, lbs_per_case
+    
+    # Create a dictionary that maps product names to product IDs and lbs per case
+    product_info = {name.lower(): (id_, lbs) for name, id_, lbs in zip(product_list, product_ids, lbs_per_case)}
+    
+    return product_info
 
 # Function to read customer names and IDs from an Excel file
 def read_customer_list_from_excel(file_path):
@@ -306,7 +309,6 @@ def create_gui(db_path):
     # Update headers to include Email Sent Date
     headers = ["Raw Email Content", "Matched Products", "Cases", "Lbs", "Product Codes", "Customer", "Email Sent Date", "Entered Status", "Select"]
 
-    # Function to populate the grid with data from the database
     def populate_grid(filter_date=None):
         for widget in scrollable_frame.winfo_children():
             widget.destroy()
@@ -318,34 +320,34 @@ def create_gui(db_path):
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        
+
         # Check if email_sent_date column exists
         cursor.execute("PRAGMA table_info(orders)")
         columns = [column[1] for column in cursor.fetchall()]
-        
+
         if 'email_sent_date' in columns:
             if filter_date:
                 next_date = filter_date + timedelta(days=1)
                 cursor.execute('''
-                SELECT raw_email, customer, item, cases, lbs, item_id, email_sent_date, entered_status
+                SELECT raw_email, customer, item_id, cases, lbs, item_id, email_sent_date, entered_status
                 FROM orders
                 WHERE email_sent_date >= ? AND email_sent_date < ?
                 ORDER BY entered_status ASC, email_sent_date ASC
                 ''', (filter_date.strftime('%Y-%m-%d'), next_date.strftime('%Y-%m-%d')))
             else:
                 cursor.execute('''
-                SELECT raw_email, customer, item, cases, lbs, item_id, email_sent_date, entered_status
+                SELECT raw_email, customer, item_id, cases, lbs, item_id, email_sent_date, entered_status
                 FROM orders
                 WHERE email_sent_date IS NOT NULL
                 ORDER BY entered_status ASC, email_sent_date ASC
                 ''')
         else:
             cursor.execute('''
-            SELECT raw_email, customer, item, cases, lbs, item_id, entered_status
+            SELECT raw_email, customer, item_id, cases, lbs, item_id, entered_status
             FROM orders
             ORDER BY entered_status ASC
             ''')
-        
+
         orders = cursor.fetchall()
         conn.close()
 
@@ -355,6 +357,8 @@ def create_gui(db_path):
             if raw_email not in email_to_orders:
                 email_to_orders[raw_email] = []
             email_to_orders[raw_email].append(order)
+
+        product_info = read_product_list_from_excel('products.xlsx')
 
         for row, (raw_email, order_list) in enumerate(email_to_orders.items(), start=1):
             # Raw Email Content
@@ -372,14 +376,13 @@ def create_gui(db_path):
             entered_status = order_list[0][-1]  # Last item is always entered_status
 
             for order in order_list:
-                _, customer, item, cases, lbs, item_id = order[:6]  # First 6 items are always the same
-                matched_products.append(item)
+                _, customer, item_id, cases, lbs, _, email_sent_date = order[:7]  # First 7 items are always the same
+                product_name = next((name for name, (id_, _) in product_info.items() if str(id_) == item_id), "Unknown")
+                matched_products.append(product_name)
                 cases_list.append(str(cases) if cases else "N/A")
                 lbs_list.append(str(lbs) if lbs else "N/A")
-                product_codes.append(str(item_id))
+                product_codes.append(item_id)
                 customers.add(customer)
-                if len(order) > 7:  # If email_sent_date exists
-                    email_sent_date = order[6]
 
             # Matched Products
             products_text = tk.Text(scrollable_frame, wrap=tk.WORD, width=30, height=5)
