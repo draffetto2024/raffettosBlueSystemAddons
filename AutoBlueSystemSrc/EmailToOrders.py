@@ -13,6 +13,7 @@ from tkcalendar import DateEntry
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
+import pyautogui
 
 # Function to read customer product grid from an Excel file
 def read_grid_excel(file_path):
@@ -53,8 +54,7 @@ def extract_orders(email_text, customer_codes):
     
     return orders
 
-# Function to write orders to the SQL database
-def write_orders_to_db(db_path, customer, customer_id, orders, raw_email, email_sent_date):
+def write_orders_to_db(db_path, customer_email, customer_id, orders, raw_email, email_sent_date):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
@@ -67,7 +67,7 @@ def write_orders_to_db(db_path, customer, customer_id, orders, raw_email, email_
         cursor.execute('''
         INSERT INTO orders (customer, customer_id, cases, lbs, item, item_id, date_generated, date_processed, entered_status, raw_email, email_sent_date)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (customer, customer_id, cases, lbs, product, product_id, date_generated, date_processed, 0, raw_email, email_sent_date))
+        ''', (customer_email, customer_id, cases, lbs, product, product_id, date_generated, date_processed, 0, raw_email, email_sent_date))
     
     conn.commit()
     conn.close()
@@ -112,18 +112,19 @@ def extract_email_address(from_field):
     name, email_address = parseaddr(from_field)
     return email_address
 
-def process_email(from_, body, customer_product_codes, db_path, mail, msg_id, email_sent_date):
+def process_email(from_, body, customer_product_codes, customer_ids, db_path, mail, msg_id, email_sent_date):
     email_address = extract_email_address(from_)
     
     if email_address in customer_product_codes:
         customer_codes = customer_product_codes[email_address]
+        customer_id = customer_ids.get(email_address, email_address)  # Use email as fallback if no ID found
         
         # Extract orders from the email body using the customer-specific product codes
         orders = extract_orders(body, customer_codes)
         print(f"Orders extracted: {orders}")
         
         # Write orders to the SQL database
-        write_orders_to_db(db_path, email_address, email_address, orders, body, email_sent_date)
+        write_orders_to_db(db_path, email_address, customer_id, orders, body, email_sent_date)
         
         # Move the email to the EnteredIntoABS inbox
         move_email(mail, msg_id, "EnteredIntoABS")
@@ -312,8 +313,9 @@ def create_gui(db_path):
             codes_text.config(state=tk.DISABLED)
             codes_text.grid(row=row, column=4, padx=5, pady=5, sticky="nsew")
 
-            # Customer
-            customer_label = ttk.Label(scrollable_frame, text=", ".join(customers))
+            # In the populate_grid function, replace the customer label creation with:
+            customer_id = customer_ids.get(customer, customer)  # Use email as fallback if no ID found
+            customer_label = ttk.Label(scrollable_frame, text=customer_id)
             customer_label.grid(row=row, column=5, padx=5, pady=5, sticky="nsew")
 
             # Email Sent Date
@@ -330,32 +332,87 @@ def create_gui(db_path):
             checkbox.grid(row=row, column=8, padx=5, pady=5, sticky="nsew")
             checkbox_vars[row] = var
 
-    # Function to print selected rows and update the status
+    def perform_auto_entry(orders):
+        print(f"Performing auto entry for {len(orders)} orders")
+        # Sequence to enter the order entry screen
+        into_order_sequence = [
+            'KEY:enter',
+            'KEY:1',
+            'KEY:enter',
+        ]
+
+        # Execute the sequence to enter the order entry screen
+        auto_order_entry(into_order_sequence)
+
+        for i, order in enumerate(orders, 1):
+            print(f"Processing order {i} of {len(orders)}: {order}")
+            # Generate the sequence for this specific order
+            order_sequence = generate_order_sequence(order)
+            
+            # Execute the sequence for this order
+            auto_order_entry(order_sequence)
+
+        # Optional: Add a sequence to exit or finalize after all orders
+        exit_sequence = [
+            'KEY:esc',
+            'WAIT:1',
+        ]
+        auto_order_entry(exit_sequence)
+        print("Auto entry completed")
+
     def auto_enter_selected():
-        selected_raw_emails = []
+        selected_orders = []
+        already_entered_orders = []
         for row, var in checkbox_vars.items():
             if var.get():
-                # Get the raw email content for the selected row
+                print(f"Processing row {row}")
                 raw_email_content = scrollable_frame.grid_slaves(row=row, column=0)[0].get("1.0", tk.END).strip()
-                selected_raw_emails.append(raw_email_content)
+                customer = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']
+                item_ids = scrollable_frame.grid_slaves(row=row, column=4)[0].get("1.0", tk.END).strip()
+                cases = scrollable_frame.grid_slaves(row=row, column=2)[0].get("1.0", tk.END).strip()
+                lbs = scrollable_frame.grid_slaves(row=row, column=3)[0].get("1.0", tk.END).strip()
+                items = scrollable_frame.grid_slaves(row=row, column=1)[0].get("1.0", tk.END).strip()
+                
+                entered_status = check_entered_status(db_path, raw_email_content)
+                if entered_status == 1:
+                    already_entered_orders.append((raw_email_content, customer, item_ids, cases, lbs, items))
+                    print(f"Order already entered: {customer}, {item_ids}")
+                else:
+                    selected_orders.append((raw_email_content, customer, item_ids, cases, lbs, items))
+                    print(f"Order selected for processing: {customer}, {item_ids}")
         
-        if selected_raw_emails:
-            print("Selected rows:")
-            for raw_email in selected_raw_emails:
-                print(raw_email)
+        print(f"Total orders selected for processing: {len(selected_orders)}")
+        print(f"Total orders already entered: {len(already_entered_orders)}")
+
+        if selected_orders:
+            print("Selected orders:")
+            for order in selected_orders:
+                print(order)
+            
+            # Perform auto order entry
+            perform_auto_entry(selected_orders)
+            
             # Update the entered status in the database for selected rows
-            update_entered_status(db_path, selected_raw_emails)
-            messagebox.showinfo("Info", "Selected orders have been marked as entered.")
+            update_entered_status(db_path, [order[0] for order in selected_orders])
+            
             # Move processed emails to the ProcessedEmails inbox
-            for raw_email in selected_raw_emails:
-                move_email_by_content(raw_email, "ProcessedEmails")
+            for order in selected_orders:
+                move_email_by_content(order[0], "ProcessedEmails")
+            
+            message = f"{len(selected_orders)} orders have been entered and marked as processed."
+            if already_entered_orders:
+                message += f"\n{len(already_entered_orders)} orders were already entered and skipped."
+            
+            messagebox.showinfo("Info", message)
+            
             # Refresh the grid to reflect changes
             populate_grid(date_entry.get_date())
+        elif already_entered_orders:
+            messagebox.showwarning("Warning", f"All selected orders ({len(already_entered_orders)}) have already been entered.")
         else:
             print("No rows selected.")
             messagebox.showwarning("Warning", "No rows selected.")
 
-    # Function to auto-enter all unentered emails for the selected date
     def auto_enter_all():
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
@@ -364,17 +421,21 @@ def create_gui(db_path):
         next_date = filter_date + timedelta(days=1)
         
         cursor.execute('''
-        SELECT raw_email FROM orders 
+        SELECT raw_email, customer, item_id, cases, lbs, item
+        FROM orders 
         WHERE entered_status = 0 AND email_sent_date >= ? AND email_sent_date < ?
         ''', (filter_date.strftime('%Y-%m-%d'), next_date.strftime('%Y-%m-%d')))
         
-        unentered_emails = [row[0] for row in cursor.fetchall()]
+        unentered_orders = cursor.fetchall()
         
-        if unentered_emails:
-            update_entered_status(db_path, unentered_emails)
-            for raw_email in unentered_emails:
-                move_email_by_content(raw_email, "ProcessedEmails")
-            messagebox.showinfo("Info", f"{len(unentered_emails)} orders have been marked as entered.")
+        if unentered_orders:
+            # Perform auto order entry
+            perform_auto_entry(unentered_orders)
+            
+            update_entered_status(db_path, [order[0] for order in unentered_orders])
+            for order in unentered_orders:
+                move_email_by_content(order[0], "ProcessedEmails")
+            messagebox.showinfo("Info", f"{len(unentered_orders)} orders have been entered and marked as processed.")
             populate_grid(filter_date)
         else:
             messagebox.showinfo("Info", "No unentered orders found for the selected date.")
@@ -395,6 +456,85 @@ def create_gui(db_path):
     populate_grid(datetime.now().date())
 
     root.mainloop()
+
+def generate_keystroke_sequence(order):
+    # Assuming order is a tuple with (raw_email_content, customer, item_id, cases, lbs, item)
+    _, _, product_code, cases, lbs, item = order
+    
+    sequence = [
+        f'INPUT:{product_code}',
+        'KEY:tab',
+        f'INPUT:{cases}',
+        'KEY:tab',
+        f'INPUT:{lbs}',
+        'KEY:tab',
+        f'INPUT:{item}',
+        'KEY:enter',
+        'WAIT:0.5'
+    ]
+    return sequence
+
+def check_entered_status(db_path, raw_email_content):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+    SELECT entered_status
+    FROM orders
+    WHERE raw_email = ?
+    LIMIT 1
+    ''', (raw_email_content,))
+    
+    result = cursor.fetchone()
+    conn.close()
+    
+    return result[0] if result else None
+
+def read_customer_ids(file_path):
+    df = pd.read_excel(file_path, header=None, names=['email', 'customer_id'])
+    return dict(zip(df['email'].str.lower(), df['customer_id']))
+
+def generate_order_sequence(order):
+    # Assuming order is a tuple with (raw_email_content, customer, item_id, cases, lbs, item)
+    _, _, product_codes, cases_list, lbs_list, items = order
+    
+    sequence = []
+    for product_code, cases, lbs, item in zip(product_codes.split('\n'), cases_list.split('\n'), lbs_list.split('\n'), items.split('\n')):
+        sequence.extend([
+            f'INPUT:{product_code.strip()}',
+            'KEY:tab',
+            f'INPUT:{cases.strip()}',
+            'KEY:tab',
+            f'INPUT:{lbs.strip()}',
+            'KEY:tab',
+            f'INPUT:{item.strip()}',
+            'KEY:enter',
+            'WAIT:0.5'
+        ])
+    return sequence
+
+def auto_order_entry(keystroke_sequence):
+    print("Switching to order entry window in 5 seconds...")
+    time.sleep(5)
+    
+    for action in keystroke_sequence:
+        if action.startswith('INPUT:'):
+            # Input data
+            data = action.split(':', 1)[1]  # Use maxsplit=1 to handle colons in the data
+            pyautogui.typewrite(str(data))
+        elif action.startswith('KEY:'):
+            # Press a specific key
+            key = action.split(':')[1]
+            pyautogui.press(key)
+        elif action.startswith('WAIT:'):
+            # Wait for a specified number of seconds
+            wait_time = float(action.split(':')[1])
+            time.sleep(wait_time)
+        else:
+            # Assume it's a keystroke or text to type
+            pyautogui.typewrite(action)
+        
+        time.sleep(0.5)  # Short pause between actions
 
 # Function to update the entered status of orders in the database
 def update_entered_status(db_path, raw_emails):
@@ -431,6 +571,9 @@ def move_email_by_content(raw_email_content, destination_folder):
 if __name__ == "__main__":
     # Read customer-specific product codes from the grid Excel sheet
     customer_product_codes = read_grid_excel('customer_product_grid.xlsx')
+
+    # Read customer IDs from Excel file
+    customer_ids = read_customer_ids('customers.xlsx')  # Replace with your actual file name
 
     # Email details
     username = "gingoso2@gmail.com"
@@ -481,7 +624,7 @@ if __name__ == "__main__":
                                 else:
                                     email_sent_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Use current time if date parsing fails
 
-                                process_result = process_email(from_, body, customer_product_codes, db_path, mail, email_uid, email_sent_date)
+                                process_result = process_email(from_, body, customer_product_codes, customer_ids, db_path, mail, email_uid, email_sent_date)
                                 print(f"Email processed: {process_result}")
 
                                 # Move the processed email to "EnteredIntoABS" folder
