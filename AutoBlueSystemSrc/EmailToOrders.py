@@ -351,8 +351,14 @@ def create_gui(db_path):
             print(f"Processing order {i} of {len(orders)}: {order}")
 
             # Extract customer ID and other details from the order
-            raw_email, customer, customer_id, item_ids, cases, lbs, items = order
-            
+            if len(order) == 7:
+                raw_email, customer, customer_id, item_ids, cases, lbs, items = order
+            elif len(order) == 6:
+                raw_email, customer_id, item_ids, cases, lbs, items = order
+            else:
+                print(f"Unexpected order structure: {order}")
+                continue
+
             pre_order_entry = [
                 'KEY:enter',
                 f'INPUT:{customer_id}',
@@ -381,7 +387,7 @@ def create_gui(db_path):
             if var.get():
                 print(f"Processing row {row}")
                 raw_email_content = scrollable_frame.grid_slaves(row=row, column=0)[0].get("1.0", tk.END).strip()
-                customer = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']
+                customer_id = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']
                 item_ids = scrollable_frame.grid_slaves(row=row, column=4)[0].get("1.0", tk.END).strip()
                 cases = scrollable_frame.grid_slaves(row=row, column=2)[0].get("1.0", tk.END).strip()
                 lbs = scrollable_frame.grid_slaves(row=row, column=3)[0].get("1.0", tk.END).strip()
@@ -389,11 +395,11 @@ def create_gui(db_path):
                 
                 entered_status = check_entered_status(db_path, raw_email_content)
                 if entered_status == 1:
-                    already_entered_orders.append((raw_email_content, customer, item_ids, cases, lbs, items))
-                    print(f"Order already entered: {customer}, {item_ids}")
+                    already_entered_orders.append((raw_email_content, customer_id, item_ids, cases, lbs, items))
+                    print(f"Order already entered: {customer_id}, {item_ids}")
                 else:
-                    selected_orders.append((raw_email_content, customer, item_ids, cases, lbs, items))
-                    print(f"Order selected for processing: {customer}, {item_ids}")
+                    selected_orders.append((raw_email_content, customer_id, item_ids, cases, lbs, items))
+                    print(f"Order selected for processing: {customer_id}, {item_ids}")
         
         print(f"Total orders selected for processing: {len(selected_orders)}")
         print(f"Total orders already entered: {len(already_entered_orders)}")
@@ -447,28 +453,29 @@ def create_gui(db_path):
         unentered_orders = {}
         already_entered_orders = {}
 
-        print("Beginning Auto Order Entry in 5 seconds.")
-        time.sleep(5)
-
         for order in orders:
             raw_email, customer, customer_id, item_id, cases, lbs, item, entered_status = order
-            order_key = (raw_email, customer)  # Use both raw_email and customer as the key
+            order_key = (raw_email, customer, customer_id)
             if entered_status == 0:
                 if order_key not in unentered_orders:
-                    unentered_orders[order_key] = [customer_id, [], [], [], []]
-                unentered_orders[order_key][1].append(item_id)
-                unentered_orders[order_key][2].append(str(cases))
-                unentered_orders[order_key][3].append(str(lbs))
-                unentered_orders[order_key][4].append(item)
+                    unentered_orders[order_key] = [[], [], [], []]
+                unentered_orders[order_key][0].append(item_id)
+                unentered_orders[order_key][1].append(str(cases))
+                unentered_orders[order_key][2].append(str(lbs))
+                unentered_orders[order_key][3].append(item)
             else:
                 if order_key not in already_entered_orders:
-                    already_entered_orders[order_key] = [customer_id, [], [], [], []]
-                already_entered_orders[order_key][1].append(item_id)
-                already_entered_orders[order_key][2].append(str(cases))
-                already_entered_orders[order_key][3].append(str(lbs))
-                already_entered_orders[order_key][4].append(item)
+                    already_entered_orders[order_key] = [[], [], [], []]
+                already_entered_orders[order_key][0].append(item_id)
+                already_entered_orders[order_key][1].append(str(cases))
+                already_entered_orders[order_key][2].append(str(lbs))
+                already_entered_orders[order_key][3].append(item)
 
-        unentered_orders_list = [(raw_email, customer, *order_data) for (raw_email, customer), order_data in unentered_orders.items()]
+        unentered_orders_list = [
+            (*order_key, '\n'.join(order_data[0]), '\n'.join(order_data[1]), '\n'.join(order_data[2]), '\n'.join(order_data[3]))
+            for order_key, order_data in unentered_orders.items()
+        ]
+
 
         print(f"Total orders to be processed: {len(unentered_orders_list)}")
         print(f"Total orders already entered: {len(already_entered_orders)}")
@@ -624,7 +631,12 @@ def generate_order_sequence(order):
     
     sequence = []
     
-    for product_code, case, lb, item in zip(item_ids, cases, lbs, items):
+    item_ids_list = item_ids.split('\n')
+    cases_list = cases.split('\n')
+    lbs_list = lbs.split('\n')
+    items_list = items.split('\n')
+    
+    for product_code, case, lb, item in zip(item_ids_list, cases_list, lbs_list, items_list):
         sequence.extend([
             f'INPUT:{product_code.strip()}',
             'KEY:enter',
@@ -638,12 +650,11 @@ def generate_order_sequence(order):
     return sequence
 
 def auto_order_entry(keystroke_sequence):
-
     for action in keystroke_sequence:
         if action.startswith('INPUT:'):
             # Input data
             data = action.split(':', 1)[1]  # Use maxsplit=1 to handle colons in the data
-            pyautogui.typewrite(str(data))
+            pyautogui.write(str(data))  # Use write instead of typewrite
         elif action.startswith('KEY:'):
             # Press a specific key
             key = action.split(':')[1]
@@ -654,9 +665,9 @@ def auto_order_entry(keystroke_sequence):
             time.sleep(wait_time)
         else:
             # Assume it's a keystroke or text to type
-            pyautogui.typewrite(action)
+            pyautogui.write(action)  # Use write instead of typewrite
         
-        time.sleep(0.5)  # Short pause between action
+        time.sleep(0.5)  # Short pause between actions
 
 def delete_order_from_db(db_path, raw_email):
     conn = sqlite3.connect(db_path)
