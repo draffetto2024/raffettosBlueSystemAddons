@@ -361,6 +361,8 @@ def create_gui(db_path):
                 'KEY:enter',
                 f'INPUT:{customer_id}',
                 'KEY:enter',
+                'KEY:enter', #no PO number
+                'KEY:n',
                 'KEY:enter',
             ]
             # Execute the pre-order entry sequence
@@ -669,6 +671,10 @@ def generate_order_sequence(order):
                 'KEY:enter',
                 'KEY:enter',
                 'KEY:enter',
+                'KEY:enter',
+                'KEY:up',
+                'KEY:enter',
+                'KEY:t',
                 'KEY:enter',
                 'WAIT:0.1'
             ])
