@@ -38,35 +38,52 @@ def clean_line(line):
 def extract_orders(email_text, customer_codes):
     orders = []
     lines = email_text.strip().split('\n')
-    
+
+    print("Extracting orders from email:")
+    print("Customer codes:", customer_codes)
+    print("Email content:")
+    print(email_text)
+
     for line in lines:
         if line.strip():  # Skip empty lines
             cleaned_line = clean_line(line)
-
-            print(cleaned_line)
-            print(customer_codes)
+            print(f"Checking line: {cleaned_line}")
             
-            if cleaned_line in customer_codes:
-                matched_amount, product_code, unit = customer_codes[cleaned_line]
-                orders.append((matched_amount, unit, cleaned_line, product_code, 0 if unit == 'cases' else matched_amount))
-    
+            for raw_text, (product_info, product_code) in customer_codes.items():
+                if all(word.lower() in cleaned_line for word in raw_text.split()):
+                    print(f"Match found: {raw_text} in {cleaned_line}")
+                    # Extract quantity from the email line
+                    quantity = re.search(r'\d+', cleaned_line)
+                    quantity = int(quantity.group()) if quantity else 1
+                    
+                    # Determine if it's cases or lbs from the product info
+                    unit = 'cases' if 'case' in product_info.lower() else 'lbs'
+                    
+                    # For cases, set lbs to 0; for lbs, set cases to 0
+                    cases = quantity if unit == 'cases' else 0
+                    lbs = quantity if unit == 'lbs' else 0
+                    
+                    orders.append((quantity, unit, cleaned_line, product_code, cases, lbs))
+                    break
+            else:
+                print(f"No match found for line: {cleaned_line}")
+
+    print(f"Extracted orders: {orders}")
     return orders
 
 def write_orders_to_db(db_path, customer_email, customer_id, orders, raw_email, email_sent_date):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     date_generated = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     date_processed = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
-    for count, unit, product, product_id, lbs in orders:
-        cases = count if unit == 'cases' else 0
-        lbs = count if unit == 'lbs' else lbs
+
+    for quantity, unit, raw_product, product_code, cases, lbs in orders:
         cursor.execute('''
         INSERT INTO orders (customer, customer_id, cases, lbs, item, item_id, date_generated, date_processed, entered_status, raw_email, email_sent_date)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (customer_email, customer_id, cases, lbs, product, product_id, date_generated, date_processed, 0, raw_email, email_sent_date))
-    
+        ''', (customer_email, customer_id, cases, lbs, raw_product, product_code, date_generated, date_processed, 0, raw_email, email_sent_date))
+
     conn.commit()
     conn.close()
 
@@ -110,28 +127,27 @@ def extract_email_address(from_field):
     name, email_address = parseaddr(from_field)
     return email_address
 
-def process_email(from_, body, customer_product_codes, customer_ids, db_path, mail, msg_id, email_sent_date):
+def process_email(from_, body, customer_codes, customer_id, db_path, mail, msg_id, email_sent_date):
     email_address = extract_email_address(from_)
-    
-    if email_address in customer_product_codes:
-        customer_codes = customer_product_codes[email_address]
-        customer_id = customer_ids.get(email_address, email_address)  # Use email as fallback if no ID found
-        
-        # Extract orders from the email body using the customer-specific product codes
-        orders = extract_orders(body, customer_codes)
-        print(f"Orders extracted: {orders}")
-        
+    print(f"Processing email from: {email_address}")
+    print(f"Customer ID: {customer_id}")
+    print(f"Customer codes: {customer_codes}")
+
+    # Extract orders from the email body using the customer-specific product codes
+    orders = extract_orders(body, customer_codes)
+    print(f"Orders extracted: {orders}")
+
+    if orders:
         # Write orders to the SQL database
         write_orders_to_db(db_path, email_address, customer_id, orders, body, email_sent_date)
-        
+
         # Move the email to the EnteredIntoABS inbox
         move_email(mail, msg_id, "EnteredIntoABS")
-        
-        return True  # Customer found and processed
+        print("Email processed successfully and moved to EnteredIntoABS")
+        return True
     else:
-        print(f"No matching customer found for email from: {email_address}")
-        
-        return False  # Customer not found
+        print("No orders extracted from the email")
+        return False
 
 # Function to move an email to another folder
 def move_email(mail, msg_id, destination_folder):
@@ -764,12 +780,47 @@ def move_email_back_to_orders(raw_email_content):
     mail.close()
     mail.logout()
 
-if __name__ == "__main__":
-    # Read customer-specific product codes from the grid Excel sheet
-    customer_product_codes = read_grid_excel('customer_product_grid.xlsx')
+import os
 
+def read_customer_excel_files(directory_path):
+    customer_product_codes = {}
+    
+    for filename in os.listdir(directory_path):
+        if filename.endswith('.xlsx'):
+            customer_id = filename.split('.')[0]  # Filename is CUSTXX.xlsx
+            file_path = os.path.join(directory_path, filename)
+            df = pd.read_excel(file_path, header=None, names=['raw_text', 'product_info'])
+            
+            customer_codes = {}
+            for _, row in df.iterrows():
+                raw_text = row['raw_text'].lower()
+                product_info = str(row['product_info'])
+                
+                # Extract the product code (assuming it's always in the middle)
+                parts = product_info.split()
+                if len(parts) >= 2:
+                    product_code = parts[1]
+                else:
+                    print(f"Warning: Unexpected format in '{product_info}' for customer {customer_id}")
+                    product_code = "000000"  # Default code if format is unexpected
+                
+                customer_codes[raw_text] = (product_info, product_code)
+            
+            customer_product_codes[customer_id] = customer_codes
+            
+            print(f"Loaded product codes for customer {customer_id} from {filename}:")
+            for raw_text, (product_info, product_code) in customer_codes.items():
+                print(f"  - {raw_text}: {product_info} (Code: {product_code})")
+    
+    print(f"Total customers with product codes: {len(customer_product_codes)}")
+    return customer_product_codes
+
+if __name__ == "__main__":
     # Read customer IDs from Excel file
     customer_ids = read_customer_ids('customers.xlsx')  # Replace with your actual file name
+
+    # Read customer-specific product codes from individual Excel files
+    customer_product_codes = read_customer_excel_files('customer_product_codes')
 
     # Email details
     username = "gingoso2@gmail.com"
@@ -806,28 +857,35 @@ if __name__ == "__main__":
                     if status == 'OK' and msg_data and msg_data[0] is not None:
                         if isinstance(msg_data[0], tuple):
                             msg = email.message_from_bytes(msg_data[0][1])
-                            
+
                             body = get_email_content(msg)
 
                             if body:
                                 from_ = msg.get("From")
                                 email_address = extract_email_address(from_)
 
-                                # Extract the email sent date
-                                date_tuple = email.utils.parsedate_tz(msg.get('Date'))
-                                if date_tuple:
-                                    email_sent_date = datetime.fromtimestamp(email.utils.mktime_tz(date_tuple)).strftime('%Y-%m-%d %H:%M:%S')
+                                # Get customer ID from email
+                                customer_id = customer_ids.get(email_address.lower())
+                                
+                                if customer_id and customer_id in customer_product_codes:
+                                    customer_codes = customer_product_codes[customer_id]
+                                    
+                                    # Extract the email sent date
+                                    date_tuple = email.utils.parsedate_tz(msg.get('Date'))
+                                    if date_tuple:
+                                        email_sent_date = datetime.fromtimestamp(email.utils.mktime_tz(date_tuple)).strftime('%Y-%m-%d %H:%M:%S')
+                                    else:
+                                        email_sent_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Use current time if date parsing fails
+
+                                    process_result = process_email(from_, body, customer_codes, customer_id, db_path, mail, email_uid, email_sent_date)
+                                    print(f"Email processed: {process_result}")
+
+                                    # Move the processed email to "EnteredIntoABS" folder
+                                    mail.uid('copy', email_uid, "EnteredIntoABS")
+                                    mail.uid('store', email_uid, '+FLAGS', '\\Deleted')
+                                    mail.expunge()
                                 else:
-                                    email_sent_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Use current time if date parsing fails
-
-                                process_result = process_email(from_, body, customer_product_codes, customer_ids, db_path, mail, email_uid, email_sent_date)
-                                print(f"Email processed: {process_result}")
-
-                                # Move the processed email to "EnteredIntoABS" folder
-                                mail.uid('copy', email_uid, "EnteredIntoABS")
-                                mail.uid('store', email_uid, '+FLAGS', '\\Deleted')
-                                mail.expunge()
-
+                                    print(f"No matching customer found for email from: {email_address}")
                             else:
                                 print(f"No body content for email UID: {email_uid.decode()}")
                         else:
