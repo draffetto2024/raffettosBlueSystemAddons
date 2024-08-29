@@ -13,18 +13,20 @@ from google.cloud import vision
 from google.cloud.vision_v1 import types
 from datetime import datetime
 
+
 # Path to the service account key file
-service_account_key = "./caramel-compass-429017-h3-c2d4e157e809.json"
+service_account_key = r"C:\Users\Derek\Desktop\InvoiceSortingDev\caramel-compass-429017-h3-c2d4e157e809.json"
+
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = service_account_key
 
 # Initialize the Vision API client
 client = vision.ImageAnnotatorClient()
 
 # Paths to the folders
-invoice_folder = "./Invoices/InvoicePictures"
-destination_base_folder = "./Invoices/SortedInvoices"
-unsorted_base_folder = "./Invoices/UnsortedInvoices"
-customer_emails_file = "./customer_emails.xlsx"
+invoice_folder = r"C:\Users\Derek\Desktop\InvoiceSortingDev\Invoices\InvoicePictures"
+destination_base_folder = r"C:\Users\Derek\Desktop\InvoiceSortingDev\Invoices\SortedInvoices"
+unsorted_base_folder = r"C:\Users\Derek\Desktop\InvoiceSortingDev\Invoices\UnsortedInvoices"
+customer_emails_file = r"C:\Users\Derek\Desktop\InvoiceSortingDev\customer_emails.xlsx"
 
 # Email details
 sender_email = "gingoso2@gmail.com"
@@ -57,6 +59,7 @@ def load_customer_emails(excel_file):
 
 customer_emails = load_customer_emails(customer_emails_file)
 
+
 def extract_text_and_positions(image):
     _, encoded_image = cv2.imencode('.jpg', image)
     content = encoded_image.tobytes()
@@ -64,16 +67,29 @@ def extract_text_and_positions(image):
     response = client.document_text_detection(image=image)
     if response.error.message:
         raise Exception(f'{response.error.message}')
+    
     return response.text_annotations
 
+def print_bounding_box(description, box):
+    print(f"{description}:")
+    print(f"  Top-left: ({box[0].x}, {box[0].y})")
+    print(f"  Bottom-right: ({box[2].x}, {box[2].y})")
+
+
 def find_text_near_keyphrase(texts, keyphrase, position, threshold):
+    print(f"Searching for text near '{keyphrase}' in '{position}' position:")
     for text in texts:
         if keyphrase.lower() in text.description.lower():
+            print(f"Found keyphrase: {text.description}")
+            print_bounding_box("Keyphrase box", text.bounding_poly.vertices)
             keyphrase_box = text.bounding_poly.vertices
             for adjacent_text in texts:
                 adjacent_box = adjacent_text.bounding_poly.vertices
                 if is_in_position(keyphrase_box, adjacent_box, position, threshold):
+                    print(f"Found matching text: {adjacent_text.description}")
+                    print_bounding_box("Matching text box", adjacent_box)
                     return adjacent_text.description
+    print(f"No matching text found for '{keyphrase}'")
     return None
 
 def is_in_position(box1, box2, position, threshold):
@@ -171,54 +187,98 @@ def send_email_with_attachment(file_path, customer_id, invoice_number, date):
     finally:
         server.quit()
 
+import fitz
+import tempfile
+
 def convert_pdf_to_images(pdf_path):
     doc = fitz.open(pdf_path)
     image_paths = []
-    for i, page in enumerate(doc):
-        pix = page.get_pixmap()
-        image_path = f"{pdf_path}_page_{i+1}.png"
-        pix.save(image_path)
-        image_paths.append(image_path)
-    doc.close()
+    try:
+        for i, page in enumerate(doc):
+            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # Increase resolution
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp:
+                pix.save(tmp.name)
+                image_paths.append(tmp.name)
+            print(f"Converted page {i+1} to image: {tmp.name}")
+    finally:
+        doc.close()
     return image_paths
+
+def extract_invoice_data(texts):
+    invoice_num = find_text_near_keyphrase(texts, "Invoice", "below", 10)
+    customer_num = find_text_near_keyphrase(texts, "Account", "below", 100)
+    date_num = find_text_near_keyphrase(texts, "Date", "below", 10)
+    
+    return invoice_num, customer_num, date_num
+
+def process_invoice_image(image_path):
+    print(f"DEBUG: Processing image: {image_path}")
+    image = cv2.imread(image_path)
+    texts = extract_text_and_positions(image)
+
+    invoice_num = find_text_near_keyphrase(texts, "Invoice", "below", 10)
+    customer_num = find_text_near_keyphrase(texts, "Account", "below", 100)
+    date_num = find_text_near_keyphrase(texts, "Date", "below", 10)
+
+    print(f"DEBUG: Found invoice_num: {invoice_num}, customer_num: {customer_num}, date_num: {date_num}")
+
+    if (invoice_num and is_six_alphanumeric(invoice_num) and
+        customer_num and is_six_alphanumeric(customer_num) and
+        date_num and is_date_format(date_num)):
+        print(f"DEBUG: All conditions met, copying image to sorted folder")
+        copy_image_to_sorted_folder(image_path, invoice_num, customer_num, date_num)
+        return True
+    else:
+        print(f"DEBUG: Conditions not met for sorting, copying to unsorted folder")
+        copy_image_to_unsorted_folder(image_path)
+        return False
 
 def process_invoice(invoice_path):
     print(f"DEBUG: Processing invoice: {invoice_path}")
     if invoice_path.lower().endswith('.pdf'):
         image_paths = convert_pdf_to_images(invoice_path)
         print(f"DEBUG: Converted PDF to images: {image_paths}")
-    else:
-        image_paths = [invoice_path]
 
-    for image_path in image_paths:
-        print(f"DEBUG: Processing image: {image_path}")
-        image = cv2.imread(image_path)
-        texts = extract_text_and_positions(image)
-
-        invoice_num = find_text_near_keyphrase(texts, "Invoice", "below", 10)
-        customer_num = find_text_near_keyphrase(texts, "Account", "below", 100)
-        date_num = find_text_near_keyphrase(texts, "Date", "below", 10)
-        
-        print(f"DEBUG: Found invoice_num: {invoice_num}, customer_num: {customer_num}, date_num: {date_num}")
-        
-        if (invoice_num and is_six_alphanumeric(invoice_num) and
-            customer_num and is_six_alphanumeric(customer_num) and
-            date_num and is_date_format(date_num)):
-            print(f"DEBUG: All conditions met, copying image to sorted folder")
-            copy_image_to_sorted_folder(image_path, invoice_num, customer_num, date_num)
-        else:
-            print(f"DEBUG: Conditions not met for sorting, copying to unsorted folder")
-            copy_image_to_unsorted_folder(image_path)
-        
-        if invoice_path.lower().endswith('.pdf'):
+        processed_invoices = 0
+        for image_path in image_paths:
+            if process_invoice_image(image_path):
+                processed_invoices += 1
             os.remove(image_path)  # Remove temporary image file
             print(f"DEBUG: Removed temporary image: {image_path}")
 
-    # Delete the original invoice after processing
-    os.remove(invoice_path)
-    print(f"DEBUG: Deleted original invoice: {invoice_path}")
+        print(f"DEBUG: Processed {processed_invoices} invoices from PDF: {invoice_path}")
+    else:
+        process_invoice_image(invoice_path)
+
+    # Do not delete the original invoice after processing
+    # os.remove(invoice_path)
+    # print(f"DEBUG: Deleted original invoice: {invoice_path}")
 
     print("="*40)  # Separator for readability
+
+import tempfile
+import time
+import random
+import string
+
+def generate_unique_filename(suffix='.png'):
+    timestamp = int(time.time() * 1000)
+    random_string = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+    return f"temp_{timestamp}_{random_string}{suffix}"
+
+def save_pixmap_with_retry(pix, max_retries=5):
+    for attempt in range(max_retries):
+        try:
+            temp_dir = tempfile.gettempdir()
+            temp_filename = generate_unique_filename()
+            temp_path = os.path.join(temp_dir, temp_filename)
+            pix.save(temp_path)
+            return temp_path
+        except Exception as e:
+            print(f"Error saving pixmap (attempt {attempt + 1}): {str(e)}")
+            if attempt == max_retries - 1:
+                raise
+            time.sleep(0.5)  # Wait for half a second before retrying
 
 def process_invoices(invoice_folder):
     print(f"DEBUG: Processing invoices in folder: {invoice_folder}")
@@ -228,14 +288,52 @@ def process_invoices(invoice_folder):
 
     for filename in os.listdir(invoice_folder):
         print(f"DEBUG: Found file: {filename}")
+        file_path = os.path.join(invoice_folder, filename)
 
-        if filename.lower().endswith(('.pdf', '.png', '.jpg', '.jpeg')):
-            print("DEBUG: Processing a valid invoice file")
-            invoice_path = os.path.join(invoice_folder, filename)
-            print(f"DEBUG: Found invoice: {invoice_path}")
-            process_invoice(invoice_path)
+        if filename.lower().endswith('.pdf'):
+            print(f"DEBUG: Processing PDF file: {filename}")
+            try:
+                process_pdf_invoice(file_path)
+                # Delete the original PDF file after successful processing
+                os.remove(file_path)
+                print(f"DEBUG: Deleted original PDF: {file_path}")
+            except Exception as e:
+                print(f"ERROR: Failed to process PDF {filename}: {str(e)}")
+                print(f"DEBUG: Original PDF not deleted due to processing error: {file_path}")
+        elif filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+            print(f"DEBUG: Processing image file: {filename}")
+            try:
+                process_invoice_image(file_path)
+                # Optionally, you can delete the original image file here as well
+                # os.remove(file_path)
+                # print(f"DEBUG: Deleted original image: {file_path}")
+            except Exception as e:
+                print(f"ERROR: Failed to process image {filename}: {str(e)}")
         else:
             print(f"DEBUG: Skipped non-invoice file: {filename}")
+
+def process_pdf_invoice(pdf_path):
+    doc = fitz.open(pdf_path)
+    try:
+        for i, page in enumerate(doc):
+            print(f"Processing page {i+1} of PDF: {pdf_path}")
+            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+            try:
+                temp_image_path = save_pixmap_with_retry(pix)
+                print(f"Saved page {i+1} as temporary image: {temp_image_path}")
+                if process_invoice_image(temp_image_path):
+                    print(f"Successfully processed page {i+1}")
+                else:
+                    print(f"Failed to process page {i+1}")
+            finally:
+                if 'temp_image_path' in locals():
+                    try:
+                        os.remove(temp_image_path)
+                        print(f"Removed temporary image: {temp_image_path}")
+                    except Exception as e:
+                        print(f"Error removing temporary file: {str(e)}")
+    finally:
+        doc.close()
 
 def add_customer_email(excel_file, customer_id, email):
     df = pd.read_excel(excel_file, header=None)  # No header row
