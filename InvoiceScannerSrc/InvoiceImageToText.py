@@ -77,20 +77,89 @@ def print_bounding_box(description, box):
 
 
 def find_text_near_keyphrase(texts, keyphrase, position, threshold):
-    print(f"Searching for text near '{keyphrase}' in '{position}' position:")
-    for text in texts:
-        if keyphrase.lower() in text.description.lower():
-            print(f"Found keyphrase: {text.description}")
-            print_bounding_box("Keyphrase box", text.bounding_poly.vertices)
-            keyphrase_box = text.bounding_poly.vertices
-            for adjacent_text in texts:
-                adjacent_box = adjacent_text.bounding_poly.vertices
-                if is_in_position(keyphrase_box, adjacent_box, position, threshold):
-                    print(f"Found matching text: {adjacent_text.description}")
-                    print_bounding_box("Matching text box", adjacent_box)
-                    return adjacent_text.description
-    print(f"No matching text found for '{keyphrase}'")
+    logging.info(f"\nSearching for text near '{keyphrase}' in '{position}' position:")
+    
+    keyphrase_parts = keyphrase.lower().split()
+    keyphrase_texts = []
+    
+    for i, text in enumerate(texts):
+        if keyphrase_parts[0] in text.description.lower():
+            keyphrase_texts = [text]
+            current_box = text.bounding_poly.vertices
+            
+            # Look for remaining parts within the threshold
+            for part in keyphrase_parts[1:]:
+                found = False
+                for next_text in texts[i+1:]:
+                    next_box = next_text.bounding_poly.vertices
+                    if part in next_text.description.lower() and is_within_threshold(current_box, next_box, threshold):
+                        keyphrase_texts.append(next_text)
+                        current_box = combine_boxes(current_box, next_box)
+                        found = True
+                        break
+                if not found:
+                    break
+            
+            if len(keyphrase_texts) == len(keyphrase_parts):
+                break
+    
+    if len(keyphrase_texts) != len(keyphrase_parts):
+        logging.info(f"Complete keyphrase '{keyphrase}' not found within threshold.")
+        return None
+    
+    # Combine bounding boxes of keyphrase parts
+    keyphrase_box = keyphrase_texts[0].bounding_poly.vertices
+    for text in keyphrase_texts[1:]:
+        keyphrase_box = combine_boxes(keyphrase_box, text.bounding_poly.vertices)
+    
+    logging.info(f"Keyphrase '{' '.join(text.description for text in keyphrase_texts)}' bounding box:")
+    logging.info(f"  Top-left: ({keyphrase_box[0].x}, {keyphrase_box[0].y})")
+    logging.info(f"  Bottom-right: ({keyphrase_box[2].x}, {keyphrase_box[2].y})")
+    
+    # Now search for text near the keyphrase
+    for adjacent_text in texts:
+        if adjacent_text in keyphrase_texts:
+            continue  # Skip the keyphrase itself
+        adjacent_box = adjacent_text.bounding_poly.vertices
+        
+        if is_in_position(keyphrase_box, adjacent_box, position, threshold):
+            # Check if the adjacent text contains alphanumeric characters
+            if re.search(r'[a-zA-Z0-9]', adjacent_text.description):
+                logging.info(f"\nMATCH FOUND: '{adjacent_text.description}'")
+                logging.info(f"Match bounding box:")
+                logging.info(f"  Top-left: ({adjacent_box[0].x}, {adjacent_box[0].y})")
+                logging.info(f"  Bottom-right: ({adjacent_box[2].x}, {adjacent_box[2].y})")
+                return adjacent_text.description
+    
+    logging.info(f"No alphanumeric matching text found near '{keyphrase}'")
     return None
+
+def is_within_threshold(box1, box2, threshold):
+    # Check if box2 is within threshold distance of box1
+    return (abs(box2[0].x - box1[2].x) < threshold and
+            abs(box2[0].y - box1[0].y) < threshold)
+
+def combine_boxes(box1, box2):
+    # Combine two bounding boxes
+    return [
+        types.Vertex(x=min(box1[0].x, box2[0].x), y=min(box1[0].y, box2[0].y)),
+        types.Vertex(x=max(box1[1].x, box2[1].x), y=min(box1[1].y, box2[1].y)),
+        types.Vertex(x=max(box1[2].x, box2[2].x), y=max(box1[2].y, box2[2].y)),
+        types.Vertex(x=min(box1[3].x, box2[3].x), y=max(box1[3].y, box2[3].y))
+    ]
+
+
+
+
+def print_all_text_elements(texts):
+    print("\nAll detected text elements:")
+    for i, text in enumerate(texts):
+        print(f"Text {i + 1}: '{text.description}'")
+        box = text.bounding_poly.vertices
+        print(f"  Top-left: ({box[0].x}, {box[0].y})")
+        print(f"  Bottom-right: ({box[2].x}, {box[2].y})")
+        print()
+
 
 def is_in_position(box1, box2, position, threshold):
     box1_top = min(v.y for v in box1)
@@ -103,18 +172,40 @@ def is_in_position(box1, box2, position, threshold):
     box2_left = min(v.x for v in box2)
     box2_right = max(v.x for v in box2)
 
+    # Check for partial horizontal overlap
+    horizontal_overlap = (
+        (box2_left < box1_right and box2_right > box1_left)
+    )
+
     if position == 'below':
-        return (box2_top > box1_bottom) and (abs(box2_left - box1_left) < threshold or abs(box2_right - box1_right) < threshold)
+        vertical_check = (box2_top > box1_top) and (box2_top - box1_bottom <= threshold)
+        return vertical_check and horizontal_overlap
     elif position == 'above':
-        return (box2_bottom < box1_top) and (abs(box2_left - box1_left) < threshold or abs(box2_right - box1_right) < threshold)
+        vertical_check = (box2_bottom < box1_bottom) and (box1_top - box2_bottom <= threshold)
+        return vertical_check and horizontal_overlap
     elif position == 'left':
-        return (box2_right < box1_left) and (abs(box2_top - box1_top) < threshold or abs(box2_bottom - box1_bottom) < threshold)
+        horizontal_check = (box2_right < box1_right) and (box1_left - box2_right <= threshold)
+        vertical_overlap = (box2_bottom > box1_top and box2_top < box1_bottom)
+        return horizontal_check and vertical_overlap
     elif position == 'right':
-        return (box2_left > box1_right) and (abs(box2_top - box1.top) < threshold or abs(box2_bottom - box1.bottom) < threshold)
+        horizontal_check = (box2_left > box1_left) and (box2_left - box1_right <= threshold)
+        vertical_overlap = (box2_bottom > box1_top and box2_top < box1_bottom)
+        return horizontal_check and vertical_overlap
     return False
 
+
+import re
+
 def is_six_alphanumeric(s):
-    return len(s) == 6 and s.isalnum()
+    # Strip any leading or trailing whitespace
+    s = s.strip()
+    
+    # Debug output to check what is being passed
+    print(f"DEBUG: Checking if '{s}' is six alphanumeric characters")
+
+    # Check if it matches exactly 6 alphanumeric characters
+    return bool(re.match(r'^[A-Za-z0-9]{6}$', s))
+
 
 def is_date_format(s):
     pattern = re.compile(r'^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/([0-9]{2})$')
@@ -204,32 +295,60 @@ def convert_pdf_to_images(pdf_path):
         doc.close()
     return image_paths
 
-def extract_invoice_data(texts):
-    invoice_num = find_text_near_keyphrase(texts, "Invoice", "below", 10)
-    customer_num = find_text_near_keyphrase(texts, "Account", "below", 100)
-    date_num = find_text_near_keyphrase(texts, "Date", "below", 10)
+# def extract_invoice_data(texts):
+#     invoice_num = find_text_near_keyphrase(texts, "Invoice", "below", 10)
+#     customer_num = find_text_near_keyphrase(texts, "Account", "below", 100)
+#     date_num = find_text_near_keyphrase(texts, "Date", "below", 10)
     
-    return invoice_num, customer_num, date_num
+#     return invoice_num, customer_num, date_num
+
+import logging
+
+# Set up logging
+log_folder = r"C:\Users\Derek\Desktop\InvoiceSortingDev\Logs"
+os.makedirs(log_folder, exist_ok=True)
+log_file = os.path.join(log_folder, f"ocr_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
+logging.basicConfig(filename=log_file, level=logging.DEBUG, format='%(asctime)s - %(message)s')
 
 def process_invoice_image(image_path):
-    print(f"DEBUG: Processing image: {image_path}")
+    logging.info(f"DEBUG: Processing image: {image_path}")
     image = cv2.imread(image_path)
     texts = extract_text_and_positions(image)
+    
+    # Log the full texts output
+    logging.info("Full OCR Results:")
+    for i, text in enumerate(texts):
+        logging.info(f"Text {i}: '{text.description}'")
+        box = text.bounding_poly.vertices
+        logging.info(f"  Bounding box: Top-left ({box[0].x}, {box[0].y}), Bottom-right ({box[2].x}, {box[2].y})")
+    logging.info("End of OCR Results")
 
-    invoice_num = find_text_near_keyphrase(texts, "Invoice", "below", 10)
-    customer_num = find_text_near_keyphrase(texts, "Account", "below", 100)
-    date_num = find_text_near_keyphrase(texts, "Date", "below", 10)
+    invoice_num = find_text_near_keyphrase(texts, "INVOICE NO", "below", 50)
+    logging.info(f"DEBUG: Text found below INVOICE NO: {invoice_num}")
 
-    print(f"DEBUG: Found invoice_num: {invoice_num}, customer_num: {customer_num}, date_num: {date_num}")
+    # Use expanding threshold for ACCOUNT NO
+    customer_num = None
+    for threshold in range(5, 101, 5):  # Start from 5, increment by 5, up to 100
+        customer_num = find_text_near_keyphrase(texts, "ACCOUNT NO", "below", threshold)
+        if customer_num:
+            logging.info(f"DEBUG: Text found below ACCOUNT NO with threshold {threshold}: {customer_num}")
+            break
+    if not customer_num:
+        logging.info("DEBUG: No alphanumeric text found below ACCOUNT NO even with increased threshold")
+
+    date_num = find_text_near_keyphrase(texts, "INVOICE DATE", "below", 50)
+    logging.info(f"DEBUG: Text found below INVOICE DATE: {date_num}")
+
+    logging.info(f"DEBUG: Found invoice_num: {invoice_num}, customer_num: {customer_num}, date_num: {date_num}")
 
     if (invoice_num and is_six_alphanumeric(invoice_num) and
         customer_num and is_six_alphanumeric(customer_num) and
         date_num and is_date_format(date_num)):
-        print(f"DEBUG: All conditions met, copying image to sorted folder")
+        logging.info(f"DEBUG: All conditions met, copying image to sorted folder")
         copy_image_to_sorted_folder(image_path, invoice_num, customer_num, date_num)
         return True
     else:
-        print(f"DEBUG: Conditions not met for sorting, copying to unsorted folder")
+        logging.info(f"DEBUG: Conditions not met for sorting, copying to unsorted folder")
         copy_image_to_unsorted_folder(image_path)
         return False
 
@@ -305,8 +424,8 @@ def process_invoices(invoice_folder):
             try:
                 process_invoice_image(file_path)
                 # Optionally, you can delete the original image file here as well
-                # os.remove(file_path)
-                # print(f"DEBUG: Deleted original image: {file_path}")
+                os.remove(file_path)
+                print(f"DEBUG: Deleted original image: {file_path}")
             except Exception as e:
                 print(f"ERROR: Failed to process image {filename}: {str(e)}")
         else:
