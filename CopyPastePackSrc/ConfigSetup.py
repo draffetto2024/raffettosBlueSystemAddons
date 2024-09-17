@@ -23,6 +23,7 @@ class MatchingApp:
         self.root.geometry("1200x800")  # Adjust size as needed
 
         self.last_order_dict = {}  # New attribute to store the last matched order
+        self.results_text = tk.StringVar()
         
         self.selected_text = ""
         self.current_function = None
@@ -35,6 +36,7 @@ class MatchingApp:
         
         self.setup_ui()
         self.load_upc_codes()
+        self.load_database_configurations()
 
     def setup_ui(self):
         main_frame = ttk.Frame(self.root, padding="10")
@@ -57,12 +59,15 @@ class MatchingApp:
         self.text_widget.grid(row=1, column=1, sticky=(tk.N, tk.S, tk.W, tk.E))
         self.text_widget.bind('<Control-l>', self.on_selection)
         
-       # Right third: Results (using a Label as originally implemented)
+       # Right third: Results (using a Text widget)
         results_frame = ttk.Frame(main_frame, padding="10")
         results_frame.grid(row=1, column=2, sticky=(tk.N, tk.S, tk.W, tk.E))
-        self.results_text = tk.StringVar()
-        self.results_label = ttk.Label(results_frame, textvariable=self.results_text, wraplength=300, justify=tk.LEFT, font=("Arial", 14))
-        self.results_label.pack(fill=tk.BOTH, expand=True)
+        self.results_text = tk.Text(results_frame, wrap=tk.WORD, width=50, height=20, font=("Arial", 12), state='disabled')
+        self.results_text.pack(fill=tk.BOTH, expand=True)
+
+        # Configure tags for coloring
+        self.results_text.tag_configure("normal", foreground="black")
+        self.results_text.tag_configure("blue", foreground="blue")
         
         # Bottom: Option buttons
         options_frame = ttk.Frame(main_frame, padding="10")
@@ -142,9 +147,10 @@ class MatchingApp:
         self.current_step = 0  # Reset to first step when new function is selected
         
         # Clear previous results
-        self.results_text.set("")
-        self.last_order_dict = {}  # Clear the last order dictionary
-        
+        self.results_text.config(state='normal')
+        self.results_text.delete('1.0', tk.END)
+        self.results_text.config(state='disabled')
+                
         # Force update of the UI
         self.root.update_idletasks()
         
@@ -164,15 +170,21 @@ class MatchingApp:
 
         self.current_step = (self.current_step + 1) % self.max_steps
         self.update_step_indicator()
-        self.current_direction_index = (self.current_direction_index + 1) % len(self.directions)
-        self.update_directions(self.directions[self.current_direction_index])
-        if self.current_function:
-            self.current_function()
+        if len(self.directions) > 0:
+            self.current_direction_index = (self.current_direction_index + 1) % len(self.directions)
+            self.update_directions(self.directions[self.current_direction_index])
+            if self.current_function:
+                self.current_function()
+        else:
+            messagebox.showinfo("No Mode Selected", "You must select a mode before using the next step button")
+            return
 
     def update_directions(self, new_text):
         self.directions_text.set(new_text)
         self.selected_text = ""
-        self.results_text.set("")
+        self.results_text.config(state='normal')
+        self.results_text.delete('1.0', tk.END)
+        self.results_text.config(state='disabled')
 
     def on_selection(self, event=None):
         try:
@@ -402,140 +414,83 @@ class MatchingApp:
             
         print("Final order_dict:")
         print(order_dict)
-        if order_dict:  # Only display if there are matched orders
+        if order_dict:
+            print("Before display_matched_order, last_order_dict:", self.last_order_dict)
             self.display_matched_order(order_dict)
+            print("After display_matched_order, last_order_dict:", self.last_order_dict)
         else:
-            self.results_text_widget.config(state='normal')
-            self.results_text_widget.delete('1.0', tk.END)
-            self.results_text_widget.insert(tk.END, "No matches found.")
-            self.results_text_widget.config(state='disabled')
+            self.results_text.config(state='normal')
+            self.results_text.delete('1.0', tk.END)
+            self.results_text.insert(tk.END, "No matches found.", "normal")
+            self.results_text.config(state='disabled')
         print("Finished perform_full_matching")
 
     def display_matched_order(self, order_dict):
-        result_text = "Matched Orders:\n\n"
+        print("Current order_dict:", order_dict)
+        print("\n Last order_dict: \n", self.last_order_dict)
+
+        # Enable widget for editing
+        self.results_text.config(state='normal')
+        self.results_text.delete('1.0', tk.END)  # Clear previous content
+        
+        self.results_text.insert(tk.END, "Matched Orders:\n\n", "normal")
         
         for order_num, items in order_dict.items():
-            result_text += f"Order Number: {order_num}\n"
+            self.results_text.insert(tk.END, f"Order Number: {order_num}\n", "normal")
+            print(f"Processing Order Number: {order_num}")
             
             if order_num in self.last_order_dict:
                 last_items = self.last_order_dict[order_num]
-                last_items_dict = {item[0]: item for item in last_items}
+                last_items_dict = {item[0]: (item[1], item[2]) for item in last_items}
+                print(f"Last items for this order: {last_items_dict}")
                 
                 for i, (item, barcode, count) in enumerate(items, start=1):
+                    print(f"Checking item: {item}, barcode: {barcode}, count: {count}")
                     if item in last_items_dict:
-                        last_count = last_items_dict[item][2]
-                        if count != last_count:
-                            result_text += f"Item {i}: {count} {item} (Changed)\n"
+                        last_barcode, last_count = last_items_dict[item]
+                        print(f"Last barcode: {last_barcode}, Last count: {last_count}")
+                        if count != last_count or barcode != last_barcode:
+                            print(f"Item changed: {item}")
+                            self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
                         else:
-                            result_text += f"Item {i}: {count} {item}\n"
+                            print(f"Item unchanged: {item}")
+                            self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "normal")
                     else:
-                        result_text += f"Item {i}: {count} {item} (New)\n"
+                        print(f"New item: {item}")
+                        self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
             else:
+                print(f"New order: {order_num}")
                 for i, (item, barcode, count) in enumerate(items, start=1):
-                    result_text += f"Item {i}: {count} {item}\n"
+                    self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
             
-            result_text += "\n"  # Add an extra newline between orders
+            self.results_text.insert(tk.END, "\n", "normal")  # Add an extra newline between orders
         
-        # Update the StringVar to display the results
-        self.results_text.set(result_text)
+        # Disable widget to make it read-only
+        self.results_text.config(state='disabled')
         
         # Store the current order as the last order for future comparison
         self.last_order_dict = order_dict.copy()
-        
-        # Optionally, you can also print to console for debugging
-        print(result_text)
+        print("Updated last_order_dict:", self.last_order_dict)
 
+        # Scroll to the top of the text widget
+        self.results_text.see("1.0")
 
-    def run_block_keyword_test(self):
-        text_input = self.text_widget.get("1.0", tk.END).lower().strip()
-        results = []
-        blocks = re.split(f'({re.escape(self.blockseperatorkeyword)})', text_input)
-        blocks_with_keyword = [blocks[i] + (blocks[i + 1] if i + 1 < len(blocks) else '') for i in range(0, len(blocks), 2)]
+    def convert_to_rtf(self, text_list):
+        rtf = r'{\rtf1\ansi\deff0'
+        rtf += r'{\colortbl;\red0\green0\blue0;\red0\green0\blue255;}'  # Define colors: 1=black, 2=blue
         
-        for block in blocks_with_keyword:
-            match = re.search(f"{re.escape(self.packagenumberphrase)} ([^\s]+)", block)
-            if match:
-                order_num = match.group(1)
-                order_num = ''.join([char for char in order_num if char.isdigit()])
-                results.append(f"Order Number: {order_num}")
-                
-                # Find items in the block
-                for item, upc in self.upc_codes.items():
-                    if item in block:
-                        results.append(f"  Item: {item}, UPC: {upc}")
-        
-        self.display_test_results(results)
-
-    def run_pair_test(self):
-        text_input = self.text_widget.get("1.0", tk.END).lower().strip()
-        results = []
-        
-        for keywords_list in self.keywords_2d_list:
-            processed_blocks = self.split_data(text_input, keywords_list)
-            for block in processed_blocks:
-                item = " ".join(block.values())
-                for removal in self.removals_list:
-                    item = item.replace(removal, "")
-                item = ' '.join(item.split())
-                if item in self.upc_codes:
-                    results.append(f"Matched Item: {item}, UPC: {self.upc_codes[item]}")
+        for item in text_list:
+            if isinstance(item, tuple):
+                color, text = item
+                if color == 'blue':
+                    rtf += r'\cf2 ' + text + r'\cf1 '
                 else:
-                    results.append(f"Matched Item: {item} (No UPC found)")
+                    rtf += text
+            else:
+                rtf += item
         
-        self.display_test_results(results)
-
-    def run_quantity_test(self):
-        text_input = self.text_widget.get("1.0", tk.END).lower().strip()
-        results = []
-        
-        for i, phrase in enumerate(self.quantityphrases):
-            if phrase in text_input:
-                lines = text_input.split('\n')
-                for line in lines:
-                    if phrase in line:
-                        words = line.split()
-                        phrase_index = words.index(phrase.split()[0])
-                        quantity_index = phrase_index + self.quantitypositions[i]
-                        if quantity_index < len(words):
-                            quantity = words[quantity_index]
-                            item = ' '.join(words[quantity_index + 1:])
-                            if item in self.upc_codes:
-                                results.append(f"Quantity: {quantity}, Item: {item}, UPC: {self.upc_codes[item]}")
-                            else:
-                                results.append(f"Quantity: {quantity}, Item: {item} (No UPC found)")
-        
-        self.display_test_results(results)
-
-    def run_incomplete_phrase_test(self):
-        text_input = self.text_widget.get("1.0", tk.END).lower().strip()
-        results = []
-        
-        for i, phrase in enumerate(self.incompletephrases):
-            if phrase in text_input:
-                lines = text_input.split('\n')
-                for line in lines:
-                    if phrase in line:
-                        item = line.split(phrase)[1].strip() + " " + self.secondarykeywords[i]
-                        if item in self.upc_codes:
-                            results.append(f"Completed Item: {item}, UPC: {self.upc_codes[item]}")
-                        else:
-                            results.append(f"Completed Item: {item} (No UPC found)")
-        
-        self.display_test_results(results)
-
-    def run_exact_phrase_test(self):
-        text_input = self.text_widget.get("1.0", tk.END).lower().strip()
-        results = []
-        
-        for i, phrase in enumerate(self.exactphrases):
-            if phrase in text_input:
-                for item in self.exactphraseitems_2d[i]:
-                    if item in self.upc_codes:
-                        results.append(f"Exact Match Item: {item}, UPC: {self.upc_codes[item]}")
-                    else:
-                        results.append(f"Exact Match Item: {item} (No UPC found)")
-        
-        self.display_test_results(results)
+        rtf += '}'
+        return rtf
 
     def split_data(self, text, keywords):
         # Filter out empty keywords
@@ -574,138 +529,6 @@ class MatchingApp:
         
         return results
 
-    def display_test_results(self, results):
-        result_text = "\n".join(results)
-        self.results_text.set(f"Test Results:\n{result_text}")
-
-    def process_matching(self, text_input, matching_type):
-        conn = sqlite3.connect(path_to_db)
-        c = conn.cursor()
-
-        try:
-            if matching_type == 'block_keyword':
-                c.execute("SELECT * FROM blockseperator WHERE keywordstype = 'blockseperator'")
-                row = c.fetchone()
-                if row and len(row) >= 4:
-                    blockseperatorkeyword = row[2].lower() if row[2] else ""
-                    packagenumberphrase = row[3].lower() if row[3] else ""
-
-                    if not blockseperatorkeyword or not packagenumberphrase:
-                        return ["Incomplete block keyword configuration. Please set up both the block separator and package number phrase."]
-
-                    blocks = re.split(f'({re.escape(blockseperatorkeyword)})', text_input.lower())
-                    blocks_with_keyword = [blocks[i] + (blocks[i+1] if i+1 < len(blocks) else '') for i in range(0, len(blocks), 2)]
-
-                    results = []
-                    for block in blocks_with_keyword:
-                        match = re.search(f"{re.escape(packagenumberphrase)} ([^\s]+)", block)
-                        if match:
-                            order_num = match.group(1)
-                            results.append(f"Order Number: {order_num}")
-                            for item in self.upc_codes:
-                                if item in block:
-                                    results.append(f"  Item: {item}, UPC: {self.upc_codes[item]}")
-                    return results if results else ["No matches found with the current configuration."]
-                else:
-                    return ["Incomplete block keyword configuration. Please complete the setup."]
-
-            elif matching_type == 'pair':
-                c.execute("SELECT * FROM pairings WHERE keywordstype = 'pairing'")
-                row = c.fetchone()
-                if row and len(row) >= 4:
-                    keywords = row[2].lower().split('<') if row[2] else []
-                    removals = row[3].lower().split('<') if row[3] else []
-
-                    if not keywords:
-                        return ["No keywords defined in the pairing configuration. Please set up at least one keyword."]
-
-                    results = []
-                    for keyword in keywords:
-                        if keyword in text_input.lower():
-                            parts = text_input.lower().split(keyword)
-                            if len(parts) > 1:
-                                item = parts[1].split()[0]
-                                for removal in removals:
-                                    item = item.replace(removal, '')
-                                if item in self.upc_codes:
-                                    results.append(f"Item: {item}, UPC: {self.upc_codes[item]}")
-                    return results if results else ["No matches found with the current configuration."]
-                else:
-                    return ["Incomplete pairing configuration. Please complete the setup."]
-
-            elif matching_type == 'quantity':
-                c.execute("SELECT * FROM quantitys WHERE keywordstype = 'Quantity'")
-                rows = c.fetchall()
-                if rows:
-                    results = []
-                    for row in rows:
-                        if len(row) >= 4:
-                            phrase = row[2].lower() if row[2] else ""
-                            try:
-                                position = int(row[3]) if row[3] else 0
-                            except ValueError:
-                                return [f"Invalid position value in quantity configuration: {row[3]}"]
-
-                            if phrase and phrase in text_input.lower():
-                                words = text_input.lower().split()
-                                phrase_start = words.index(phrase.split()[0])
-                                if phrase_start + position < len(words):
-                                    quantity = words[phrase_start + position]
-                                    item = ' '.join(words[phrase_start + position + 1:])
-                                    if item in self.upc_codes:
-                                        results.append(f"Quantity: {quantity}, Item: {item}, UPC: {self.upc_codes[item]}")
-                    return results if results else ["No matches found with the current configuration."]
-                else:
-                    return ["No quantity configuration found. Please set up the quantity matching."]
-
-            elif matching_type == 'incomplete_phrase':
-                c.execute("SELECT * FROM incompletephrases WHERE keywordstype = 'Incomplete Phrase'")
-                rows = c.fetchall()
-                if rows:
-                    results = []
-                    for row in rows:
-                        if len(row) >= 4:
-                            phrase = row[2].lower() if row[2] else ""
-                            secondary = row[3].lower() if row[3] else ""
-
-                            if phrase and secondary and phrase in text_input.lower():
-                                parts = text_input.lower().split(phrase)
-                                if len(parts) > 1:
-                                    item = parts[1].split()[0] + ' ' + secondary
-                                    if item in self.upc_codes:
-                                        results.append(f"Item: {item}, UPC: {self.upc_codes[item]}")
-                    return results if results else ["No matches found with the current configuration."]
-                else:
-                    return ["No incomplete phrase configuration found. Please set up the incomplete phrase matching."]
-
-            elif matching_type == 'exact_phrase':
-                c.execute("SELECT * FROM exactphrases WHERE keywordstype = 'exactphrase'")
-                rows = c.fetchall()
-                if rows:
-                    results = []
-                    for row in rows:
-                        if len(row) >= 4:
-                            phrase = row[2].lower() if row[2] else ""
-                            items = row[3].lower().split('<') if row[3] else []
-
-                            if phrase and phrase in text_input.lower():
-                                for item in items:
-                                    if item in self.upc_codes:
-                                        results.append(f"Item: {item}, UPC: {self.upc_codes[item]}")
-                    return results if results else ["No matches found with the current configuration."]
-                else:
-                    return ["No exact phrase configuration found. Please set up the exact phrase matching."]
-
-            else:
-                return ["Unknown matching type."]
-
-        except sqlite3.Error as e:
-            return [f"An error occurred while accessing the database: {str(e)}"]
-        except Exception as e:
-            return [f"An unexpected error occurred: {str(e)}"]
-        finally:
-            conn.close()
-    
     def display_matching_results(self, matching_type):
         text_input = self.text_widget.get("1.0", tk.END)
         results = self.process_matching(text_input, matching_type)
