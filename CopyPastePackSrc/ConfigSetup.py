@@ -189,12 +189,23 @@ class MatchingApp:
     def on_selection(self, event=None):
         try:
             self.selected_text = self.text_widget.selection_get()
-            self.highlightbuttonpressed = True
-            print("Selected text committed:", self.selected_text)  # For debugging
+            print(f"Selected text: '{self.selected_text}'")
+            
             if self.current_function:
+                print(f"Current function: {self.current_function.__name__}")
+                print(f"Current direction index: {self.current_direction_index}")
+                self.highlightbuttonpressed = True
                 self.current_function()
-        except:
-            print("Nothing was highlighted")
+            else:
+                print("No current function set.")
+            
+        except tk.TclError:
+            print("No text currently selected.")
+        except Exception as e:
+            print(f"An error occurred: {str(e)}")
+        finally:
+            # Reset the selection to avoid processing the same selection multiple times
+            self.text_widget.tag_remove(tk.SEL, "1.0", tk.END)
 
 
     def load_upc_codes(self):
@@ -266,7 +277,12 @@ class MatchingApp:
                 phrases = row[2].lower().split('<') if row[2] else []
                 items = row[3].lower().split('<') if len(row) > 3 and row[3] else []
                 self.exactphrases.extend(phrases)
-                self.exactphraseitems_2d.append(items)
+                self.exactphraseitems_2d.extend([items] * len(phrases))
+
+        # Ensure exactphrases and exactphraseitems_2d have the same length
+        min_length = min(len(self.exactphrases), len(self.exactphraseitems_2d))
+        self.exactphrases = self.exactphrases[:min_length]
+        self.exactphraseitems_2d = self.exactphraseitems_2d[:min_length]
 
         print("Loaded configurations:")
         print(f"  Keywords: {self.keywords_2d_list}")
@@ -374,8 +390,12 @@ class MatchingApp:
             # Exact phrase matching
             for i, exactphrase in enumerate(self.exactphrases):
                 if exactphrase in block:
-                    modified_phrases.extend(self.exactphraseitems_2d[i])
-                    print(f"Added exact phrase items: {self.exactphraseitems_2d[i]}")
+                    if i < len(self.exactphraseitems_2d):
+                        modified_phrases.extend(self.exactphraseitems_2d[i])
+                        print(f"Added exact phrase items: {self.exactphraseitems_2d[i]}")
+                    else:
+                        print(f"Warning: No items found for exact phrase at index {i}")
+
             
             # Apply quantity
             modified_phrases = [phrase for _ in range(phrasequantity) for phrase in modified_phrases]
@@ -415,65 +435,44 @@ class MatchingApp:
         print("Final order_dict:")
         print(order_dict)
         if order_dict:
-            print("Before display_matched_order, last_order_dict:", self.last_order_dict)
             self.display_matched_order(order_dict)
-            print("After display_matched_order, last_order_dict:", self.last_order_dict)
         else:
-            self.results_text.config(state='normal')
-            self.results_text.delete('1.0', tk.END)
-            self.results_text.insert(tk.END, "No matches found.", "normal")
-            self.results_text.config(state='disabled')
-        print("Finished perform_full_matching")
+            self.display_results("No matches found.")
+    
+    print("Finished perform_full_matching")
 
     def display_matched_order(self, order_dict):
-        print("Current order_dict:", order_dict)
-        print("\n Last order_dict: \n", self.last_order_dict)
-
-        # Enable widget for editing
         self.results_text.config(state='normal')
-        self.results_text.delete('1.0', tk.END)  # Clear previous content
+        self.results_text.delete('1.0', tk.END)
         
         self.results_text.insert(tk.END, "Matched Orders:\n\n", "normal")
         
         for order_num, items in order_dict.items():
             self.results_text.insert(tk.END, f"Order Number: {order_num}\n", "normal")
-            print(f"Processing Order Number: {order_num}")
             
             if order_num in self.last_order_dict:
                 last_items = self.last_order_dict[order_num]
                 last_items_dict = {item[0]: (item[1], item[2]) for item in last_items}
-                print(f"Last items for this order: {last_items_dict}")
                 
                 for i, (item, barcode, count) in enumerate(items, start=1):
-                    print(f"Checking item: {item}, barcode: {barcode}, count: {count}")
                     if item in last_items_dict:
                         last_barcode, last_count = last_items_dict[item]
-                        print(f"Last barcode: {last_barcode}, Last count: {last_count}")
                         if count != last_count or barcode != last_barcode:
-                            print(f"Item changed: {item}")
                             self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
                         else:
-                            print(f"Item unchanged: {item}")
                             self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "normal")
                     else:
-                        print(f"New item: {item}")
                         self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
             else:
-                print(f"New order: {order_num}")
                 for i, (item, barcode, count) in enumerate(items, start=1):
                     self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
             
-            self.results_text.insert(tk.END, "\n", "normal")  # Add an extra newline between orders
+            self.results_text.insert(tk.END, "\n", "normal")
         
-        # Disable widget to make it read-only
         self.results_text.config(state='disabled')
-        
-        # Store the current order as the last order for future comparison
-        self.last_order_dict = order_dict.copy()
-        print("Updated last_order_dict:", self.last_order_dict)
-
-        # Scroll to the top of the text widget
         self.results_text.see("1.0")
+        
+        self.last_order_dict = order_dict.copy()
 
     def convert_to_rtf(self, text_list):
         rtf = r'{\rtf1\ansi\deff0'
@@ -575,31 +574,31 @@ class MatchingApp:
             
             if self.current_direction_index == 0 and self.selected_text:
                 block1 = self.selected_text
-                self.results_text.set("Order 1: \n" + block1)
+                self.display_results("Order 1: \n" + block1)
             elif self.current_direction_index == 1 and self.selected_text:
                 block2 = self.selected_text
-                self.results_text.set("Order 2: \n" + block2)
+                self.display_results("Order 2: \n" + block2)
             elif self.current_direction_index == 2 and self.highlightbuttonpressed:
                 blockseperator = self.find_matching_starting_words(block1, block2)
-                self.results_text.set("Keyword: \n" + blockseperator)
+                self.display_results("Keyword: \n" + blockseperator)
             elif self.current_direction_index == 3 and self.highlightbuttonpressed:
                 packagenumberphrase = self.selected_text
-                self.results_text.set("Package Phrase: " + packagenumberphrase)
+                self.display_results("Package Phrase: " + packagenumberphrase)
             elif self.current_direction_index == 4 and self.highlightbuttonpressed:
                 match = re.search(f"{re.escape(packagenumberphrase)} (\w+)", self.selected_text)
                 if match:
-                    self.results_text.set("Package Number: " + match.group(1))
+                    self.display_results("Package Number: " + match.group(1))
             elif self.current_direction_index == 5:
                 conn = sqlite3.connect(path_to_db)
                 c = conn.cursor()
                 
                 # Create table if it doesn't exist
                 c.execute('''CREATE TABLE IF NOT EXISTS blockseperator
-                             (id INTEGER PRIMARY KEY, keywordstype TEXT, blockseperator TEXT, packagenumberphrase TEXT)''')
+                            (id INTEGER PRIMARY KEY, keywordstype TEXT, blockseperator TEXT, packagenumberphrase TEXT)''')
                 
                 keyword_type = 'blockseperator'
                 c.execute("INSERT INTO blockseperator (keywordstype, blockseperator, packagenumberphrase) VALUES (?, ?, ?)",
-                          (keyword_type, blockseperator, packagenumberphrase))
+                        (keyword_type, blockseperator, packagenumberphrase))
                 conn.commit()
                 conn.close()
 
@@ -628,23 +627,23 @@ class MatchingApp:
         def process_step():
             if self.current_direction_index == 0 and self.selected_text and self.selected_text not in keywordslist:
                 keywordslist.append(self.selected_text)
-                self.results_text.set("\n".join(f"Keyword {i+1}: {kw}" for i, kw in enumerate(keywordslist)))
+                self.display_results("\n".join(f"Keyword {i+1}: {kw}" for i, kw in enumerate(keywordslist)))
             elif self.current_direction_index == 1 and self.selected_text and self.selected_text not in unwantedlist:
                 unwantedlist.append(self.selected_text)
-                self.results_text.set("\n".join(f"Unwanted {i+1}: {uw}" for i, uw in enumerate(unwantedlist)))
+                self.display_results("\n".join(f"Unwanted {i+1}: {uw}" for i, uw in enumerate(unwantedlist)))
             elif self.current_direction_index == 2:
                 conn = sqlite3.connect(path_to_db)
                 c = conn.cursor()
                 
                 # Create table if it doesn't exist
                 c.execute('''CREATE TABLE IF NOT EXISTS pairings
-                             (id INTEGER PRIMARY KEY, keywordstype TEXT, keywords TEXT, removals TEXT)''')
+                            (id INTEGER PRIMARY KEY, keywordstype TEXT, keywords TEXT, removals TEXT)''')
                 
                 keyword_type = 'pairing'
                 keywords = '<'.join(keywordslist)
                 removals = '<'.join(unwantedlist)
                 c.execute("INSERT INTO pairings (keywordstype, keywords, removals) VALUES (?, ?, ?)",
-                          (keyword_type, keywords, removals))
+                        (keyword_type, keywords, removals))
                 conn.commit()
                 conn.close()
 
@@ -658,7 +657,6 @@ class MatchingApp:
         self.current_function = process_step
 
     def phrasequantity_setup(self):
-
         self.max_steps = 3  # Set max steps for this function
         self.update_step_indicator()
 
@@ -676,17 +674,17 @@ class MatchingApp:
         def process_step():
             if self.current_direction_index == 0 and self.selected_text and self.selected_text not in phraseslist:
                 phraseslist.append(self.selected_text)
-                self.results_text.set("\n".join(f"Phrase {i+1}: {p}" for i, p in enumerate(phraseslist)))
+                self.display_results("\n".join(f"Phrase {i+1}: {p}" for i, p in enumerate(phraseslist)))
             elif self.current_direction_index == 1 and self.highlightbuttonpressed:
                 data.append(self.selected_text)
-                self.results_text.set("\n".join(f"QuantityPiece {i+1}: {d}" for i, d in enumerate(data)))
+                self.display_results("\n".join(f"QuantityPiece {i+1}: {d}" for i, d in enumerate(data)))
             elif self.current_direction_index == 2:
                 conn = sqlite3.connect(path_to_db)
                 c = conn.cursor()
                 
                 # Create table if it doesn't exist
                 c.execute('''CREATE TABLE IF NOT EXISTS quantitys
-                             (id INTEGER PRIMARY KEY, keywordstype TEXT, phrases TEXT, positions TEXT)''')
+                            (id INTEGER PRIMARY KEY, keywordstype TEXT, phrases TEXT, positions TEXT)''')
                 
                 keyword_type = 'Quantity'
                 
@@ -697,7 +695,7 @@ class MatchingApp:
                         del words[dat]
                         phrase = " ".join(words)
                         c.execute("INSERT INTO quantitys (keywordstype, phrases, positions) VALUES (?, ?, ?)",
-                                  (keyword_type, phrase, str(dat)))
+                                (keyword_type, phrase, str(dat)))
                     except:
                         pass
                 
@@ -732,17 +730,17 @@ class MatchingApp:
         def process_step():
             if self.current_direction_index == 0 and self.selected_text and self.selected_text not in phraseslist:
                 phraseslist.append(self.selected_text)
-                self.results_text.set("\n".join(f"Phrase {i+1}: {p}" for i, p in enumerate(phraseslist)))
+                self.display_results("\n".join(f"Phrase {i+1}: {p}" for i, p in enumerate(phraseslist)))
             elif self.current_direction_index == 1 and self.highlightbuttonpressed:
                 data.append(self.selected_text)
-                self.results_text.set("\n".join(f"SecondaryPiece {i+1}: {d}" for i, d in enumerate(data)))
+                self.display_results("\n".join(f"SecondaryPiece {i+1}: {d}" for i, d in enumerate(data)))
             elif self.current_direction_index == 2:
                 conn = sqlite3.connect(path_to_db)
                 c = conn.cursor()
                 
                 # Create table if it doesn't exist
                 c.execute('''CREATE TABLE IF NOT EXISTS incompletephrases
-                             (id INTEGER PRIMARY KEY, keywordstype TEXT, phrases TEXT, secondarykeywords TEXT)''')
+                            (id INTEGER PRIMARY KEY, keywordstype TEXT, phrases TEXT, secondarykeywords TEXT)''')
                 
                 keyword_type = 'Incomplete Phrase'
                 
@@ -750,7 +748,7 @@ class MatchingApp:
                     phrase = phraseslist.pop(0)
                     dat = data.pop(0)
                     c.execute("INSERT INTO incompletephrases (keywordstype, phrases, secondarykeywords) VALUES (?, ?, ?)",
-                              (keyword_type, phrase, dat))
+                            (keyword_type, phrase, dat))
                 
                 conn.commit()
                 conn.close()
@@ -766,51 +764,60 @@ class MatchingApp:
         self.current_function = process_step
 
     def exactphrase_setup(self):
-            self.max_steps = 3  # Set max steps for this function
-            self.update_step_indicator()
+        self.max_steps = 3
+        self.update_step_indicator()
 
-            self.directions = [
-                "Step 1: Highlight One Exact Order Phrase. Make sure to EXCLUDE data that can change (Like Quantity). Press Ctrl+L to commit it.",
-                "Step 2: Highlight each item to be added when this phrase is seen. These items should match your UPC items and the website item format. Press Ctrl+L after each highlight.",
-                "Step 3: Check results and press 'Next Step' to save to database."
-            ]
-            self.current_direction_index = 0
-            self.update_directions(self.directions[self.current_direction_index])
+        self.directions = [
+            "Step 1: Highlight One Exact Order Phrase. Make sure to EXCLUDE data that can change (Like Quantity). Press Ctrl+L to commit it.",
+            "Step 2: Highlight each item to be added when this phrase is seen. These items should match your UPC items and the website item format. Press Ctrl+L after each highlight.",
+            "Step 3: Check results and press 'Next Step' to save to database."
+        ]
+        self.current_direction_index = 0
+        self.update_directions(self.directions[self.current_direction_index])
+        
+        exactphrase = ""
+        itemslist = []
+        
+        def process_step():
+            nonlocal exactphrase, itemslist
+
+            # Reset the highlightbuttonpressed flag at the beginning of each step
+            # self.highlightbuttonpressed = False
             
-            exactphrase = ""
-            itemslist = []
-            
-            def process_step():
-                nonlocal exactphrase
+            if self.current_direction_index == 0 and self.selected_text and self.selected_text != exactphrase:
+                exactphrase = self.selected_text
+                self.display_results(f"Phrase: {exactphrase}")
+            elif self.current_direction_index == 1 and self.highlightbuttonpressed:
+                itemslist.append(self.selected_text)
+                items_text = "\n".join(f"Item {i+1}: {item}" for i, item in enumerate(itemslist))
+                self.display_results(f"Phrase: {exactphrase}\n\n{items_text}")
+            elif self.current_direction_index == 2:
+                conn = sqlite3.connect(path_to_db)
+                c = conn.cursor()
                 
-                if self.current_direction_index == 0 and self.selected_text and self.selected_text != exactphrase:
-                    exactphrase = self.selected_text
-                    self.results_text.set("Phrase: " + exactphrase)
-                elif self.current_direction_index == 1 and self.highlightbuttonpressed:
-                    itemslist.append(self.selected_text)
-                    self.results_text.set("\n".join(f"Item {i+1}: {item}" for i, item in enumerate(itemslist)))
-                elif self.current_direction_index == 2:
-                    conn = sqlite3.connect(path_to_db)
-                    c = conn.cursor()
-                    
-                    # Create table if it doesn't exist
-                    c.execute('''CREATE TABLE IF NOT EXISTS exactphrases
-                                (id INTEGER PRIMARY KEY, keywordstype TEXT, exactphrases TEXT, items TEXT)''')
-                    
-                    keyword_type = 'exactphrase'
-                    c.execute("INSERT INTO exactphrases (keywordstype, exactphrases, items) VALUES (?, ?, ?)",
-                            (keyword_type, exactphrase, '<'.join(itemslist)))
-                    conn.commit()
-                    conn.close()
-                    # Load new configuration
-                    self.load_database_configurations()
-                    
-                    # Run test
-                    # Perform full matching
+                c.execute('''CREATE TABLE IF NOT EXISTS exactphrases
+                            (id INTEGER PRIMARY KEY, keywordstype TEXT, exactphrases TEXT, items TEXT)''')
+                
+                keyword_type = 'exactphrase'
+                c.execute("INSERT INTO exactphrases (keywordstype, exactphrases, items) VALUES (?, ?, ?)",
+                        (keyword_type, exactphrase, '<'.join(itemslist)))
+                conn.commit()
+                conn.close()
+                
+                self.load_database_configurations()
                 self.perform_full_matching()
-                self.highlightbuttonpressed = False
             
-            self.current_function = process_step
+            self.highlightbuttonpressed = False
+        
+        self.current_function = process_step
+
+
+    def display_results(self, text, tag="normal"):
+        self.results_text.config(state='normal')
+        self.results_text.delete('1.0', tk.END)
+        self.results_text.insert(tk.END, text, tag)
+        self.results_text.config(state='disabled')
+        self.results_text.see("1.0")  # Scroll to the top
 
 def main():
     root = tk.Tk()
