@@ -244,9 +244,10 @@ class MatchingApp:
         self.keywords_2d_list = []
         self.removals_list = []
         for row in c.fetchall():
-            if len(row) >= 3:
-                keywords_string = row[2].lower() if row[2] else ""
-                removals_string = row[3].lower() if len(row) > 3 and row[3] else ""
+            if len(row) >= 2:
+                keywords_string = row[1].lower() if row[1] else ""
+                removals_string = row[2].lower() if len(row) > 2 and row[2] else ""
+                
                 self.keywords_2d_list.append(keywords_string.split('<'))
                 self.removals_list.extend(removals_string.split('<'))
 
@@ -255,27 +256,27 @@ class MatchingApp:
         self.quantityphrases = []
         self.quantitypositions = []
         for row in c.fetchall():
-            if len(row) >= 3:
-                self.quantityphrases.append(row[2].lower() if row[2] else "")
-                self.quantitypositions.append(int(row[3]) if len(row) > 3 and row[3] and row[3].isdigit() else 0)
+            if len(row) >= 2:
+                self.quantityphrases.append(row[1].lower() if row[1] else "")
+                self.quantitypositions.append(int(row[2]) if len(row) > 2 and row[2] and row[2].isdigit() else 0)
 
         # Load incomplete phrase configuration
         c.execute("SELECT DISTINCT * FROM incompletephrases WHERE keywordstype = 'Incomplete Phrase'")
         self.incompletephrases = []
         self.secondarykeywords = []
         for row in c.fetchall():
-            if len(row) >= 3:
-                self.incompletephrases.append(row[2].lower().strip() if row[2] else "")
-                self.secondarykeywords.append(row[3].lower().strip() if len(row) > 3 and row[3] else "")
+            if len(row) >= 2:
+                self.incompletephrases.append(row[1].lower().strip() if row[1] else "")
+                self.secondarykeywords.append(row[2].lower().strip() if len(row) > 2 and row[2] else "")
 
         # Load exact phrase configuration
         c.execute("SELECT DISTINCT * FROM exactphrases WHERE keywordstype = 'exactphrase'")
         self.exactphrases = []
         self.exactphraseitems_2d = []
         for row in c.fetchall():
-            if len(row) >= 3:
-                phrases = row[2].lower().split('<') if row[2] else []
-                items = row[3].lower().split('<') if len(row) > 3 and row[3] else []
+            if len(row) >= 2:
+                phrases = row[1].lower().split('<') if row[1] else []
+                items = row[2].lower().split('<') if len(row) > 2 and row[2] else []
                 self.exactphrases.extend(phrases)
                 self.exactphraseitems_2d.extend([items] * len(phrases))
 
@@ -304,25 +305,19 @@ class MatchingApp:
         print(f"Input text: {text_input}")
         order_dict = {}
         
-        print(f"UPC codes available: {len(self.upc_codes)}")
-        print("First 5 UPC codes:")
-        for item, upc in list(self.upc_codes.items())[:5]:
-            print(f"  {item}: {upc} (Type: {type(upc)})")
-        
         blocks = re.split(f'({re.escape(self.blockseperatorkeyword)})', text_input)
         blocks_with_keyword = [blocks[i] + (blocks[i + 1] if i + 1 < len(blocks) else '') for i in range(0, len(blocks), 2)]
         
         print(f"Number of blocks: {len(blocks_with_keyword)}")
         
-        for block_index, block in enumerate(blocks_with_keyword):
-            print(f"\nProcessing block {block_index + 1}")
-            print(f"Block content: {block}")
+        for block in blocks_with_keyword:
             order_num = ""
             phrases = block.split("\n")
-            modified_phrases = phrases.copy()  # Start with the original phrases
+            modified_phrases = []  # list to store modified phrases
+            phrases_length = len(phrases)
             phrasequantity = 1
             
-            # Block keyword matching (package number)
+            # Extract order number
             for phrase in phrases:
                 match = re.search(f"{re.escape(self.packagenumberphrase)} ([^\s]+)", phrase)
                 if match:
@@ -330,116 +325,148 @@ class MatchingApp:
                     print(f"Found order number: {order_num}")
                     break
             
-            # Pairing logic
+            if not order_num:
+                print("Warning: No order number found for this block. Skipping...")
+                continue
+
             splitting_keywords_list = [None] * len(self.keywords_2d_list)
             keyword_positions = dict()
+
             for i, line in enumerate(block.split("\n")):
                 for j, keywords_list in enumerate(self.keywords_2d_list):
                     for keyword in keywords_list:
                         keyword_position = line.find(keyword)
-                        if keyword_position != -1:
+                        if keyword_position != -1:  # keyword is in line
                             current_position = (i, keyword_position)
                             if keyword not in keyword_positions or current_position < keyword_positions[keyword]:
                                 keyword_positions[keyword] = current_position
+
+            print("keywords_2d_list", self.keywords_2d_list)
+            print("removals_list", self.removals_list)
             
+            # Now, find the keyword with the lowest index
             for keyword, position in keyword_positions.items():
                 for i, keywords_list in enumerate(self.keywords_2d_list):
                     if keyword in keywords_list:
                         if splitting_keywords_list[i] is None or position < keyword_positions[splitting_keywords_list[i]]:
                             splitting_keywords_list[i] = keyword
             
+            # Pairing Logic
+            stringtobeadded = ""
+            
             for i, keywords_list in enumerate(self.keywords_2d_list):
                 splittingkeyword = splitting_keywords_list[i]
-                if splittingkeyword and splittingkeyword in block:
+                if splittingkeyword and splittingkeyword in block:  # if the first keyword is in the block
                     sub_blocks = block.split(splittingkeyword)
                     sub_blocks = [splittingkeyword + sub_block for sub_block in sub_blocks if sub_block.strip()]
                     prev_sub_block = ""
-                    for sub_block in sub_blocks:
-                        processed_block = self.split_data(sub_block, keywords_list)
-                        for dict_ in processed_block:
-                            item = " ".join(dict_.values())
-                            for removal in self.removals_list:
-                                item = item.replace(removal, "")
-                            item = ' '.join(item.split())
-                            if item:
-                                modified_phrases.append(item)
-                        
-                        # Quantity matching
-                        for quantindex, quantphrase in enumerate(self.quantityphrases):
-                            if quantphrase in prev_sub_block:
-                                seperatedphrase = prev_sub_block.split()
-                                try:
-                                    phrasequantity = int(seperatedphrase[int(self.quantitypositions[quantindex])])
-                                    print(f"Found quantity: {phrasequantity}")
-                                except (ValueError, IndexError):
-                                    print(f"Warning: Could not extract quantity for phrase '{quantphrase}'")
-                        
-                        prev_sub_block = sub_block
-            
-            # Incomplete phrase matching
-            for i, incomp in enumerate(self.incompletephrases):
-                new_phrases = []
-                for phrase in modified_phrases:
-                    if incomp in phrase:
-                        new_phrases.append(phrase + " " + self.secondarykeywords[i])
-                        print(f"Applied incomplete phrase: {incomp} -> {self.secondarykeywords[i]}")
-                    else:
-                        new_phrases.append(phrase)
-                modified_phrases = new_phrases
-            
-            # Exact phrase matching
-            for i, exactphrase in enumerate(self.exactphrases):
-                if exactphrase in block:
-                    if i < len(self.exactphraseitems_2d):
-                        modified_phrases.extend(self.exactphraseitems_2d[i])
-                        print(f"Added exact phrase items: {self.exactphraseitems_2d[i]}")
-                    else:
-                        print(f"Warning: No items found for exact phrase at index {i}")
+                    print(f"Sub-blocks for keyword '{splittingkeyword}':")
+                    for sb in sub_blocks:
+                        print(sb)
+                        print("--------------------------------------------------------------------------------------------")
 
-            
-            # Apply quantity
-            modified_phrases = [phrase for _ in range(phrasequantity) for phrase in modified_phrases]
-            
-            print(f"Final modified phrases for this block: {modified_phrases}")
+                    for sub_block in sub_blocks:
+                        processed_block = self.split_data(sub_block, keywords_list)  # process each sub block
+                        for dict_ in processed_block:
+                            for keyword in keywords_list:
+                                if dict_ is not None and keyword in dict_:  # if keyword is in this dictionary
+                                    stringtobeadded += dict_[keyword] + " "
+                        
+                        # Find the most recent phrasequantity phrase and extract the phrasequantity
+                        phrasequantity = 1
+                        last_line = ""
+                        last_phrase = ""
+
+                        print("PREV_SUB_BLOCK", prev_sub_block)
+                        
+                        lines = prev_sub_block.splitlines()
+                        for line in lines:
+                            for quantityphrase in self.quantityphrases:
+                                if quantityphrase in line:
+                                    last_line = line
+                                    last_phrase = quantityphrase
+                        
+                        for quantindex, phrase in enumerate(self.quantityphrases):
+                            if phrase in last_phrase:
+                                seperatedphrase = last_line.split()
+                                phrasequantity = int(seperatedphrase[int(self.quantitypositions[quantindex])])
+                                    
+                        prev_sub_block = sub_block  # for phrasequantity
+                        
+                        for removal in self.removals_list:
+                            stringtobeadded = stringtobeadded.replace(removal, "")
+                        stringtobeadded = ' '.join(stringtobeadded.split())
+                        for _ in range(int(phrasequantity)):
+                            modified_phrases.append(stringtobeadded)
+                        stringtobeadded = ""
+
+            i = 0
+            incompletekeyword = ""
+            while i < len(phrases):
+                phrase = phrases[i].replace("'", "'")
+                
+                for quantindex, quantphrase in enumerate(self.quantityphrases):
+                    if quantphrase.replace("'","'") in phrase:
+                        seperatedphrase = phrase.split()
+                        phrasequantity = int(seperatedphrase[int(self.quantitypositions[quantindex])])
+                
+                for incompindex, incomp in enumerate(self.incompletephrases):
+                    if incomp in phrase:
+                        incompletekeyword = self.secondarykeywords[incompindex]
+                
+                if incompletekeyword:
+                    print("phrasequantity " + str(phrasequantity))
+                    for _ in range(phrasequantity):
+                        modified_phrases.append(phrase + " " + incompletekeyword)
+                        print((phrase + " " + incompletekeyword).strip())
+                
+                # Exact phrases may be multi-lined
+                for exactindex, exactphrase in enumerate(self.exactphrases):
+                    linebreaks = exactphrase.count("\n")
+                    remaining_lines = phrases[i:i + linebreaks + 1]
+                    blockforexactcheck = "\n".join(remaining_lines)
+                    if exactphrase in blockforexactcheck:
+                        for item in self.exactphraseitems_2d[exactindex]:
+                            for _ in range(phrasequantity):
+                                modified_phrases.append(item)
+                else:
+                    for _ in range(phrasequantity):
+                        modified_phrases.append(phrase)
+                i += 1
             
             # Match with UPC codes
-            print("Matching with UPC codes")
+            print(f"Matching with UPC codes for order {order_num}")
             for modified_phrase in modified_phrases:
                 for item, upc in self.upc_codes.items():
-                    try:
-                        acceptable_words = item.split()
-                        modified_words = modified_phrase.split()
+                    acceptable_words = item.split()
+                    modified_words = modified_phrase.split()
+                    
+                    if set(modified_words) == set(acceptable_words):
+                        barcode = upc  # Use the UPC code directly
+                        item = " ".join(acceptable_words)  # join the remaining words as the item
                         
-                        if set(modified_words) == set(acceptable_words):
-                            barcode = str(upc).rstrip('.0')  # Convert to string and remove trailing '.0'
-                            item = " ".join(acceptable_words)
-                            print(f"Matched item: {item}, Barcode: {barcode}")
-                            
-                            if order_num not in order_dict:
-                                order_dict[order_num] = [(item, barcode, 1)]
-                            else:
-                                item_found = False
-                                for i, (item_, barcode_, count) in enumerate(order_dict[order_num]):
-                                    if item_ == item and barcode_ == barcode:
-                                        item_found = True
-                                        order_dict[order_num][i] = (item_, barcode_, count + 1)
-                                        print(f"Updated existing item quantity: {item_}, New quantity: {count + 1}")
-                                        break
-                                if not item_found:
-                                    order_dict[order_num].append((item, barcode, 1))
-                                    print(f"Added new item to order: {item}")
-                    except AttributeError as e:
-                        print(f"Error processing UPC code: {e}")
-                        print(f"Problematic item: {item}, UPC: {upc}, Type: {type(upc)}")
-            
+                        if order_num not in order_dict:
+                            order_dict[order_num] = [(item, barcode, 1)]
+                        else:
+                            item_found = False
+                            for i, (item_, barcode_, count) in enumerate(order_dict[order_num]):
+                                if item_ == item and barcode_ == barcode:
+                                    item_found = True
+                                    order_dict[order_num][i] = (item_, barcode_, count + 1)
+                                    print(f"Updated existing item quantity: {item_}, New quantity: {count + 1}")
+                                    break
+                            if not item_found:
+                                order_dict[order_num].append((item, barcode, 1))
+                                print(f"Added new item to order {order_num}: {item}")
+        
         print("Final order_dict:")
         print(order_dict)
         if order_dict:
             self.display_matched_order(order_dict)
         else:
             self.display_results("No matches found.")
-    
-    print("Finished perform_full_matching")
+        
+        print("Finished perform_full_matching")
 
     def display_matched_order(self, order_dict):
         self.results_text.config(state='normal')

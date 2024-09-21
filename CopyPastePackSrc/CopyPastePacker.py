@@ -421,6 +421,9 @@ def enter_text(acceptable_phrases):
                         current_position = (i, keyword_position)
                         if keyword not in keyword_positions or current_position < keyword_positions[keyword]:
                             keyword_positions[keyword] = current_position
+
+        print("keywords_2d_list", keywords_2d_list)
+        print("removals_list", removals_list)
         
         # Now, find the keyword with the lowest index
         splitting_keywords_list = [None] * len(keywords_2d_list)
@@ -431,8 +434,6 @@ def enter_text(acceptable_phrases):
                     # has a lower index than the stored keyword, update the stored keyword
                     if splitting_keywords_list[i] is None or position < keyword_positions[splitting_keywords_list[i]]:
                         splitting_keywords_list[i] = keyword
-
-        
         
         #Pairing Logic
         processed_blocklist = []  # Define processed_blocklist before the loop
@@ -443,9 +444,15 @@ def enter_text(acceptable_phrases):
             if splittingkeyword and splittingkeyword in block:  # if the first keyword is in the block
                 # Split the block on the keyword
                 sub_blocks = block.split(splittingkeyword)
+                
                 # re-add the keyword and filter out empty strings
                 sub_blocks = [splittingkeyword + sub_block for sub_block in sub_blocks if sub_block.strip()] 
                 prev_sub_block = ""
+                print(f"Sub-blocks for keyword '{splittingkeyword}':")
+                for sb in sub_blocks:
+                    print(sb)
+                    print("--------------------------------------------------------------------------------------------")
+
                 for sub_block in sub_blocks: 
                     #We get back list of dicts    
                     processed_block = split_data(sub_block, keywords_list)  # process each sub block
@@ -460,6 +467,8 @@ def enter_text(acceptable_phrases):
                     phrasequantity = 1
                     last_line = ""
                     last_phrase = ""
+
+                    print("PREV_SUB_BLOCK", prev_sub_block)
                     
                     lines = prev_sub_block.splitlines()
                     for line in lines:
@@ -697,6 +706,9 @@ def choose_option():
                 quantityphrase = row[1].lower()  # Convert to lowercase
                 quantityphrases.append(quantityphrase)  # Assuming 'phrases' is the 2nd column
                 quantitypositions.append(int(row[2]))  # Assuming 'positions' is the 3rd column
+
+            print("quantity phrases", quantityphrases)
+            print("quantitypositions", quantitypositions)
                 
             
             c.execute("SELECT DISTINCT * FROM incompletephrases WHERE keywordstype = 'Incomplete Phrase'")
