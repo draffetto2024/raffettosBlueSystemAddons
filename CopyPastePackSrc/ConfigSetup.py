@@ -55,13 +55,25 @@ class MatchingApp:
         self.directions_label.pack(fill=tk.BOTH, expand=True)
         
         # Middle third: Text widget (single text box for orders)
-        self.text_widget = tk.Text(main_frame, wrap=tk.WORD, width=50, height=20, font=("Arial", 12))
-        self.text_widget.grid(row=1, column=1, sticky=(tk.N, tk.S, tk.W, tk.E))
+        middle_frame = ttk.Frame(main_frame, padding="10")
+        middle_frame.grid(row=1, column=1, sticky=(tk.N, tk.S, tk.W, tk.E))
+        
+        # Add header for the middle entry box
+        entry_header = ttk.Label(middle_frame, text="Entry box for orders", font=("Arial", 12, "bold"))
+        entry_header.pack(pady=(0, 5))
+        
+        self.text_widget = tk.Text(middle_frame, wrap=tk.WORD, width=50, height=20, font=("Arial", 12))
+        self.text_widget.pack(fill=tk.BOTH, expand=True)
         self.text_widget.bind('<Control-l>', self.on_selection)
         
-       # Right third: Results (using a Text widget)
+        # Right third: Results (using a Text widget)
         results_frame = ttk.Frame(main_frame, padding="10")
         results_frame.grid(row=1, column=2, sticky=(tk.N, tk.S, tk.W, tk.E))
+        
+        # Add header for the output display
+        output_header = ttk.Label(results_frame, text="Output display", font=("Arial", 12, "bold"))
+        output_header.pack(pady=(0, 5))
+        
         self.results_text = tk.Text(results_frame, wrap=tk.WORD, width=50, height=20, font=("Arial", 12), state='disabled')
         self.results_text.pack(fill=tk.BOTH, expand=True)
 
@@ -92,8 +104,13 @@ class MatchingApp:
             
             self.buttons.append((btn_frame, btn))
         
+        # Add Next Step button
         self.next_button = ttk.Button(options_frame, text="Next Step", command=self.next_step)
         self.next_button.grid(row=0, column=len(self.buttons), padx=5, pady=5)
+        
+        # Add Full Matching button
+        self.full_matching_button = ttk.Button(options_frame, text="Full Matching", command=self.perform_full_matching)
+        self.full_matching_button.grid(row=1, column=len(self.buttons), padx=5, pady=5)
         
         # Configure grid
         self.root.columnconfigure(0, weight=1)
@@ -501,6 +518,31 @@ class MatchingApp:
         
         self.last_order_dict = order_dict.copy()
 
+    def open_item_input_window(self):
+        input_window = tk.Toplevel(self.root)
+        input_window.title("Enter Items")
+        input_window.geometry("400x300")
+
+        instruction_label = ttk.Label(input_window, text="Enter items (one per line):", wraplength=380)
+        instruction_label.pack(pady=10)
+
+        text_area = tk.Text(input_window, height=10, width=50)
+        text_area.pack(pady=10)
+
+        def submit_items():
+            items = text_area.get("1.0", tk.END).strip().split("\n")
+            self.itemslist = [item.strip() for item in items if item.strip()]
+            input_window.destroy()
+            self.display_results(f"Phrase: {self.exactphrase}\n\nItems:\n" + "\n".join(f"Item {i+1}: {item}" for i, item in enumerate(self.itemslist)))
+            self.next_step()  # Move to the next step automatically
+
+        submit_button = ttk.Button(input_window, text="Submit", command=submit_items)
+        submit_button.pack(pady=10)
+
+        input_window.transient(self.root)
+        input_window.grab_set()
+        self.root.wait_window(input_window)
+
     def convert_to_rtf(self, text_list):
         rtf = r'{\rtf1\ansi\deff0'
         rtf += r'{\colortbl;\red0\green0\blue0;\red0\green0\blue255;}'  # Define colors: 1=black, 2=blue
@@ -565,6 +607,7 @@ class MatchingApp:
     def find_matching_starting_words(self, block1, block2):
         words1 = block1.split()
         words2 = block2.split()
+       
         keyword = ""
         maxindex = min(len(words1), len(words2))
         
@@ -605,21 +648,24 @@ class MatchingApp:
             elif self.current_direction_index == 1 and self.selected_text:
                 block2 = self.selected_text
                 self.display_results("Order 2: \n" + block2)
-            elif self.current_direction_index == 2 and self.highlightbuttonpressed:
+            elif self.current_direction_index == 2:
                 blockseperator = self.find_matching_starting_words(block1, block2)
                 self.display_results("Keyword: \n" + blockseperator)
-            elif self.current_direction_index == 3 and self.highlightbuttonpressed:
+            elif self.current_direction_index == 3 and self.selected_text:
                 packagenumberphrase = self.selected_text
                 self.display_results("Package Phrase: " + packagenumberphrase)
-            elif self.current_direction_index == 4 and self.highlightbuttonpressed:
+            elif self.current_direction_index == 4:
                 match = re.search(f"{re.escape(packagenumberphrase)} (\w+)", self.selected_text)
                 if match:
                     self.display_results("Package Number: " + match.group(1))
             elif self.current_direction_index == 5:
+                if not blockseperator or not packagenumberphrase:
+                    self.display_results("Error: Block separator or package number phrase is missing. Please complete all steps.")
+                    return
+
                 conn = sqlite3.connect(path_to_db)
                 c = conn.cursor()
                 
-                # Create table if it doesn't exist
                 c.execute('''CREATE TABLE IF NOT EXISTS blockseperator
                             (id INTEGER PRIMARY KEY, keywordstype TEXT, blockseperator TEXT, packagenumberphrase TEXT)''')
                 
@@ -631,7 +677,6 @@ class MatchingApp:
 
                 # Load new configuration and run test
                 self.load_database_configurations()
-                # Perform full matching
                 self.perform_full_matching()
             
             self.highlightbuttonpressed = False
@@ -659,10 +704,13 @@ class MatchingApp:
                 unwantedlist.append(self.selected_text)
                 self.display_results("\n".join(f"Unwanted {i+1}: {uw}" for i, uw in enumerate(unwantedlist)))
             elif self.current_direction_index == 2:
+                if not keywordslist:
+                    self.display_results("Error: No keywords entered. Please complete all steps.")
+                    return
+
                 conn = sqlite3.connect(path_to_db)
                 c = conn.cursor()
                 
-                # Create table if it doesn't exist
                 c.execute('''CREATE TABLE IF NOT EXISTS pairings
                             (id INTEGER PRIMARY KEY, keywordstype TEXT, keywords TEXT, removals TEXT)''')
                 
@@ -674,9 +722,7 @@ class MatchingApp:
                 conn.commit()
                 conn.close()
 
-                # Load new configuration and run test
                 self.load_database_configurations()
-                # Perform full matching
                 self.perform_full_matching()
 
             self.highlightbuttonpressed = False
@@ -706,10 +752,13 @@ class MatchingApp:
                 data.append(self.selected_text)
                 self.display_results("\n".join(f"QuantityPiece {i+1}: {d}" for i, d in enumerate(data)))
             elif self.current_direction_index == 2:
+                if not phraseslist or not data or len(phraseslist) != len(data):
+                    self.display_results("Error: Incomplete quantity setup. Please ensure all phrases and quantities are entered.")
+                    return
+
                 conn = sqlite3.connect(path_to_db)
                 c = conn.cursor()
                 
-                # Create table if it doesn't exist
                 c.execute('''CREATE TABLE IF NOT EXISTS quantitys
                             (id INTEGER PRIMARY KEY, keywordstype TEXT, phrases TEXT, positions TEXT)''')
                 
@@ -728,11 +777,7 @@ class MatchingApp:
                 
                 conn.commit()
                 conn.close()    
-                # Load new configuration
                 self.load_database_configurations()
-                
-                # Run test
-                # Perform full matching
                 self.perform_full_matching()
 
             self.highlightbuttonpressed = False
@@ -762,10 +807,13 @@ class MatchingApp:
                 data.append(self.selected_text)
                 self.display_results("\n".join(f"SecondaryPiece {i+1}: {d}" for i, d in enumerate(data)))
             elif self.current_direction_index == 2:
+                if not phraseslist or not data or len(phraseslist) != len(data):
+                    self.display_results("Error: Incomplete phrase setup. Please ensure all phrases and secondary keywords are entered.")
+                    return
+
                 conn = sqlite3.connect(path_to_db)
                 c = conn.cursor()
                 
-                # Create table if it doesn't exist
                 c.execute('''CREATE TABLE IF NOT EXISTS incompletephrases
                             (id INTEGER PRIMARY KEY, keywordstype TEXT, phrases TEXT, secondarykeywords TEXT)''')
                 
@@ -779,11 +827,7 @@ class MatchingApp:
                 
                 conn.commit()
                 conn.close()
-                # Load new configuration
                 self.load_database_configurations()
-                
-                # Run test
-                # Perform full matching
                 self.perform_full_matching()
 
             self.highlightbuttonpressed = False
@@ -796,29 +840,28 @@ class MatchingApp:
 
         self.directions = [
             "Step 1: Highlight One Exact Order Phrase. Make sure to EXCLUDE data that can change (Like Quantity). Press Ctrl+L to commit it.",
-            "Step 2: Highlight each item to be added when this phrase is seen. These items should match your UPC items and the website item format. Press Ctrl+L after each highlight.",
+            "Step 2: A new window will open. Enter each item to be added when this phrase is seen. These items should match your UPC items and the website item format.",
             "Step 3: Check results and press 'Next Step' to save to database."
         ]
         self.current_direction_index = 0
         self.update_directions(self.directions[self.current_direction_index])
         
-        exactphrase = ""
-        itemslist = []
+        self.exactphrase = ""
+        self.itemslist = []
         
         def process_step():
-            nonlocal exactphrase, itemslist
-
-            # Reset the highlightbuttonpressed flag at the beginning of each step
-            # self.highlightbuttonpressed = False
-            
-            if self.current_direction_index == 0 and self.selected_text and self.selected_text != exactphrase:
-                exactphrase = self.selected_text
-                self.display_results(f"Phrase: {exactphrase}")
-            elif self.current_direction_index == 1 and self.highlightbuttonpressed:
-                itemslist.append(self.selected_text)
-                items_text = "\n".join(f"Item {i+1}: {item}" for i, item in enumerate(itemslist))
-                self.display_results(f"Phrase: {exactphrase}\n\n{items_text}")
+            if self.current_direction_index == 0 and self.selected_text and self.selected_text != self.exactphrase:
+                self.exactphrase = self.selected_text
+                self.display_results(f"Phrase: {self.exactphrase}")
+                self.next_step()  # Automatically move to the next step
+            elif self.current_direction_index == 1:
+                self.open_item_input_window()
+                # The next_step() is called within the open_item_input_window method
             elif self.current_direction_index == 2:
+                if not self.exactphrase or not self.itemslist:
+                    self.display_results("Error: Exact phrase or items are missing. Please complete all steps.")
+                    return
+
                 conn = sqlite3.connect(path_to_db)
                 c = conn.cursor()
                 
@@ -827,7 +870,7 @@ class MatchingApp:
                 
                 keyword_type = 'exactphrase'
                 c.execute("INSERT INTO exactphrases (keywordstype, exactphrases, items) VALUES (?, ?, ?)",
-                        (keyword_type, exactphrase, '<'.join(itemslist)))
+                        (keyword_type, self.exactphrase, '<'.join(self.itemslist)))
                 conn.commit()
                 conn.close()
                 
