@@ -38,6 +38,10 @@ class MatchingApp:
         self.load_upc_codes()
         self.load_database_configurations()
 
+        # Add these lines to bind Ctrl+L and Ctrl+N
+        self.root.bind('<Control-l>', self.on_selection)
+        self.root.bind('<Control-n>', self.on_next_step)
+
     def setup_ui(self):
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -64,7 +68,8 @@ class MatchingApp:
         
         self.text_widget = tk.Text(middle_frame, wrap=tk.WORD, width=50, height=20, font=("Arial", 12))
         self.text_widget.pack(fill=tk.BOTH, expand=True)
-        self.text_widget.bind('<Control-l>', self.on_selection)
+        # self.text_widget.bind('<Control-l>', self.on_selection)
+        # self.root.bind('<Control-n>', self.next_step)
         
         # Right third: Results (using a Text widget)
         results_frame = ttk.Frame(main_frame, padding="10")
@@ -104,8 +109,8 @@ class MatchingApp:
             
             self.buttons.append((btn_frame, btn))
         
-        # Add Next Step button
-        self.next_button = ttk.Button(options_frame, text="Next Step", command=self.next_step)
+        # Modify the Next Step button to use the on_next_step method
+        self.next_button = ttk.Button(options_frame, text="Next Step", command=self.on_next_step)
         self.next_button.grid(row=0, column=len(self.buttons), padx=5, pady=5)
         
         # Add Full Matching button
@@ -179,6 +184,11 @@ class MatchingApp:
         # Reset and update directions
         self.current_direction_index = 0
         self.update_directions(self.directions[self.current_direction_index])
+
+    def on_next_step(self, event=None):
+        # This method will be called by both the Next Step button and Ctrl+N
+        self.next_step()
+        return "break"  # Prevent the event from propagating
 
     def next_step(self):
         if self.current_step == self.max_steps - 1:  # If we're on the last step
@@ -626,10 +636,10 @@ class MatchingApp:
         self.directions = [
             "Step 1: Highlight one order as a block of text including any important words before or after and press Ctrl+L to commit it",
             "Step 2: Highlight a different order as a block of text and press Ctrl+L to commit it",
-            "Step 3: Check if blocks are correct on the right side of your screen and continue to the next step for package number setup",
+            "Step 3: Check if the keyword is at the start of each block",
             "Step 4: Highlight phrase where package number will appear right after and press Ctrl+L to commit it",
             "Step 5: Highlight package number phrase including the package number and press Ctrl+L to commit it",
-            "Step 6: Check the database and make sure things look right"
+            "Step 6: Check the right and see if it has matched orders"
         ]
         self.current_direction_index = 0
         self.update_directions(self.directions[self.current_direction_index])
@@ -690,7 +700,7 @@ class MatchingApp:
         self.directions = [
             "Step 1: Highlight Each Keyword/Identifier in Each Phrase. The order in which you highlighted should match way the item would be read. Press Ctrl+L after each highlight.",
             "Step 2: Highlight the Data You DO NOT Care About in Each Phrase. Any data that isn't a keyword or removal will be considered part of the item. Press Ctrl+L after each highlight.",
-            "Step 3: Check results and press 'Next Step' to save to database."
+            "Step 3: Check results on the right. New items are highlighted in blue"
         ]
         
         keywordslist = []
@@ -736,7 +746,7 @@ class MatchingApp:
         self.directions = [
             "Step 1: Highlight Each full phrase containing the quantity for an item. If you plan to do multiple at a time, maintain the order for the next step. Press Ctrl+L after each highlight.",
             "Step 2: Highlight the quantity in each phrase. Again if doing multiple, highlight the first phrase's quantity first. Press Ctrl+L after each highlight.",
-            "Step 3: Check results and press 'Next Step' to save to database."
+            "Step 3: Check results on the right. New items are highlighted in blue"
         ]
         self.current_direction_index = 0
         self.update_directions(self.directions[self.current_direction_index])
@@ -791,7 +801,7 @@ class MatchingApp:
         self.directions = [
             "Step 1: Highlight Each Incomplete Phrase. Maintain order for the next step. Press Ctrl+L after each highlight.",
             "Step 2: Highlight the word that will be appended to the item describers below. Press Ctrl+L after each highlight.",
-            "Step 3: Check results and press 'Next Step' to save to database."
+            "Step 3: Check results on the right. New items are highlighted in blue"
         ]
         self.current_direction_index = 0
         self.update_directions(self.directions[self.current_direction_index])
@@ -841,7 +851,7 @@ class MatchingApp:
         self.directions = [
             "Step 1: Highlight One Exact Order Phrase. Make sure to EXCLUDE data that can change (Like Quantity). Press Ctrl+L to commit it.",
             "Step 2: A new window will open. Enter each item to be added when this phrase is seen. These items should match your UPC items and the website item format.",
-            "Step 3: Check results and press 'Next Step' to save to database."
+            "Step 3: Check results on the right. New items are highlighted in blue"
         ]
         self.current_direction_index = 0
         self.update_directions(self.directions[self.current_direction_index])
