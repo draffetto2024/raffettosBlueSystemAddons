@@ -49,27 +49,21 @@ def extract_orders(email_text, customer_codes):
             cleaned_line = clean_line(line)
             print(f"Checking line: {cleaned_line}")
             
-            for raw_text, (product_info, product_code) in customer_codes.items():
+            for raw_text, (product_info, product_code, enters) in customer_codes.items():
                 if all(word.lower() in cleaned_line for word in raw_text.split()):
                     print(f"Match found: {raw_text} in {cleaned_line}")
                     # Extract quantity from the email line
                     quantity = re.search(r'\d+', cleaned_line)
                     quantity = int(quantity.group()) if quantity else 1
                     
-                    # Determine if it's cases or lbs from the product info
-                    unit = 'cases' if 'case' in product_info.lower() else 'lbs'
-                    
-                    # For cases, set lbs to 0; for lbs, set cases to 0
-                    cases = quantity if unit == 'cases' else 0
-                    lbs = quantity if unit == 'lbs' else 0
-                    
-                    orders.append((quantity, unit, cleaned_line, product_code, cases, lbs))
+                    orders.append((quantity, enters, cleaned_line, product_code, quantity, 0))
                     break
             else:
                 print(f"No match found for line: {cleaned_line}")
 
     print(f"Extracted orders: {orders}")
     return orders
+
 
 def write_orders_to_db(db_path, customer_email, customer_id, orders, raw_email, email_sent_date):
     conn = sqlite3.connect(db_path)
@@ -78,14 +72,15 @@ def write_orders_to_db(db_path, customer_email, customer_id, orders, raw_email, 
     date_generated = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     date_processed = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    for quantity, unit, raw_product, product_code, cases, lbs in orders:
+    for quantity, enters, raw_product, product_code, _, _ in orders:
         cursor.execute('''
-        INSERT INTO orders (customer, customer_id, cases, lbs, item, item_id, date_generated, date_processed, entered_status, raw_email, email_sent_date)
+        INSERT INTO orders (customer, customer_id, quantity, item, item_id, enters, date_generated, date_processed, entered_status, raw_email, email_sent_date)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (customer_email, customer_id, cases, lbs, raw_product, product_code, date_generated, date_processed, 0, raw_email, email_sent_date))
+        ''', (customer_email, customer_id, quantity, raw_product, product_code, enters, date_generated, date_processed, 0, raw_email, email_sent_date))
 
     conn.commit()
     conn.close()
+
 
 # Function to extract email content
 def get_email_content(msg):
@@ -162,16 +157,15 @@ def initialize_database(db_path):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
-    # Create table if it doesn't exist
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS orders (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         customer TEXT,
         customer_id TEXT,
-        cases INTEGER,
-        lbs FLOAT,
+        quantity INTEGER,
         item TEXT,
         item_id TEXT,
+        enters TEXT,
         date_generated TEXT,
         date_processed TEXT,
         entered_status INTEGER DEFAULT 0,
@@ -182,6 +176,7 @@ def initialize_database(db_path):
     
     conn.commit()
     conn.close()
+
 
 def create_gui(db_path):
     root = tk.Tk()
@@ -235,7 +230,8 @@ def create_gui(db_path):
         for widget in scrollable_frame.winfo_children():
             widget.destroy()
 
-        # Recreate headers
+        # Update headers
+        headers = ["Raw Email Content", "Matched Products", "Quantity", "Enters", "Product Codes", "Customer", "Email Sent Date", "Entered Status", "Select", "Delete"]
         for col, header in enumerate(headers):
             label = ttk.Label(scrollable_frame, text=header, font=("Arial", 10, "bold"))
             label.grid(row=0, column=col, padx=5, pady=5, sticky="nsew")
@@ -243,31 +239,20 @@ def create_gui(db_path):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        # Check if email_sent_date column exists
-        cursor.execute("PRAGMA table_info(orders)")
-        columns = [column[1] for column in cursor.fetchall()]
-
-        if 'email_sent_date' in columns:
-            if filter_date:
-                next_date = filter_date + timedelta(days=1)
-                cursor.execute('''
-                SELECT raw_email, customer, item_id, cases, lbs, item_id, email_sent_date, entered_status
-                FROM orders
-                WHERE email_sent_date >= ? AND email_sent_date < ?
-                ORDER BY entered_status ASC, email_sent_date ASC
-                ''', (filter_date.strftime('%Y-%m-%d'), next_date.strftime('%Y-%m-%d')))
-            else:
-                cursor.execute('''
-                SELECT raw_email, customer, item_id, cases, lbs, item_id, email_sent_date, entered_status
-                FROM orders
-                WHERE email_sent_date IS NOT NULL
-                ORDER BY entered_status ASC, email_sent_date ASC
-                ''')
+        if filter_date:
+            next_date = filter_date + timedelta(days=1)
+            cursor.execute('''
+            SELECT raw_email, customer, item_id, quantity, enters, item, email_sent_date, entered_status
+            FROM orders
+            WHERE email_sent_date >= ? AND email_sent_date < ?
+            ORDER BY entered_status ASC, email_sent_date ASC
+            ''', (filter_date.strftime('%Y-%m-%d'), next_date.strftime('%Y-%m-%d')))
         else:
             cursor.execute('''
-            SELECT raw_email, customer, item_id, cases, lbs, item_id, entered_status
+            SELECT raw_email, customer, item_id, quantity, enters, item, email_sent_date, entered_status
             FROM orders
-            ORDER BY entered_status ASC
+            WHERE email_sent_date IS NOT NULL
+            ORDER BY entered_status ASC, email_sent_date ASC
             ''')
 
         orders = cursor.fetchall()
@@ -288,18 +273,18 @@ def create_gui(db_path):
             email_text.grid(row=row, column=0, padx=5, pady=5, sticky="nsew")
 
             matched_products = []
-            cases_list = []
-            lbs_list = []
+            quantities = []
+            enters_list = []
             product_codes = []
             customers = set()
             email_sent_date = "N/A"
             entered_status = order_list[0][-1]  # Last item is always entered_status
 
             for order in order_list:
-                _, customer, item_id, cases, lbs, _, email_sent_date = order[:7]  # First 7 items are always the same
-                matched_products.append(item_id)
-                cases_list.append(str(cases) if cases else "N/A")
-                lbs_list.append(str(lbs) if lbs else "N/A")
+                _, customer, item_id, quantity, enters, item, email_sent_date, _ = order
+                matched_products.append(item)
+                quantities.append(str(quantity))
+                enters_list.append(enters)
                 product_codes.append(item_id)
                 customers.add(customer)
 
@@ -309,17 +294,17 @@ def create_gui(db_path):
             products_text.config(state=tk.DISABLED)
             products_text.grid(row=row, column=1, padx=5, pady=5, sticky="nsew")
 
-            # Cases
-            cases_text = tk.Text(scrollable_frame, wrap=tk.WORD, width=10, height=5)
-            cases_text.insert(tk.END, "\n".join(cases_list))
-            cases_text.config(state=tk.DISABLED)
-            cases_text.grid(row=row, column=2, padx=5, pady=5, sticky="nsew")
+            # Quantity
+            quantity_text = tk.Text(scrollable_frame, wrap=tk.WORD, width=10, height=5)
+            quantity_text.insert(tk.END, "\n".join(quantities))
+            quantity_text.config(state=tk.DISABLED)
+            quantity_text.grid(row=row, column=2, padx=5, pady=5, sticky="nsew")
 
-            # Lbs
-            lbs_text = tk.Text(scrollable_frame, wrap=tk.WORD, width=10, height=5)
-            lbs_text.insert(tk.END, "\n".join(lbs_list))
-            lbs_text.config(state=tk.DISABLED)
-            lbs_text.grid(row=row, column=3, padx=5, pady=5, sticky="nsew")
+            # Enters
+            enters_text = tk.Text(scrollable_frame, wrap=tk.WORD, width=10, height=5)
+            enters_text.insert(tk.END, "\n".join(enters_list))
+            enters_text.config(state=tk.DISABLED)
+            enters_text.grid(row=row, column=3, padx=5, pady=5, sticky="nsew")
 
             # Product Codes
             codes_text = tk.Text(scrollable_frame, wrap=tk.WORD, width=20, height=5)
@@ -327,8 +312,8 @@ def create_gui(db_path):
             codes_text.config(state=tk.DISABLED)
             codes_text.grid(row=row, column=4, padx=5, pady=5, sticky="nsew")
 
-            # In the populate_grid function, replace the customer label creation with:
-            customer_id = customer_ids.get(customer, customer)  # Use email as fallback if no ID found
+            # Customer
+            customer_id = customer_ids.get(list(customers)[0], list(customers)[0])  # Use email as fallback if no ID found
             customer_label = ttk.Label(scrollable_frame, text=customer_id)
             customer_label.grid(row=row, column=5, padx=5, pady=5, sticky="nsew")
 
@@ -365,13 +350,12 @@ def create_gui(db_path):
             print(f"Processing order {i} of {len(orders)}: {order}")
 
             # Extract customer ID and other details from the order
-            raw_email, customer_id, item_ids, cases, lbs, items, units = order
+            raw_email, customer_id, item_ids, quantities, enters, items = order
 
             print(f"Customer ID: {customer_id}")
             print(f"Item IDs: {item_ids}")
-            print(f"Cases: {cases}")
-            print(f"Lbs: {lbs}")
-            print(f"Units: {units}")
+            print(f"Quantities: {quantities}")
+            print(f"Enters: {enters}")
 
             pre_order_entry = [
                 'KEY:enter',
@@ -385,7 +369,7 @@ def create_gui(db_path):
             auto_order_entry(pre_order_entry)
 
             # Generate the sequence for this specific order
-            order_sequence = generate_order_sequence((customer_id, item_ids, cases, lbs, items, units))
+            order_sequence = generate_order_sequence((customer_id, item_ids, quantities, enters, items))
             
             # Execute the sequence for this order
             auto_order_entry(order_sequence)
@@ -405,29 +389,16 @@ def create_gui(db_path):
                 raw_email_content = scrollable_frame.grid_slaves(row=row, column=0)[0].get("1.0", tk.END).strip()
                 customer_id = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']
                 item_ids = scrollable_frame.grid_slaves(row=row, column=4)[0].get("1.0", tk.END).strip()
-                cases = scrollable_frame.grid_slaves(row=row, column=2)[0].get("1.0", tk.END).strip()
-                lbs = scrollable_frame.grid_slaves(row=row, column=3)[0].get("1.0", tk.END).strip()
+                quantities = scrollable_frame.grid_slaves(row=row, column=2)[0].get("1.0", tk.END).strip()
+                enters = scrollable_frame.grid_slaves(row=row, column=3)[0].get("1.0", tk.END).strip()
                 items = scrollable_frame.grid_slaves(row=row, column=1)[0].get("1.0", tk.END).strip()
-                
-                # Derive units from cases and lbs
-                cases_list = cases.split('\n')
-                lbs_list = lbs.split('\n')
-                units = []
-                for case, lb in zip(cases_list, lbs_list):
-                    if case.strip() and case.strip() != 'N/A':
-                        units.append('cases')
-                    elif lb.strip() and lb.strip() != 'N/A':
-                        units.append('lbs')
-                    else:
-                        units.append('unknown')  # or handle this case as appropriate
-                units = '\n'.join(units)
                 
                 entered_status = check_entered_status(db_path, raw_email_content)
                 if entered_status == 1:
-                    already_entered_orders.append((raw_email_content, customer_id, item_ids, cases, lbs, items, units))
+                    already_entered_orders.append((raw_email_content, customer_id, item_ids, quantities, enters, items))
                     print(f"Order already entered: {customer_id}, {item_ids}")
                 else:
-                    selected_orders.append((raw_email_content, customer_id, item_ids, cases, lbs, items, units))
+                    selected_orders.append((raw_email_content, customer_id, item_ids, quantities, enters, items))
                     print(f"Order selected for processing: {customer_id}, {item_ids}")
         
         print(f"Total orders selected for processing: {len(selected_orders)}")
@@ -470,8 +441,8 @@ def create_gui(db_path):
         next_date = filter_date + timedelta(days=1)
         
         cursor.execute('''
-        SELECT raw_email, customer, customer_id, item_id, cases, lbs, item, entered_status
-        FROM orders 
+        SELECT raw_email, customer, customer_id, item_id, quantity, enters, item, entered_status
+        FROM orders
         WHERE email_sent_date >= ? AND email_sent_date < ?
         ORDER BY entered_status ASC, email_sent_date ASC
         ''', (filter_date.strftime('%Y-%m-%d'), next_date.strftime('%Y-%m-%d')))
@@ -486,27 +457,27 @@ def create_gui(db_path):
         time.sleep(5)
 
         for order in orders:
-            raw_email, customer, customer_id, item_id, cases, lbs, item, entered_status = order
+            raw_email, customer, customer_id, item_id, quantity, enters, item, entered_status = order
             order_key = (raw_email, customer_id)
             if entered_status == 0:
                 if order_key not in unentered_orders:
                     unentered_orders[order_key] = [[], [], [], [], []]
                 unentered_orders[order_key][0].append(item_id)
-                unentered_orders[order_key][1].append(str(cases) if cases is not None else 'N/A')
-                unentered_orders[order_key][2].append(str(lbs) if lbs is not None else 'N/A')
+                unentered_orders[order_key][1].append(str(quantity) if quantity is not None else 'N/A')
+                unentered_orders[order_key][2].append(enters if enters is not None else '4E')  # Default to 4E if not specified
                 unentered_orders[order_key][3].append(item)
-                unentered_orders[order_key][4].append('cases' if cases else 'lbs')
+                unentered_orders[order_key][4].append(enters if enters is not None else '4E')
             else:
                 if order_key not in already_entered_orders:
                     already_entered_orders[order_key] = [[], [], [], [], []]
                 already_entered_orders[order_key][0].append(item_id)
-                already_entered_orders[order_key][1].append(str(cases) if cases is not None else 'N/A')
-                already_entered_orders[order_key][2].append(str(lbs) if lbs is not None else 'N/A')
+                already_entered_orders[order_key][1].append(str(quantity) if quantity is not None else 'N/A')
+                already_entered_orders[order_key][2].append(enters if enters is not None else '4E')
                 already_entered_orders[order_key][3].append(item)
-                already_entered_orders[order_key][4].append('cases' if cases else 'lbs')
+                already_entered_orders[order_key][4].append(enters if enters is not None else '4E')
 
         unentered_orders_list = [
-            (raw_email, customer_id, '\n'.join(order_data[0]), '\n'.join(order_data[1]), 
+            (raw_email, customer_id, '\n'.join(order_data[0]), '\n'.join(order_data[1]),
             '\n'.join(order_data[2]), '\n'.join(order_data[3]), '\n'.join(order_data[4]))
             for (raw_email, customer_id), order_data in unentered_orders.items()
         ]
@@ -551,31 +522,31 @@ def create_gui(db_path):
             messagebox.showinfo("Success", "Order deleted and email moved back to Orders inbox.")
             populate_grid(date_entry.get_date())  # Refresh the grid
 
-    def process_orders(orders_to_process):
-        if orders_to_process:
-            print("Processing orders:")
-            for order in orders_to_process:
-                print(order)
+    # def process_orders(orders_to_process):
+    #     if orders_to_process:
+    #         print("Processing orders:")
+    #         for order in orders_to_process:
+    #             print(order)
             
-            # Perform auto order entry
-            perform_auto_entry(orders_to_process)
+    #         # Perform auto order entry
+    #         perform_auto_entry(orders_to_process)
             
-            # Update the entered status in the database for processed orders
-            update_entered_status(db_path, [order[0] for order in orders_to_process])
+    #         # Update the entered status in the database for processed orders
+    #         update_entered_status(db_path, [order[0] for order in orders_to_process])
             
-            # Move processed emails to the ProcessedEmails inbox
-            for order in orders_to_process:
-                move_email_by_content(order[0], "EnteredIntoABS", "ProcessedEmails")
+    #         # Move processed emails to the ProcessedEmails inbox
+    #         for order in orders_to_process:
+    #             move_email_by_content(order[0], "EnteredIntoABS", "ProcessedEmails")
             
-            message = f"{len(orders_to_process)} orders have been entered and marked as processed."
+    #         message = f"{len(orders_to_process)} orders have been entered and marked as processed."
             
-            messagebox.showinfo("Info", message)
+    #         messagebox.showinfo("Info", message)
             
-            # Refresh the grid to reflect changes
-            populate_grid(date_entry.get_date())
-        else:
-            print("No orders to process.")
-            messagebox.showwarning("Warning", "No orders to process.")
+    #         # Refresh the grid to reflect changes
+    #         populate_grid(date_entry.get_date())
+    #     else:
+    #         print("No orders to process.")
+    #         messagebox.showwarning("Warning", "No orders to process.")
 
     # Add buttons to auto-enter selected rows and all unentered emails
     button_frame = ttk.Frame(main_frame)
@@ -661,50 +632,41 @@ def read_customer_ids(file_path):
 
 def generate_order_sequence(order):
     print(f"Generating order sequence for: {order}")
-    customer_id, item_ids, cases, lbs, items, units = order
+    customer_id, item_ids, quantities, enters, items = order
     
     sequence = []
     
     item_ids_list = item_ids.split('\n')
-    cases_list = cases.split('\n')
-    lbs_list = lbs.split('\n')
+    quantities_list = quantities.split('\n')
+    enters_list = enters.split('\n')
     items_list = items.split('\n')
-    units_list = units.split('\n')
     
     print(f"Item IDs: {item_ids_list}")
-    print(f"Cases: {cases_list}")
-    print(f"Lbs: {lbs_list}")
+    print(f"Quantities: {quantities_list}")
+    print(f"Enters: {enters_list}")
     print(f"Items: {items_list}")
-    print(f"Units: {units_list}")
     
-    for product_code, case, lb, item, unit in zip(item_ids_list, cases_list, lbs_list, items_list, units_list):
-        print(f"Processing: Product Code: {product_code}, Case: {case}, Lb: {lb}, Item: {item}, Unit: {unit}")
-        if unit.lower() == 'cases' and case != 'N/A':
+    for product_code, quantity, enters, item in zip(item_ids_list, quantities_list, enters_list, items_list):
+        print(f"Processing: Product Code: {product_code}, Quantity: {quantity}, Enters: {enters}, Item: {item}")
+        if enters.strip().endswith('E'):
+            num_enters = int(enters.strip()[0])
             sequence.extend([
                 f'INPUT:{product_code.strip()}',
                 'KEY:enter',
-                f'INPUT:{case.strip()}',
+                f'INPUT:{quantity.strip()}',
                 'KEY:enter',
-                'KEY:enter',
-                'KEY:enter',
-                'KEY:enter',
+            ])
+            sequence.extend(['KEY:enter'] * (num_enters - 1))  # Subtract 1 because we already added one 'enter'
+            sequence.extend([
                 'KEY:up',
                 'KEY:enter',
                 'KEY:t',
                 'KEY:enter',
                 'WAIT:0.1'
             ])
-        elif unit.lower() == 'lbs' and lb != 'N/A':
-            sequence.extend([
-                f'INPUT:{product_code.strip()}',
-                'KEY:enter',
-                'KEY:enter',
-                f'INPUT:{lb.strip()}',
-                'KEY:enter',
-                'KEY:enter',
-                'KEY:enter',
-                'WAIT:0.1'
-            ])
+        else:
+            print(f"Warning: Unexpected enters format '{enters}' for item {item}")
+    
     print(f"Generated sequence: {sequence}")
     return sequence
 
@@ -796,21 +758,23 @@ def read_customer_excel_files(directory_path):
                 raw_text = row['raw_text'].lower()
                 product_info = str(row['product_info'])
                 
-                # Extract the product code (assuming it's always in the middle)
+                # Extract the product code and number of enters
                 parts = product_info.split()
-                if len(parts) >= 2:
+                if len(parts) >= 3:
                     product_code = parts[1]
+                    enters = parts[2] if parts[2].endswith('E') else '4E'  # Default to 4E if not specified
                 else:
                     print(f"Warning: Unexpected format in '{product_info}' for customer {customer_id}")
-                    product_code = "000000"  # Default code if format is unexpected
+                    product_code = "000000"
+                    enters = "4E"
                 
-                customer_codes[raw_text] = (product_info, product_code)
+                customer_codes[raw_text] = (product_info, product_code, enters)
             
             customer_product_codes[customer_id] = customer_codes
             
             print(f"Loaded product codes for customer {customer_id} from {filename}:")
-            for raw_text, (product_info, product_code) in customer_codes.items():
-                print(f"  - {raw_text}: {product_info} (Code: {product_code})")
+            for raw_text, (product_info, product_code, enters) in customer_codes.items():
+                print(f"  - {raw_text}: {product_info} (Code: {product_code}, Enters: {enters})")
     
     print(f"Total customers with product codes: {len(customer_product_codes)}")
     return customer_product_codes
