@@ -461,24 +461,22 @@ def create_gui(db_path):
             order_key = (raw_email, customer_id)
             if entered_status == 0:
                 if order_key not in unentered_orders:
-                    unentered_orders[order_key] = [[], [], [], [], []]
+                    unentered_orders[order_key] = [[], [], [], []]
                 unentered_orders[order_key][0].append(item_id)
                 unentered_orders[order_key][1].append(str(quantity) if quantity is not None else 'N/A')
-                unentered_orders[order_key][2].append(enters if enters is not None else '4E')  # Default to 4E if not specified
+                unentered_orders[order_key][2].append(enters if enters is not None else '4E')
                 unentered_orders[order_key][3].append(item)
-                unentered_orders[order_key][4].append(enters if enters is not None else '4E')
             else:
                 if order_key not in already_entered_orders:
-                    already_entered_orders[order_key] = [[], [], [], [], []]
+                    already_entered_orders[order_key] = [[], [], [], []]
                 already_entered_orders[order_key][0].append(item_id)
                 already_entered_orders[order_key][1].append(str(quantity) if quantity is not None else 'N/A')
                 already_entered_orders[order_key][2].append(enters if enters is not None else '4E')
                 already_entered_orders[order_key][3].append(item)
-                already_entered_orders[order_key][4].append(enters if enters is not None else '4E')
 
         unentered_orders_list = [
             (raw_email, customer_id, '\n'.join(order_data[0]), '\n'.join(order_data[1]),
-            '\n'.join(order_data[2]), '\n'.join(order_data[3]), '\n'.join(order_data[4]))
+            '\n'.join(order_data[2]), '\n'.join(order_data[3]))
             for (raw_email, customer_id), order_data in unentered_orders.items()
         ]
 
@@ -516,11 +514,33 @@ def create_gui(db_path):
 
 
     def delete_order(raw_email):
-        if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this order?"):
-            delete_order_from_db(db_path, raw_email)
-            move_email_back_to_orders(raw_email)
-            messagebox.showinfo("Success", "Order deleted and email moved back to Orders inbox.")
-            populate_grid(date_entry.get_date())  # Refresh the grid
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Check if the order has been entered
+        cursor.execute('''
+        SELECT entered_status
+        FROM orders
+        WHERE raw_email = ?
+        LIMIT 1
+        ''', (raw_email,))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result and result[0] == 1:  # Order has been entered
+            if messagebox.askyesno("Confirm Delete", "This order has already been entered. Deleting it is unusual. Are you sure you want to proceed?"):
+                if messagebox.askyesno("Final Confirmation", "This action cannot be undone. Are you absolutely sure you want to delete this entered order?"):
+                    perform_delete(raw_email)
+        else:  # Order has not been entered
+            if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this order?"):
+                perform_delete(raw_email)
+
+    def perform_delete(raw_email):
+        delete_order_from_db(db_path, raw_email)
+        move_email_back_to_orders(raw_email)
+        messagebox.showinfo("Success", "Order deleted and email moved back to Orders inbox.")
+        populate_grid(date_entry.get_date())  # Refresh the grid
 
     # def process_orders(orders_to_process):
     #     if orders_to_process:
