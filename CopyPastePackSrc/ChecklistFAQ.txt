@@ -1,1 +1,0 @@
-Ensure UPC product name and Goldbelly names are IDENTICAL. Otherwise, they won't match.
