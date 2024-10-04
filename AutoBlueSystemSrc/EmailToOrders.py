@@ -137,9 +137,12 @@ def process_email(from_, body, customer_codes, customer_id, db_path, mail, msg_i
         # Write orders to the SQL database
         write_orders_to_db(db_path, email_address, customer_id, orders, body, email_sent_date)
 
-        # Move the email to the EnteredIntoABS inbox
-        move_email(mail, msg_id, "EnteredIntoABS")
-        print("Email processed successfully and moved to EnteredIntoABS")
+        # Move the email to the EnteredIntoABS inbox only if mail object is provided
+        if mail and msg_id:
+            move_email(mail, msg_id, "EnteredIntoABS")
+            print("Email processed successfully and moved to EnteredIntoABS")
+        else:
+            print("Email processed successfully (no email movement performed)")
         return True
     else:
         print("No orders extracted from the email")
@@ -183,7 +186,7 @@ def initialize_database(db_path):
 def create_gui(db_path, email_to_customer_ids):
     root = tk.Tk()
     root.title("Email Order Processor")
-    root.geometry("1800x700")  # Increased height to accommodate new controls
+    root.geometry("1800x750")  # Slightly increased height to accommodate the new button layout
 
     # Create main frame
     main_frame = ttk.Frame(root)
@@ -345,6 +348,77 @@ def create_gui(db_path, email_to_customer_ids):
             checkbox = ttk.Checkbutton(scrollable_frame, variable=var)
             checkbox.grid(row=row, column=9, padx=5, pady=5, sticky="nsew")
             checkbox_vars[row] = var
+
+    def add_matching():
+        selected_rows = [row for row, var in checkbox_vars.items() if var.get()]
+        if not selected_rows:
+            messagebox.showwarning("Warning", "Please select a row to add matching.")
+            return
+
+        row = selected_rows[0]  # Use the first selected row
+        customer_id = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']
+        raw_email = scrollable_frame.grid_slaves(row=row, column=0)[0].get("1.0", tk.END).strip()
+        email_sent_date = scrollable_frame.grid_slaves(row=row, column=6)[0]['text']
+
+        # Create pop-up window
+        popup = tk.Toplevel(root)
+        popup.title("Add New Matching")
+        popup.geometry("400x200")
+
+        tk.Label(popup, text="Matching Phrase:").pack()
+        matching_phrase_entry = tk.Entry(popup, width=50)
+        matching_phrase_entry.pack()
+
+        tk.Label(popup, text="Matched Product:").pack()
+        matched_product_entry = tk.Entry(popup, width=50)
+        matched_product_entry.pack()
+
+        def submit_matching():
+            matching_phrase = matching_phrase_entry.get().strip().lower()
+            matched_product = matched_product_entry.get().strip()
+
+            if not matching_phrase or not matched_product:
+                messagebox.showwarning("Warning", "Both fields must be filled.")
+                return
+
+            # Update Excel file
+            if update_customer_excel_file(customer_id, matching_phrase, matched_product):
+                # Reload the order
+                reload_order(customer_id, raw_email, email_sent_date)
+                popup.destroy()
+                messagebox.showinfo("Success", "New matching added and order reloaded.")
+            else:
+                messagebox.showerror("Error", "Failed to update Excel file. Please try again.")
+
+        # Add the submit button
+        submit_button = tk.Button(popup, text="Submit", command=submit_matching)
+        submit_button.pack(pady=10)
+
+    def update_excel_with_new_matching(customer_id, matching_phrase, matched_product):
+        directory_path = 'customer_product_codes'
+        for filename in os.listdir(directory_path):
+            if filename.endswith('.xlsx') and customer_id in filename:
+                file_path = os.path.join(directory_path, filename)
+                df = pd.read_excel(file_path, header=None, names=['raw_text', 'product_info'])
+                new_row = pd.DataFrame({'raw_text': [matching_phrase], 'product_info': [matched_product]})
+                df = pd.concat([df, new_row], ignore_index=True)
+                df.to_excel(file_path, index=False, header=False)
+                break
+
+    def reload_order(customer_id, raw_email, email_sent_date):
+        # Delete the order from the database
+        delete_order_from_db(db_path, raw_email, customer_id, email_sent_date)
+
+        # Reprocess the email content
+        customer_product_codes, _ = read_customer_excel_files('customer_product_codes')
+        customer_codes = customer_product_codes.get(customer_id, {})
+        if customer_codes:
+            process_email(customer_id, raw_email, customer_codes, customer_id, db_path, None, None, email_sent_date)
+        else:
+            print(f"Warning: No customer codes found for customer {customer_id}")
+
+        # Refresh the grid
+        populate_grid(date_entry.get_date())
 
     def perform_auto_entry(orders):
         print(f"Performing auto entry for {len(orders)} orders")
@@ -566,15 +640,20 @@ def create_gui(db_path, email_to_customer_ids):
             messagebox.showinfo("Success", "Unentered order deleted and email moved back to Orders inbox from EnteredIntoABS.")
         populate_grid(date_entry.get_date())  # Refresh the grid
 
-    # Add buttons to auto-enter selected rows and all unentered emails
+    # Create a frame for buttons on the right side
     button_frame = ttk.Frame(main_frame)
-    button_frame.pack(pady=10)
+    button_frame.pack(side=tk.RIGHT, pady=10, padx=10, fill=tk.Y)
 
+    # Add buttons to auto-enter selected rows and all unentered emails
     auto_enter_button = ttk.Button(button_frame, text="Auto Enter Selected Rows", command=auto_enter_selected)
-    auto_enter_button.pack(side=tk.LEFT, padx=5)
+    auto_enter_button.pack(side=tk.TOP, pady=(0, 5), fill=tk.X)
 
     auto_enter_all_button = ttk.Button(button_frame, text="Auto Enter All Unentered", command=auto_enter_all)
-    auto_enter_all_button.pack(side=tk.LEFT, padx=5)
+    auto_enter_all_button.pack(side=tk.TOP, pady=(0, 5), fill=tk.X)
+
+    # Add new button for adding matching below the other buttons
+    add_matching_button = ttk.Button(button_frame, text="Add Matching for Selected Order", command=add_matching)
+    add_matching_button.pack(side=tk.TOP, pady=(0, 5), fill=tk.X)
 
     # Populate the grid with today's date
     populate_grid(datetime.now().date())
@@ -760,43 +839,63 @@ def read_customer_excel_files(directory_path):
                 email, customer_id = filename[:-5].split('_')
                 
                 file_path = os.path.join(directory_path, filename)
-                df = pd.read_excel(file_path, header=None, names=['raw_text', 'product_info'])
-                
-                customer_codes = {}
-                for _, row in df.iterrows():
-                    raw_text = row['raw_text'].lower()
-                    product_info = str(row['product_info'])
-                    
-                    # Extract the product code and number of enters
-                    parts = product_info.split()
-                    if len(parts) >= 3:
-                        product_code = parts[1]
-                        enters = parts[2] if parts[2].endswith('E') else '4E'  # Default to 4E if not specified
-                    else:
-                        print(f"Warning: Unexpected format in '{product_info}' for customer {customer_id}")
-                        product_code = "000000"
-                        enters = "4E"
-                    
-                    customer_codes[raw_text] = (product_info, product_code, enters)
+                customer_codes = read_single_customer_file(file_path, customer_id)
                 
                 customer_product_codes[customer_id] = customer_codes
                 
                 # Map email to customer ID
-                if email in email_to_customer_ids:
-                    email_to_customer_ids[email].append(customer_id)
+                if email.lower() in email_to_customer_ids:
+                    email_to_customer_ids[email.lower()].append(customer_id)
                 else:
-                    email_to_customer_ids[email] = [customer_id]
+                    email_to_customer_ids[email.lower()] = [customer_id]
                 
-                print(f"Loaded product codes for customer {customer_id} (email: {email}) from {filename}:")
-                for raw_text, (product_info, product_code, enters) in customer_codes.items():
-                    print(f"  - {raw_text}: {product_info} (Code: {product_code}, Enters: {enters})")
-            
             except ValueError:
                 print(f"Warning: Invalid filename format for {filename}. Skipping this file.")
                 continue
     
     print(f"Total customers with product codes: {len(customer_product_codes)}")
     return customer_product_codes, email_to_customer_ids
+
+def read_single_customer_file(file_path, customer_id):
+    df = pd.read_excel(file_path, header=None, names=['raw_text', 'product_info'])
+    
+    customer_codes = {}
+    for _, row in df.iterrows():
+        raw_text = row['raw_text'].lower()
+        product_info = str(row['product_info'])
+        
+        # Extract the product code and number of enters
+        parts = product_info.split()
+        if len(parts) >= 3:
+            product_code = parts[1]
+            enters = parts[2] if parts[2].endswith('E') else '4E'  # Default to 4E if not specified
+        else:
+            print(f"Warning: Unexpected format in '{product_info}' for customer {customer_id}")
+            product_code = "000000"
+            enters = "4E"
+        
+        customer_codes[raw_text] = (product_info, product_code, enters)
+    
+    print(f"Loaded product codes for customer {customer_id} from {file_path}:")
+    for raw_text, (product_info, product_code, enters) in customer_codes.items():
+        print(f"  - {raw_text}: {product_info} (Code: {product_code}, Enters: {enters})")
+    
+    return customer_codes
+
+def update_customer_excel_file(customer_id, matching_phrase, matched_product):
+    directory_path = 'customer_product_codes'
+    customer_email = extract_email_address(customer_id)  # Extract email if full name is present
+    for filename in os.listdir(directory_path):
+        if filename.endswith('.xlsx') and customer_email in filename:
+            file_path = os.path.join(directory_path, filename)
+            df = pd.read_excel(file_path, header=None, names=['raw_text', 'product_info'])
+            new_row = pd.DataFrame({'raw_text': [matching_phrase], 'product_info': [matched_product]})
+            df = pd.concat([df, new_row], ignore_index=True)
+            df.to_excel(file_path, index=False, header=False)
+            print(f"Updated Excel file for customer {customer_email} with new matching: {matching_phrase} -> {matched_product}")
+            return True
+    print(f"Warning: Excel file for customer {customer_email} not found. New matching not added.")
+    return False
 
 if __name__ == "__main__":
     # Read customer-specific product codes from individual Excel files
@@ -857,14 +956,13 @@ if __name__ == "__main__":
 
                                 # Get customer IDs from email
                                 customer_ids = email_to_customer_ids.get(email_address.lower(), [])
-                                
+
                                 if customer_ids:
                                     for customer_id in customer_ids:
-                                        customer_codes = customer_product_codes[customer_id]
+                                        customer_codes = customer_product_codes.get(customer_id, {})
                                         
                                         process_result = process_email(from_, body, customer_codes, customer_id, db_path, mail, email_uid, email_sent_date)
                                         print(f"Email processed for customer {customer_id}: {process_result}")
-
                                     # Move the processed email to "EnteredIntoABS" folder
                                     mail.uid('copy', email_uid, "EnteredIntoABS")
                                     mail.uid('store', email_uid, '+FLAGS', '\\Deleted')
