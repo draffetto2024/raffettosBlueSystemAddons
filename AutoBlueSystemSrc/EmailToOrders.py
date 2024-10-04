@@ -447,7 +447,8 @@ def create_gui(db_path, email_to_customer_ids):
                 f'INPUT:{customer_id}',
                 'KEY:enter',
                 'KEY:enter', #no PO number
-                'KEY:n',
+                'KEY:enter', #our van. It will auto fill
+                'INPUT:N', #No to standard order
                 'KEY:enter',
             ]
             # Execute the pre-order entry sequence
@@ -724,15 +725,9 @@ def generate_order_sequence(order):
     item_ids_list = item_ids.split('\n')
     quantities_list = quantities.split('\n')
     enters_list = enters.split('\n')
-    items_list = items.split('\n')
     
-    print(f"Item IDs: {item_ids_list}")
-    print(f"Quantities: {quantities_list}")
-    print(f"Enters: {enters_list}")
-    print(f"Items: {items_list}")
-    
-    for product_code, quantity, enters, item in zip(item_ids_list, quantities_list, enters_list, items_list):
-        print(f"Processing: Product Code: {product_code}, Quantity: {quantity}, Enters: {enters}, Item: {item}")
+    for product_code, quantity, enters in zip(item_ids_list, quantities_list, enters_list):
+        print(f"Processing: Product Code: {product_code}, Quantity: {quantity}, Enters: {enters}")
         if enters.strip().endswith('E'):
             num_enters = int(enters.strip()[0])
             sequence.extend([
@@ -742,16 +737,19 @@ def generate_order_sequence(order):
                 'KEY:enter',
             ])
             sequence.extend(['KEY:enter'] * (num_enters - 1))  # Subtract 1 because we already added one 'enter'
-            sequence.extend([
+        else:
+            print(f"Warning: Unexpected enters format '{enters}' for item {product_code}")
+    
+    #END ORDER ROUTINE BELOW
+    sequence.extend([
                 'KEY:up',
                 'KEY:enter',
-                'KEY:t',
+                'WAIT:1.0', #PAUSE FOR INVOICE GENERATION
+                'INPUT:T',
                 'KEY:enter',
-                'WAIT:0.1'
+                'WAIT:2.0' #WAIT FOR FINAL CALCULATION
             ])
-        else:
-            print(f"Warning: Unexpected enters format '{enters}' for item {item}")
-    
+
     print(f"Generated sequence: {sequence}")
     return sequence
 
@@ -776,11 +774,12 @@ def auto_order_entry(keystroke_sequence):
             print(f"Waiting for {wait_time} seconds")
             time.sleep(wait_time)
         else:
-            # Assume it's a keystroke or text to type
-            print(f"Typing: {action}")
-            keyboard.write(action.upper())
+            # Assume it's text to type
+            text = action.upper()  # Convert to uppercase
+            print(f"Typing: {text}")
+            keyboard.write(text)
         
-        time.sleep(0.05)  # Short pause between actions
+        time.sleep(0.25)  # Short pause between actions
     print("Keystroke sequence completed")
 
 def delete_order_from_db(db_path, raw_email, customer_id, email_sent_date):
