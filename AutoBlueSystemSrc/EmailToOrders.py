@@ -32,38 +32,71 @@ def read_grid_excel(file_path):
     
     return customer_product_codes
 
-# Function to clean a line by removing non-letter characters except spaces and numbers
-def clean_line(line):
-    return re.sub(r'[^a-zA-Z0-9 ]', '', line).lower()
-
 def extract_orders(email_text, customer_codes):
     orders = []
-    lines = email_text.strip().split('\n')
+    email_lines = email_text.strip().split('\n')
 
     print("Extracting orders from email:")
     print("Customer codes:", customer_codes)
     print("Email content:")
     print(email_text)
 
-    for line in lines:
-        if line.strip():  # Skip empty lines
+    def find_multi_line_match(lines, start_index, match_lines):
+        if start_index + len(match_lines) > len(lines):
+            return False
+        return all(clean_line(lines[start_index + i]).startswith(clean_line(match_line))
+                   for i, match_line in enumerate(match_lines))
+
+    # Separate single-line and multi-line matches
+    single_line_matches = {k: v for k, v in customer_codes.items() if '\n' not in k}
+    multi_line_matches = {k: v for k, v in customer_codes.items() if '\n' in k}
+
+    # Sort multi-line matches by number of lines (descending)
+    # This is where we're extracting the line count from the Excel data
+    sorted_multi_line_matches = sorted(multi_line_matches.items(), key=lambda x: len(x[0].split('\n')), reverse=True)
+
+    i = 0
+    while i < len(email_lines):
+        matched = False
+
+        # Check for multi-line matches first
+        for match, (product_info, product_code, enters) in sorted_multi_line_matches:
+            match_lines = match.split('\n')
+            if find_multi_line_match(email_lines, i, match_lines):
+                chunk = '\n'.join(email_lines[i:i+len(match_lines)])
+                print(f"Multi-line match found: {match} in {chunk}")
+                quantity = extract_quantity(chunk)
+                orders.append((quantity, enters, clean_line(chunk), product_code, quantity, 0))
+                i += len(match_lines)
+                matched = True
+                break
+
+        # If no multi-line match, check for single-line match
+        if not matched:
+            line = email_lines[i]
             cleaned_line = clean_line(line)
-            print(f"Checking line: {cleaned_line}")
-            
-            for raw_text, (product_info, product_code, enters) in customer_codes.items():
+            for raw_text, (product_info, product_code, enters) in single_line_matches.items():
                 if all(word.lower() in cleaned_line for word in raw_text.split()):
-                    print(f"Match found: {raw_text} in {cleaned_line}")
-                    # Extract quantity from the email line
-                    quantity = re.search(r'\d+', cleaned_line)
-                    quantity = int(quantity.group()) if quantity else 1
-                    
+                    print(f"Single-line match found: {raw_text} in {cleaned_line}")
+                    quantity = extract_quantity(cleaned_line)
                     orders.append((quantity, enters, cleaned_line, product_code, quantity, 0))
+                    matched = True
                     break
-            else:
-                print(f"No match found for line: {cleaned_line}")
+
+        if not matched:
+            print(f"No match found for line: {cleaned_line}")
+
+        i += 1  # Always increment i, whether matched or not
 
     print(f"Extracted orders: {orders}")
     return orders
+
+def extract_quantity(text):
+    quantity = re.search(r'\d+', text)
+    return int(quantity.group()) if quantity else 1
+
+def clean_line(line):
+    return re.sub(r'[^a-zA-Z0-9 ]', '', line).lower()
 
 
 def write_orders_to_db(db_path, customer_email, customer_id, orders, raw_email, email_sent_date):
@@ -233,7 +266,7 @@ def create_gui(db_path, email_to_customer_ids):
 
     def populate_grid(filter_date=None):
         for widget in scrollable_frame.winfo_children():
-            widget.destroy()
+                widget.destroy()
 
         # Update headers
         for col, header in enumerate(headers):
@@ -860,7 +893,7 @@ def read_single_customer_file(file_path, customer_id):
     
     customer_codes = {}
     for _, row in df.iterrows():
-        raw_text = row['raw_text'].lower()
+        raw_text = row['raw_text'].strip()  # Preserve original formatting, including newlines
         product_info = str(row['product_info'])
         
         # Extract the product code and number of enters

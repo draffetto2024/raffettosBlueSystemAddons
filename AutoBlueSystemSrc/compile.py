@@ -12,7 +12,6 @@ output_name_console = "EmailOrderProcessor_Console"
 
 # Common PyInstaller options
 common_options = [
-    '--add-data=customers.xlsx:.',
     '--add-data=customer_product_codes:customer_product_codes',
     '--add-data=orders.db:.',
     '--hidden-import=pandas',
@@ -43,19 +42,16 @@ pyinstaller_command_console = [
 if __name__ == '__main__':
     print("Building windowed version...")
     run(pyinstaller_command_windowed)
-    
+   
     print("Building console version...")
     run(pyinstaller_command_console)
 
     # After PyInstaller finishes, copy necessary files to the dist folder
     dist_dir = 'dist'
-    
-    # Copy customers.xlsx
-    shutil.copy('customers.xlsx', dist_dir)
-    
+   
     # Copy orders.db
     shutil.copy('orders.db', dist_dir)
-    
+   
     # Copy customer_product_codes folder
     customer_codes_dest = os.path.join(dist_dir, 'customer_product_codes')
     if os.path.exists(customer_codes_dest):
