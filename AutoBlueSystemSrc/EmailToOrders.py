@@ -36,10 +36,10 @@ def extract_orders(email_text, customer_codes):
     orders = []
     email_lines = email_text.strip().split('\n')
 
-    print("Extracting orders from email:")
-    print("Customer codes:", customer_codes)
-    print("Email content:")
-    print(email_text)
+    #print("Extracting orders from email:")
+    #print("Customer codes:", customer_codes)
+    #print("Email content:")
+    #print(email_text)
 
     def find_multi_line_match(lines, start_index, match_lines):
         if start_index + len(match_lines) > len(lines):
@@ -64,7 +64,7 @@ def extract_orders(email_text, customer_codes):
             match_lines = match.split('\n')
             if find_multi_line_match(email_lines, i, match_lines):
                 chunk = '\n'.join(email_lines[i:i+len(match_lines)])
-                print(f"Multi-line match found: {match} in {chunk}")
+                #print(f"Multi-line match found: {match} in {chunk}")
                 quantity = extract_quantity(chunk)
                 orders.append((quantity, enters, clean_line(chunk), product_code, quantity, 0))
                 i += len(match_lines)
@@ -77,18 +77,18 @@ def extract_orders(email_text, customer_codes):
             cleaned_line = clean_line(line)
             for raw_text, (product_info, product_code, enters) in single_line_matches.items():
                 if all(word.lower() in cleaned_line for word in raw_text.split()):
-                    print(f"Single-line match found: {raw_text} in {cleaned_line}")
+                    #print(f"Single-line match found: {raw_text} in {cleaned_line}")
                     quantity = extract_quantity(cleaned_line)
                     orders.append((quantity, enters, cleaned_line, product_code, quantity, 0))
                     matched = True
                     break
 
-        if not matched:
-            print(f"No match found for line: {cleaned_line}")
+        # if not matched:
+            #print(f"No match found for line: {cleaned_line}")
 
         i += 1  # Always increment i, whether matched or not
 
-    print(f"Extracted orders: {orders}")
+    #print(f"Extracted orders: {orders}")
     return orders
 
 def extract_quantity(text):
@@ -158,13 +158,13 @@ def extract_email_address(from_field):
 
 def process_email(from_, body, customer_codes, customer_id, db_path, mail, msg_id, email_sent_date):
     email_address = extract_email_address(from_)
-    print(f"Processing email from: {email_address}")
-    print(f"Customer ID: {customer_id}")
-    print(f"Customer codes: {customer_codes}")
+    #print(f"Processing email from: {email_address}")
+    #print(f"Customer ID: {customer_id}")
+    #print(f"Customer codes: {customer_codes}")
 
     # Extract orders from the email body using the customer-specific product codes
     orders = extract_orders(body, customer_codes)
-    print(f"Orders extracted: {orders}")
+    #print(f"Orders extracted: {orders}")
 
     if orders:
         # Write orders to the SQL database
@@ -173,12 +173,12 @@ def process_email(from_, body, customer_codes, customer_id, db_path, mail, msg_i
         # Move the email to the EnteredIntoABS inbox only if mail object is provided
         if mail and msg_id:
             move_email(mail, msg_id, "EnteredIntoABS")
-            print("Email processed successfully and moved to EnteredIntoABS")
-        else:
-            print("Email processed successfully (no email movement performed)")
+            #print("Email processed successfully and moved to EnteredIntoABS")
+        # else:
+        #     #print("Email processed successfully (no email movement performed)")
         return True
     else:
-        print("No orders extracted from the email")
+        #print("No orders extracted from the email")
         return False
 
 # Function to move an email to another folder
@@ -187,8 +187,8 @@ def move_email(mail, msg_id, destination_folder):
     if result[0] == 'OK':
         mail.store(msg_id, '+FLAGS', '\\Deleted')
         mail.expunge()
-    else:
-        print(f"Failed to move email ID {msg_id} to {destination_folder}")
+    # else:
+    #     #print(f"Failed to move email ID {msg_id} to {destination_folder}")
 
 def initialize_database(db_path):
     conn = sqlite3.connect(db_path)
@@ -447,14 +447,14 @@ def create_gui(db_path, email_to_customer_ids):
         customer_codes = customer_product_codes.get(customer_id, {})
         if customer_codes:
             process_email(customer_id, raw_email, customer_codes, customer_id, db_path, None, None, email_sent_date)
-        else:
-            print(f"Warning: No customer codes found for customer {customer_id}")
+        # else:
+        #     #print(f"Warning: No customer codes found for customer {customer_id}")
 
         # Refresh the grid
         populate_grid(date_entry.get_date())
 
     def perform_auto_entry(orders):
-        print(f"Performing auto entry for {len(orders)} orders")
+        #print(f"Performing auto entry for {len(orders)} orders")
         # Sequence to enter the order entry screen
         into_order_sequence = [
             'KEY:1',
@@ -464,16 +464,16 @@ def create_gui(db_path, email_to_customer_ids):
         auto_order_entry(into_order_sequence)
 
         for i, order in enumerate(orders, 1):
-            print(f"Processing order {i} of {len(orders)}: {order}")
+            #print(f"Processing order {i} of {len(orders)}: {order}")
 
             # Extract customer ID and other details from the order
             raw_email, customer_id, email_sent_date, item_ids, quantities, enters, items = order
 
-            print(f"Customer ID: {customer_id}")
-            print(f"Email Sent Date: {email_sent_date}")
-            print(f"Item IDs: {item_ids}")
-            print(f"Quantities: {quantities}")
-            print(f"Enters: {enters}")
+            #print(f"Customer ID: {customer_id}")
+            #print(f"Email Sent Date: {email_sent_date}")
+            #print(f"Item IDs: {item_ids}")
+            #print(f"Quantities: {quantities}")
+            #print(f"Enters: {enters}")
 
             pre_order_entry = [
                 'KEY:enter',
@@ -493,19 +493,19 @@ def create_gui(db_path, email_to_customer_ids):
             # Execute the sequence for this order
             auto_order_entry(order_sequence)
 
-        print("Auto entry completed")
+        #print("Auto entry completed")
 
 
     def auto_enter_selected():
         selected_orders = []
         already_entered_orders = []
 
-        print("Beginning Auto Order Entry in 5 seconds.")
+        #print("Beginning Auto Order Entry in 5 seconds.")
         time.sleep(5)
 
         for row, var in checkbox_vars.items():
             if var.get():
-                print(f"Processing row {row}")
+                #print(f"Processing row {row}")
                 raw_email_content = scrollable_frame.grid_slaves(row=row, column=0)[0].get("1.0", tk.END).strip()
                 customer_id = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']
                 email_sent_date = scrollable_frame.grid_slaves(row=row, column=6)[0]['text']
@@ -517,18 +517,18 @@ def create_gui(db_path, email_to_customer_ids):
                 entered_status = check_entered_status(db_path, raw_email_content, customer_id, email_sent_date)
                 if entered_status == 1:
                     already_entered_orders.append((raw_email_content, customer_id, email_sent_date, item_ids, quantities, enters, items))
-                    print(f"Order already entered: {customer_id}, {item_ids}")
+                    #print(f"Order already entered: {customer_id}, {item_ids}")
                 else:
                     selected_orders.append((raw_email_content, customer_id, email_sent_date, item_ids, quantities, enters, items))
-                    print(f"Order selected for processing: {customer_id}, {item_ids}")
+                    #print(f"Order selected for processing: {customer_id}, {item_ids}")
         
-        print(f"Total orders selected for processing: {len(selected_orders)}")
-        print(f"Total orders already entered: {len(already_entered_orders)}")
+        #print(f"Total orders selected for processing: {len(selected_orders)}")
+        #print(f"Total orders already entered: {len(already_entered_orders)}")
 
         if selected_orders:
-            print("Selected orders:")
-            for order in selected_orders:
-                print(order)
+            #print("Selected orders:")
+            # for order in selected_orders:
+            #     #print(order)
             
             # Perform auto order entry
             perform_auto_entry(selected_orders)
@@ -551,7 +551,7 @@ def create_gui(db_path, email_to_customer_ids):
         elif already_entered_orders:
             messagebox.showwarning("Warning", f"All selected orders ({len(already_entered_orders)}) have already been entered.")
         else:
-            print("No rows selected.")
+            #print("No rows selected.")
             messagebox.showwarning("Warning", "No rows selected.")
 
 
@@ -575,7 +575,7 @@ def create_gui(db_path, email_to_customer_ids):
         unentered_orders = {}
         already_entered_orders = {}
 
-        print("Beginning Auto Order Entry in 5 seconds.")
+        #print("Beginning Auto Order Entry in 5 seconds.")
         time.sleep(5)
 
         for order in orders:
@@ -602,13 +602,13 @@ def create_gui(db_path, email_to_customer_ids):
             for (raw_email, customer_id, email_sent_date), order_data in unentered_orders.items()
         ]
 
-        print(f"Total orders to be processed: {len(unentered_orders_list)}")
-        print(f"Total orders already entered: {len(already_entered_orders)}")
+        #print(f"Total orders to be processed: {len(unentered_orders_list)}")
+        #print(f"Total orders already entered: {len(already_entered_orders)}")
 
         if unentered_orders_list:
-            print("Orders to be processed:")
-            for order in unentered_orders_list:
-                print(order)
+            #print("Orders to be processed:")
+            # for order in unentered_orders_list:
+            #     #print(order)
             
             # Perform auto order entry
             perform_auto_entry(unentered_orders_list)
@@ -631,7 +631,7 @@ def create_gui(db_path, email_to_customer_ids):
         elif already_entered_orders:
             messagebox.showinfo("Info", f"All orders for the selected date ({len(already_entered_orders)}) have already been entered.")
         else:
-            print("No orders found for the selected date.")
+            #print("No orders found for the selected date.")
             messagebox.showwarning("Warning", "No orders found for the selected date.")
 
 
@@ -716,12 +716,12 @@ def move_email_by_content(raw_email_content, customer_id, email_sent_date, sourc
                         email_date == email_sent_date):
                         # Move the email
                         move_email(mail, msg_id, destination_folder)
-                        print(f"Moved email with ID {msg_id} to {destination_folder}")
+                        #print(f"Moved email with ID {msg_id} to {destination_folder}")
                         break
-            else:
-                print(f"Email not found in {source_folder} folder")
-        else:
-            print(f"No emails found in {source_folder} folder")
+        #     else:
+        #         #print(f"Email not found in {source_folder} folder")
+        # else:
+        #     #print(f"No emails found in {source_folder} folder")
     
     finally:
         mail.close()
@@ -750,7 +750,7 @@ def read_customer_ids(file_path):
     return dict(zip(df['email'].str.lower(), df['customer_id']))
 
 def generate_order_sequence(order):
-    print(f"Generating order sequence for: {order}")
+    #print(f"Generating order sequence for: {order}")
     customer_id, item_ids, quantities, enters, items = order
     
     sequence = []
@@ -760,7 +760,7 @@ def generate_order_sequence(order):
     enters_list = enters.split('\n')
     
     for product_code, quantity, enters in zip(item_ids_list, quantities_list, enters_list):
-        print(f"Processing: Product Code: {product_code}, Quantity: {quantity}, Enters: {enters}")
+        #print(f"Processing: Product Code: {product_code}, Quantity: {quantity}, Enters: {enters}")
         if enters.strip().endswith('E'):
             num_enters = int(enters.strip()[0])
             sequence.extend([
@@ -770,8 +770,8 @@ def generate_order_sequence(order):
                 'KEY:enter',
             ])
             sequence.extend(['KEY:enter'] * (num_enters - 1))  # Subtract 1 because we already added one 'enter'
-        else:
-            print(f"Warning: Unexpected enters format '{enters}' for item {product_code}")
+        # else:
+        #     #print(f"Warning: Unexpected enters format '{enters}' for item {product_code}")
     
     #END ORDER ROUTINE BELOW
     sequence.extend([
@@ -783,37 +783,37 @@ def generate_order_sequence(order):
                 'WAIT:2.0' #WAIT FOR FINAL CALCULATION
             ])
 
-    print(f"Generated sequence: {sequence}")
+    #print(f"Generated sequence: {sequence}")
     return sequence
 
 
 def auto_order_entry(keystroke_sequence):
-    print(f"Executing keystroke sequence: {keystroke_sequence}")
+    #print(f"Executing keystroke sequence: {keystroke_sequence}")
     for action in keystroke_sequence:
-        print(f"Executing action: {action}")
+        #print(f"Executing action: {action}")
         if action.startswith('INPUT:'):
             # Input data
             data = action.split(':', 1)[1].upper()  # Convert to uppercase
-            print(f"Typing: {data}")
+            #print(f"Typing: {data}")
             keyboard.write(data)
         elif action.startswith('KEY:'):
             # Press a specific key
             key = action.split(':')[1]
-            print(f"Pressing key: {key}")
+            #print(f"Pressing key: {key}")
             keyboard.press_and_release(key)
         elif action.startswith('WAIT:'):
             # Wait for a specified number of seconds
             wait_time = float(action.split(':')[1])
-            print(f"Waiting for {wait_time} seconds")
+            #print(f"Waiting for {wait_time} seconds")
             time.sleep(wait_time)
         else:
             # Assume it's text to type
             text = action.upper()  # Convert to uppercase
-            print(f"Typing: {text}")
+            #print(f"Typing: {text}")
             keyboard.write(text)
         
         time.sleep(0.25)  # Short pause between actions
-    print("Keystroke sequence completed")
+    #print("Keystroke sequence completed")
 
 def delete_order_from_db(db_path, raw_email, customer_id, email_sent_date):
     conn = sqlite3.connect(db_path)
@@ -882,10 +882,10 @@ def read_customer_excel_files(directory_path):
                     email_to_customer_ids[email.lower()] = [customer_id]
                 
             except ValueError:
-                print(f"Warning: Invalid filename format for {filename}. Skipping this file.")
+                #print(f"Warning: Invalid filename format for {filename}. Skipping this file.")
                 continue
     
-    print(f"Total customers with product codes: {len(customer_product_codes)}")
+    #print(f"Total customers with product codes: {len(customer_product_codes)}")
     return customer_product_codes, email_to_customer_ids
 
 def read_single_customer_file(file_path, customer_id):
@@ -902,15 +902,15 @@ def read_single_customer_file(file_path, customer_id):
             product_code = parts[1]
             enters = parts[2] if parts[2].endswith('E') else '4E'  # Default to 4E if not specified
         else:
-            print(f"Warning: Unexpected format in '{product_info}' for customer {customer_id}")
+            #print(f"Warning: Unexpected format in '{product_info}' for customer {customer_id}")
             product_code = "000000"
             enters = "4E"
         
         customer_codes[raw_text] = (product_info, product_code, enters)
     
-    print(f"Loaded product codes for customer {customer_id} from {file_path}:")
-    for raw_text, (product_info, product_code, enters) in customer_codes.items():
-        print(f"  - {raw_text}: {product_info} (Code: {product_code}, Enters: {enters})")
+    #print(f"Loaded product codes for customer {customer_id} from {file_path}:")
+    # for raw_text, (product_info, product_code, enters) in customer_codes.items():
+    #     #print(f"  - {raw_text}: {product_info} (Code: {product_code}, Enters: {enters})")
     
     return customer_codes
 
@@ -924,9 +924,9 @@ def update_customer_excel_file(customer_id, matching_phrase, matched_product):
             new_row = pd.DataFrame({'raw_text': [matching_phrase], 'product_info': [matched_product]})
             df = pd.concat([df, new_row], ignore_index=True)
             df.to_excel(file_path, index=False, header=False)
-            print(f"Updated Excel file for customer {customer_email} with new matching: {matching_phrase} -> {matched_product}")
+            #print(f"Updated Excel file for customer {customer_email} with new matching: {matching_phrase} -> {matched_product}")
             return True
-    print(f"Warning: Excel file for customer {customer_email} not found. New matching not added.")
+    #print(f"Warning: Excel file for customer {customer_email} not found. New matching not added.")
     return False
 
 if __name__ == "__main__":
@@ -962,11 +962,11 @@ if __name__ == "__main__":
 
         if status == 'OK':
             email_uids = messages[0].split()
-            print(f"Number of messages found: {len(email_uids)}")
+            #print(f"Number of messages found: {len(email_uids)}")
 
             for email_uid in email_uids:
                 try:
-                    print(f"\nProcessing email UID: {email_uid.decode()}")
+                    #print(f"\nProcessing email UID: {email_uid.decode()}")
                     status, msg_data = mail.uid('fetch', email_uid, "(RFC822)")
 
                     if status == 'OK' and msg_data and msg_data[0] is not None:
@@ -994,35 +994,35 @@ if __name__ == "__main__":
                                         customer_codes = customer_product_codes.get(customer_id, {})
                                         
                                         process_result = process_email(from_, body, customer_codes, customer_id, db_path, mail, email_uid, email_sent_date)
-                                        print(f"Email processed for customer {customer_id}: {process_result}")
+                                        #print(f"Email processed for customer {customer_id}: {process_result}")
                                     # Move the processed email to "EnteredIntoABS" folder
                                     mail.uid('copy', email_uid, "EnteredIntoABS")
                                     mail.uid('store', email_uid, '+FLAGS', '\\Deleted')
                                     mail.expunge()
                                 else:
-                                    print(f"No matching customer found for email from: {email_address}")
+                                    #print(f"No matching customer found for email from: {email_address}")
                                     # Move the email to "CustomerNotFound" folder
                                     mail.uid('copy', email_uid, "CustomerNotFound")
                                     mail.uid('store', email_uid, '+FLAGS', '\\Deleted')
                                     mail.expunge()
-                            else:
-                                print(f"No body content for email UID: {email_uid.decode()}")
-                        else:
-                            print(f"Unexpected data structure for email UID: {email_uid.decode()}")
-                    else:
-                        print(f"Failed to fetch email UID: {email_uid.decode()} or email data is None")
+                    #         else:
+                    #             #print(f"No body content for email UID: {email_uid.decode()}")
+                    #     else:
+                    #         #print(f"Unexpected data structure for email UID: {email_uid.decode()}")
+                    # else:
+                    #     #print(f"Failed to fetch email UID: {email_uid.decode()} or email data is None")
 
                     # Short pause to allow server to process the move
                     time.sleep(1)
 
                 except Exception as e:
-                    print(f"Error processing email UID {email_uid.decode()}: {str(e)}")
+                    #print(f"Error processing email UID {email_uid.decode()}: {str(e)}")
                     continue
 
-        else:
-            print("Failed to search for emails.")
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")
+    #     else:
+    #         #print("Failed to search for emails.")
+    # except Exception as e:
+    #     #print(f"An error occurred: {str(e)}")
     finally:
         try:
             mail.close()
