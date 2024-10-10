@@ -14,19 +14,18 @@ from google.cloud.vision_v1 import types
 from datetime import datetime
 
 
-# Path to the service account key file
-service_account_key = r"C:\Users\Derek\Desktop\InvoiceSortingDev\caramel-compass-429017-h3-c2d4e157e809.json"
+# Simplified path definitions using relative paths
+service_account_key = "./caramel-compass-429017-h3-c2d4e157e809.json"
+invoice_folder = "./Invoices/InvoicePictures"
+destination_base_folder = "./Invoices/SortedInvoices"
+unsorted_base_folder = "./Invoices/UnsortedInvoices"
+customer_emails_file = "./customer_emails.xlsx"
 
+# Set the Google Application Credentials environment variable
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = service_account_key
 
 # Initialize the Vision API client
 client = vision.ImageAnnotatorClient()
-
-# Paths to the folders
-invoice_folder = r"C:\Users\Derek\Desktop\InvoiceSortingDev\Invoices\InvoicePictures"
-destination_base_folder = r"C:\Users\Derek\Desktop\InvoiceSortingDev\Invoices\SortedInvoices"
-unsorted_base_folder = r"C:\Users\Derek\Desktop\InvoiceSortingDev\Invoices\UnsortedInvoices"
-customer_emails_file = r"C:\Users\Derek\Desktop\InvoiceSortingDev\customer_emails.xlsx"
 
 # Email details
 sender_email = "gingoso2@gmail.com"
@@ -304,8 +303,8 @@ def convert_pdf_to_images(pdf_path):
 
 import logging
 
-# Set up logging
-log_folder = r"C:\Users\Derek\Desktop\InvoiceSortingDev\Logs"
+# Update the log folder path
+log_folder = "./Logs"
 os.makedirs(log_folder, exist_ok=True)
 log_file = os.path.join(log_folder, f"ocr_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
 logging.basicConfig(filename=log_file, level=logging.DEBUG, format='%(asctime)s - %(message)s')
