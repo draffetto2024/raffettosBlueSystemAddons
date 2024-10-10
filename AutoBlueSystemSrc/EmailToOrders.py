@@ -159,13 +159,18 @@ def get_email_content(msg):
 
 def extract_email_address(email_content):
     # Look for the "From:" line in the email content
-    from_line_match = re.search(r'From: .*?<(.+?)>', email_content, re.IGNORECASE | re.DOTALL)
+    from_line_match = re.search(r'From:.*?<(.+?)>', email_content, re.IGNORECASE | re.DOTALL)
     
     if from_line_match:
         return from_line_match.group(1)
     else:
-        # If no match found, return None or handle as needed
-        return None
+        # If no match found, try to find any email address in the content
+        email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', email_content)
+        if email_match:
+            return email_match.group(0)
+        else:
+            logging.warning("No email address found in the content")
+            return None
 
 def process_email(from_, body, customer_codes, customer_id, db_path, mail, msg_id, email_sent_date):
     email_address = extract_email_address(body)
@@ -227,7 +232,7 @@ def initialize_database(db_path):
     conn.close()
 
 
-def create_gui(db_path, email_to_customer_ids):
+def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
     root = tk.Tk()
     root.title("Email Order Processor")
     root.geometry("1800x750")  # Slightly increased height to accommodate the new button layout
@@ -490,16 +495,17 @@ def create_gui(db_path, email_to_customer_ids):
                 break
 
     def reload_order(customer_id, raw_email, email_sent_date):
+        global product_enters_mapping
         # Delete the order from the database
         delete_order_from_db(db_path, raw_email, customer_id, email_sent_date)
 
         # Reprocess the email content
-        customer_product_codes, _ = read_customer_excel_files('customer_product_codes')
+        customer_product_codes, _ = read_customer_excel_files('customer_product_codes', product_enters_mapping)
         customer_codes = customer_product_codes.get(customer_id, {})
         if customer_codes:
             process_email(customer_id, raw_email, customer_codes, customer_id, db_path, None, None, email_sent_date)
-        # else:
-        #     #print(f"Warning: No customer codes found for customer {customer_id}")
+        else:
+            print(f"Warning: No customer codes found for customer {customer_id}")
 
         # Refresh the grid
         populate_grid(date_entry.get_date())
@@ -911,58 +917,115 @@ def move_email_back_to_orders(raw_email_content):
 
 import os
 
-def read_customer_excel_files(directory_path):
+
+def read_product_enters_mapping(file_path):
+    print(f"Reading product enters mapping from {file_path}")
+    
+    try:
+        # Try reading as Excel first
+        df = pd.read_excel(file_path, header=None)
+        if df.shape[1] < 7:
+            print("Excel file doesn't have enough columns. Trying CSV...")
+            # If Excel reading fails, try CSV
+            df = pd.read_csv(file_path, header=None)
+        
+        print(f"The file has {df.shape[1]} columns.")
+        print("Columns found:")
+        for i, col in enumerate(df.columns):
+            print(f"Column {i}: {col}")
+        
+        # Check if file has at least 7 columns
+        if df.shape[1] < 7:
+            print(f"Warning: The file has only {df.shape[1]} columns. Expected at least 7.")
+            print("Unable to proceed with mapping. Please check the file.")
+            return {}
+        
+        # Select columns A and G (index 0 and 6) since we now expect 7 columns
+        df = df.iloc[:, [0, 6]]
+        df.columns = ['product_code', 'enters']
+        
+        print("Using column A for product codes and column G for enters")
+        
+        # Create the mapping
+        mapping = dict(zip(df['product_code'].astype(str).str.upper(), df['enters']))
+        
+        # Fill missing enters with '4E' and ensure all values are strings
+        mapping = {k: (str(v) if pd.notna(v) else '4E') for k, v in mapping.items()}
+        
+        print(f"Loaded {len(mapping)} product code to enters mappings")
+        print("Sample of product_enters_mapping:")
+        for i, (code, enters) in enumerate(list(mapping.items())[:5]):
+            print(f"  {code}: {enters}")
+        if len(mapping) > 5:
+            print("  ...")
+        
+        # Debug: Print the first few rows of the DataFrame
+        print("\nFirst few rows of the data:")
+        print(df.head())
+        
+        return mapping
+    
+    except Exception as e:
+        print(f"Error reading file: {str(e)}")
+        print(f"File path: {os.path.abspath(file_path)}")
+        return {}
+
+def read_customer_excel_files(directory_path, product_enters_mapping):
+    print(f"Reading customer Excel files from {directory_path}")
     customer_product_codes = {}
     email_to_customer_ids = {}
     
     for filename in os.listdir(directory_path):
         if filename.endswith('.xlsx'):
             try:
-                # Extract email and customer ID from filename
                 email, customer_id = filename[:-5].split('_')
+                print(f"\nProcessing file: {filename}")
                 
                 file_path = os.path.join(directory_path, filename)
-                customer_codes = read_single_customer_file(file_path, customer_id)
+                customer_codes = read_single_customer_file(file_path, customer_id, product_enters_mapping)
                 
                 customer_product_codes[customer_id] = customer_codes
                 
-                # Map email to customer ID
                 if email.lower() in email_to_customer_ids:
                     email_to_customer_ids[email.lower()].append(customer_id)
                 else:
                     email_to_customer_ids[email.lower()] = [customer_id]
                 
+                print(f"Processed {len(customer_codes)} product codes for customer {customer_id}")
             except ValueError:
-                #print(f"Warning: Invalid filename format for {filename}. Skipping this file.")
+                print(f"Warning: Invalid filename format for {filename}. Skipping this file.")
                 continue
     
-    #print(f"Total customers with product codes: {len(customer_product_codes)}")
+    print(f"\nTotal customers processed: {len(customer_product_codes)}")
+    print(f"Total email to customer ID mappings: {len(email_to_customer_ids)}")
     return customer_product_codes, email_to_customer_ids
 
-def read_single_customer_file(file_path, customer_id):
+def read_single_customer_file(file_path, customer_id, product_enters_mapping):
+    print(f"Reading file: {file_path}")
     df = pd.read_excel(file_path, header=None, names=['raw_text', 'product_info'])
     
     customer_codes = {}
     for _, row in df.iterrows():
-        raw_text = row['raw_text'].strip()  # Preserve original formatting, including newlines
+        raw_text = row['raw_text'].strip()
         product_info = str(row['product_info'])
         
-        # Extract the product code and number of enters
         parts = product_info.split()
-        if len(parts) >= 3:
-            product_code = parts[1]
-            enters = parts[2] if parts[2].endswith('E') else '4E'  # Default to 4E if not specified
+        if len(parts) >= 2:
+            product_code = parts[1].upper()
+            enters = product_enters_mapping.get(product_code)
+            if enters is None:
+                print(f"  Warning: No matching enters found for product code {product_code}. Defaulting to 4E.")
+                enters = '4E'
+            else:
+                print(f"  Matched: {product_code} -> {enters}")
         else:
-            #print(f"Warning: Unexpected format in '{product_info}' for customer {customer_id}")
+            print(f"  Warning: Unexpected format in '{product_info}' for customer {customer_id}")
             product_code = "000000"
             enters = "4E"
         
         customer_codes[raw_text] = (product_info, product_code, enters)
     
-    #print(f"Loaded product codes for customer {customer_id} from {file_path}:")
-    # for raw_text, (product_info, product_code, enters) in customer_codes.items():
-    #     #print(f"  - {raw_text}: {product_info} (Code: {product_code}, Enters: {enters})")
-    
+    print(f"Processed {len(customer_codes)} entries for customer {customer_id}")
     return customer_codes
 
 def update_customer_excel_file(customer_id, matching_phrase, matched_product):
@@ -983,9 +1046,59 @@ def update_customer_excel_file(customer_id, matching_phrase, matched_product):
     print(f"Warning: Excel file for customer {customer_id} not found. New matching not added.")
     return False
 
+
+def ensure_imap_folder_exists(mail, folder_name):
+    try:
+        folders = [mailbox.decode().split('"/"')[-1] for mailbox in mail.list()[1]]
+        if folder_name not in folders:
+            result, data = mail.create(folder_name)
+            if result == 'OK':
+                logging.info(f"Folder {folder_name} created successfully")
+            elif b'[ALREADYEXISTS]' in data[0]:
+                logging.info(f"Folder {folder_name} already exists")
+            else:
+                logging.error(f"Failed to create folder {folder_name}: {data}")
+                return False
+        else:
+            logging.info(f"Folder {folder_name} already exists")
+        return True
+    except Exception as e:
+        logging.error(f"Error checking/creating folder {folder_name}: {str(e)}")
+        return False
+
+def move_email_to_folder(mail, email_uid, destination_folder):
+    try:
+        result, data = mail.uid('copy', email_uid, destination_folder)
+        if result == 'OK':
+            mail.uid('store', email_uid, '+FLAGS', '\\Deleted')
+            mail.expunge()
+            logging.info(f"Email moved to {destination_folder} successfully")
+            return True
+        else:
+            logging.error(f"Failed to move email to {destination_folder}: {data}")
+            return False
+    except Exception as e:
+        logging.error(f"Error moving email to {destination_folder}: {str(e)}")
+        return False
+
+def check_imap_connection(mail):
+    try:
+        status, response = mail.noop()
+        return status == 'OK'
+    except:
+        return False
+
+import logging
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
 if __name__ == "__main__":
+
+    global product_enters_mapping
+    product_enters_mapping = read_product_enters_mapping('ProductSheetWithEnters.xlsx')
+
     # Read customer-specific product codes from individual Excel files
-    customer_product_codes, email_to_customer_ids = read_customer_excel_files('customer_product_codes')
+    customer_product_codes, email_to_customer_ids = read_customer_excel_files('customer_product_codes', product_enters_mapping)
 
     # Email details
     username = "gingoso2@gmail.com"
@@ -993,6 +1106,8 @@ if __name__ == "__main__":
 
     # Database path
     db_path = 'orders.db'
+
+
 
     # Initialize the database
     initialize_database(db_path)
@@ -1004,9 +1119,12 @@ if __name__ == "__main__":
         # Login to your account
         mail.login(username, password)
 
-        # Check if CustomerNotFound inbox exists, create it if it doesn't
-        if 'CustomerNotFound' not in [mailbox.decode().split('"/"')[-1] for mailbox in mail.list()[1]]:
-            mail.create('CustomerNotFound')
+        # Ensure the CustomerNotFound folder exists
+        if not ensure_imap_folder_exists(mail, 'CustomerNotFound'):
+            logging.error("Unable to proceed due to folder creation issue.")
+            raise Exception("Folder creation failed")
+        else:
+            logging.info("CustomerNotFound folder is ready")
 
         # Select the "Orders" mailbox
         mail.select("Orders")
@@ -1016,68 +1134,86 @@ if __name__ == "__main__":
 
         if status == 'OK':
             email_uids = messages[0].split()
-            #print(f"Number of messages found: {len(email_uids)}")
+            logging.info(f"Number of messages found: {len(email_uids)}")
 
             for email_uid in email_uids:
                 try:
-                    #print(f"\nProcessing email UID: {email_uid.decode()}")
+                    if not check_imap_connection(mail):
+                        logging.warning("IMAP connection lost. Attempting to reconnect...")
+                        mail.logout()
+                        mail = imaplib.IMAP4_SSL("imap.gmail.com")
+                        mail.login(username, password)
+                        mail.select("Orders")
+
+                    logging.debug(f"Processing email UID: {email_uid.decode()}")
                     status, msg_data = mail.uid('fetch', email_uid, "(RFC822)")
 
                     if status == 'OK' and msg_data and msg_data[0] is not None:
                         if isinstance(msg_data[0], tuple):
                             msg = email.message_from_bytes(msg_data[0][1])
-
                             body = get_email_content(msg)
 
                             if body:
-                                from_ = msg.get("From")
                                 email_address = extract_email_address(body)
-                                print(email_address)
+                                logging.info(f"Extracted email address: {email_address}")
 
                                 # Extract the email sent date
                                 date_tuple = email.utils.parsedate_tz(msg.get('Date'))
                                 if date_tuple:
                                     email_sent_date = datetime.fromtimestamp(email.utils.mktime_tz(date_tuple)).strftime('%Y-%m-%d %H:%M:%S')
                                 else:
-                                    email_sent_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Use current time if date parsing fails
+                                    email_sent_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
                                 # Get customer IDs from email
-                                customer_ids = email_to_customer_ids.get(email_address.lower(), [])
+                                customer_ids = email_to_customer_ids.get(email_address.lower(), []) if email_address else []
 
                                 if customer_ids:
                                     for customer_id in customer_ids:
                                         customer_codes = customer_product_codes.get(customer_id, {})
-                                        
-                                        process_result = process_email(from_, body, customer_codes, customer_id, db_path, mail, email_uid, email_sent_date)
-                                        print(f"Email processed for customer {customer_id}: {process_result}")
-                                    # Move the processed email to "EnteredIntoABS" folder
-                                    mail.uid('copy', email_uid, "EnteredIntoABS")
-                                    mail.uid('store', email_uid, '+FLAGS', '\\Deleted')
-                                    mail.expunge()
+                                        process_result = process_email(email_address, body, customer_codes, customer_id, db_path, mail, email_uid, email_sent_date)
+                                        logging.info(f"Email processed for customer {customer_id}: {process_result}")
+                                    
+                                    if move_email_to_folder(mail, email_uid, "EnteredIntoABS"):
+                                        logging.info(f"Email from {email_address} moved to EnteredIntoABS folder")
+                                    else:
+                                        logging.error(f"Failed to move email from {email_address} to EnteredIntoABS folder")
                                 else:
-                                    print(f"No matching customer found for email from: {email_address}")
-                                    # Move the email to "CustomerNotFound" folder
-                                    mail.uid('copy', email_uid, "CustomerNotFound")
-                                    mail.uid('store', email_uid, '+FLAGS', '\\Deleted')
-                                    mail.expunge()
-                    #         else:
-                    #             #print(f"No body content for email UID: {email_uid.decode()}")
-                    #     else:
-                    #         #print(f"Unexpected data structure for email UID: {email_uid.decode()}")
-                    # else:
-                    #     #print(f"Failed to fetch email UID: {email_uid.decode()} or email data is None")
-
-                    # Short pause to allow server to process the move
-                    # time.sleep(1) #Pretty sure this isn't neccessary. We're not accessing this once we do this. We already have the emails
+                                    logging.warning(f"No matching customer found for email from: {email_address}")
+                                    if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
+                                        logging.info(f"Email moved to CustomerNotFound folder")
+                                    else:
+                                        logging.error(f"Failed to move email to CustomerNotFound folder")
+                            else:
+                                logging.warning(f"No body content for email UID: {email_uid.decode()}")
+                                if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
+                                    logging.info(f"Email with no body content moved to CustomerNotFound folder")
+                                else:
+                                    logging.error(f"Failed to move email with no body content to CustomerNotFound folder")
+                        else:
+                            logging.warning(f"Unexpected data structure for email UID: {email_uid.decode()}")
+                            if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
+                                logging.info(f"Email with unexpected data structure moved to CustomerNotFound folder")
+                            else:
+                                logging.error(f"Failed to move email with unexpected data structure to CustomerNotFound folder")
+                    else:
+                        logging.error(f"Failed to fetch email UID: {email_uid.decode()} or email data is None")
+                        if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
+                            logging.info(f"Email that failed to fetch moved to CustomerNotFound folder")
+                        else:
+                            logging.error(f"Failed to move email that failed to fetch to CustomerNotFound folder")
 
                 except Exception as e:
-                    #print(f"Error processing email UID {email_uid.decode()}: {str(e)}")
+                    logging.error(f"Error processing email UID {email_uid.decode()}: {str(e)}")
+                    if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
+                        logging.info(f"Email that caused an error moved to CustomerNotFound folder")
+                    else:
+                        logging.error(f"Failed to move email that caused an error to CustomerNotFound folder")
                     continue
 
-    #     else:
-    #         #print("Failed to search for emails.")
-    # except Exception as e:
-    #     #print(f"An error occurred: {str(e)}")
+        else:
+            logging.error("Failed to search for emails.")
+    except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
     finally:
         try:
             mail.close()
@@ -1086,4 +1222,5 @@ if __name__ == "__main__":
             pass
 
     # Create and run the GUI
-    create_gui(db_path, email_to_customer_ids)
+    create_gui(db_path, email_to_customer_ids, product_enters_mapping)
+
