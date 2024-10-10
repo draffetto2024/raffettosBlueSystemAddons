@@ -13,6 +13,7 @@ from tkcalendar import DateEntry
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
+from tkinter import scrolledtext
 import pyautogui
 import keyboard
 
@@ -152,12 +153,22 @@ def get_email_content(msg):
     return body
 
 # Function to extract email address from the "From" field
-def extract_email_address(from_field):
-    name, email_address = parseaddr(from_field)
-    return email_address
+# def extract_email_address(from_field):
+#     name, email_address = parseaddr(from_field)
+#     return email_address
+
+def extract_email_address(email_content):
+    # Look for the "From:" line in the email content
+    from_line_match = re.search(r'From: .*?<(.+?)>', email_content, re.IGNORECASE | re.DOTALL)
+    
+    if from_line_match:
+        return from_line_match.group(1)
+    else:
+        # If no match found, return None or handle as needed
+        return None
 
 def process_email(from_, body, customer_codes, customer_id, db_path, mail, msg_id, email_sent_date):
-    email_address = extract_email_address(from_)
+    email_address = extract_email_address(body)
     #print(f"Processing email from: {email_address}")
     #print(f"Customer ID: {customer_id}")
     #print(f"Customer codes: {customer_codes}")
@@ -304,11 +315,11 @@ def create_gui(db_path, email_to_customer_ids):
             unique_orders[unique_key].append(order)
 
         for row, ((raw_email, customer, email_sent_date), order_list) in enumerate(unique_orders.items(), start=1):
-            # Raw Email Content
-            email_text = tk.Text(scrollable_frame, wrap=tk.WORD, width=30, height=5)
-            email_text.insert(tk.END, raw_email)
-            email_text.config(state=tk.DISABLED)
-            email_text.grid(row=row, column=0, padx=5, pady=5, sticky="nsew")
+            # # Raw Email Content
+            # email_text = tk.Text(scrollable_frame, wrap=tk.WORD, width=30, height=5)
+            # email_text.insert(tk.END, raw_email)
+            # email_text.config(state=tk.DISABLED)
+            # email_text.grid(row=row, column=0, padx=5, pady=5, sticky="nsew")
 
             matched_products = []
             quantities = []
@@ -331,6 +342,23 @@ def create_gui(db_path, email_to_customer_ids):
             products_text.insert(tk.END, "\n".join(matched_products))
             products_text.config(state=tk.DISABLED)
             products_text.grid(row=row, column=1, padx=5, pady=5, sticky="nsew")
+
+             # Raw Email Content (scrollable and clickable)
+            email_frame = ttk.Frame(scrollable_frame)
+            email_frame.grid(row=row, column=0, padx=5, pady=5, sticky="nsew")
+
+            email_text = tk.Text(email_frame, wrap=tk.WORD, width=30, height=5)
+            email_text.insert(tk.END, raw_email)
+            email_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+            email_scrollbar = ttk.Scrollbar(email_frame, orient="vertical", command=email_text.yview)
+            email_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            email_text.configure(yscrollcommand=email_scrollbar.set)
+
+            email_text.config(state=tk.DISABLED)
+            
+            # Bind click event to the email text
+            email_text.bind("<Button-1>", lambda e, text=raw_email: show_email_content(text))
 
             # Quantity
             quantity_text = tk.Text(scrollable_frame, wrap=tk.WORD, width=10, height=5)
@@ -382,6 +410,24 @@ def create_gui(db_path, email_to_customer_ids):
             checkbox.grid(row=row, column=9, padx=5, pady=5, sticky="nsew")
             checkbox_vars[row] = var
 
+    def show_email_content(email_text):
+        # Create a new top-level window
+        email_window = tk.Toplevel(root)
+        email_window.title("Full Email Content")
+        email_window.geometry("800x600")
+
+        # Add a scrolled text widget to display the email content
+        email_content = scrolledtext.ScrolledText(email_window, wrap=tk.WORD, width=80, height=30)
+        email_content.pack(expand=True, fill='both', padx=10, pady=10)
+
+        # Insert the email text and make it read-only
+        email_content.insert(tk.INSERT, email_text)
+        email_content.config(state='disabled')
+
+        # Add a close button
+        close_button = ttk.Button(email_window, text="Close", command=email_window.destroy)
+        close_button.pack(pady=10)
+
     def add_matching():
         selected_rows = [row for row, var in checkbox_vars.items() if var.get()]
         if not selected_rows:
@@ -390,7 +436,12 @@ def create_gui(db_path, email_to_customer_ids):
 
         row = selected_rows[0]  # Use the first selected row
         customer_id = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']
-        raw_email = scrollable_frame.grid_slaves(row=row, column=0)[0].get("1.0", tk.END).strip()
+        
+        # Updated way to get the email content
+        email_frame = scrollable_frame.grid_slaves(row=row, column=0)[0]
+        email_text_widget = email_frame.winfo_children()[0]  # The Text widget is the first child of the Frame
+        raw_email = email_text_widget.get("1.0", tk.END).strip()
+        
         email_sent_date = scrollable_frame.grid_slaves(row=row, column=6)[0]['text']
 
         # Create pop-up window
@@ -916,17 +967,20 @@ def read_single_customer_file(file_path, customer_id):
 
 def update_customer_excel_file(customer_id, matching_phrase, matched_product):
     directory_path = 'customer_product_codes'
-    customer_email = extract_email_address(customer_id)  # Extract email if full name is present
+    
     for filename in os.listdir(directory_path):
-        if filename.endswith('.xlsx') and customer_email in filename:
-            file_path = os.path.join(directory_path, filename)
-            df = pd.read_excel(file_path, header=None, names=['raw_text', 'product_info'])
-            new_row = pd.DataFrame({'raw_text': [matching_phrase], 'product_info': [matched_product]})
-            df = pd.concat([df, new_row], ignore_index=True)
-            df.to_excel(file_path, index=False, header=False)
-            #print(f"Updated Excel file for customer {customer_email} with new matching: {matching_phrase} -> {matched_product}")
-            return True
-    #print(f"Warning: Excel file for customer {customer_email} not found. New matching not added.")
+        if filename.endswith('.xlsx'):
+            # Check if any part of the customer_id is in the filename
+            if any(part.lower() in filename.lower() for part in customer_id.split()):
+                file_path = os.path.join(directory_path, filename)
+                df = pd.read_excel(file_path, header=None, names=['raw_text', 'product_info'])
+                new_row = pd.DataFrame({'raw_text': [matching_phrase], 'product_info': [matched_product]})
+                df = pd.concat([df, new_row], ignore_index=True)
+                df.to_excel(file_path, index=False, header=False)
+                print(f"Updated Excel file {filename} for customer {customer_id} with new matching: {matching_phrase} -> {matched_product}")
+                return True
+    
+    print(f"Warning: Excel file for customer {customer_id} not found. New matching not added.")
     return False
 
 if __name__ == "__main__":
@@ -977,7 +1031,8 @@ if __name__ == "__main__":
 
                             if body:
                                 from_ = msg.get("From")
-                                email_address = extract_email_address(from_)
+                                email_address = extract_email_address(body)
+                                print(email_address)
 
                                 # Extract the email sent date
                                 date_tuple = email.utils.parsedate_tz(msg.get('Date'))
@@ -994,13 +1049,13 @@ if __name__ == "__main__":
                                         customer_codes = customer_product_codes.get(customer_id, {})
                                         
                                         process_result = process_email(from_, body, customer_codes, customer_id, db_path, mail, email_uid, email_sent_date)
-                                        #print(f"Email processed for customer {customer_id}: {process_result}")
+                                        print(f"Email processed for customer {customer_id}: {process_result}")
                                     # Move the processed email to "EnteredIntoABS" folder
                                     mail.uid('copy', email_uid, "EnteredIntoABS")
                                     mail.uid('store', email_uid, '+FLAGS', '\\Deleted')
                                     mail.expunge()
                                 else:
-                                    #print(f"No matching customer found for email from: {email_address}")
+                                    print(f"No matching customer found for email from: {email_address}")
                                     # Move the email to "CustomerNotFound" folder
                                     mail.uid('copy', email_uid, "CustomerNotFound")
                                     mail.uid('store', email_uid, '+FLAGS', '\\Deleted')
@@ -1013,7 +1068,7 @@ if __name__ == "__main__":
                     #     #print(f"Failed to fetch email UID: {email_uid.decode()} or email data is None")
 
                     # Short pause to allow server to process the move
-                    time.sleep(1)
+                    # time.sleep(1) #Pretty sure this isn't neccessary. We're not accessing this once we do this. We already have the emails
 
                 except Exception as e:
                     #print(f"Error processing email UID {email_uid.decode()}: {str(e)}")
