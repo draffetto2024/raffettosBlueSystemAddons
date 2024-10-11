@@ -2,11 +2,11 @@
 
 
 a = Analysis(
-    ['ConfigSetup.py'],
+    ['DataDashboard.py'],
     pathex=[],
     binaries=[],
-    datas=[('UPCCodes.xlsx', '.'), ('input.txt', '.'), ('CopyPastePack.db', '.')],
-    hiddenimports=[],
+    datas=[('UPCCodes.xlsx', '.'), ('CopyPastePack.db', '.')],
+    hiddenimports=['pandas', 'sqlite3', 'tkinter', 're'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='ConfigSetup',
+    name='DataDashboard_Console',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

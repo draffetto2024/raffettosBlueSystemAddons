@@ -900,10 +900,16 @@ class MatchingApp:
         self.results_text.see("1.0")  # Scroll to the top
 
 def main():
-    root = tk.Tk()
-    app = MatchingApp(root)
-    root.protocol("WM_DELETE_WINDOW", root.destroy)
-    root.mainloop()
+    try:
+        root = tk.Tk()
+        app = MatchingApp(root)
+        root.protocol("WM_DELETE_WINDOW", root.destroy)
+        root.mainloop()
+    except Exception as e:
+        print("An error occurred:")
+        print(str(e))
+        print("\nTraceback:")
+        traceback.print_exc()
 
 if __name__ == "__main__":
     main()

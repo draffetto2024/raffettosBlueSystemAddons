@@ -1,49 +1,60 @@
 import os
-import subprocess
 import sys
+import shutil
+from PyInstaller.__main__ import run
 
-def build_executable(script_name, data_files):
-    # Determine the appropriate separator based on the operating system
-    separator = ';' if sys.platform.startswith('win') else ':'
-    
-    # Create the --add-data arguments
-    add_data_args = [f'--add-data={file}{separator}.' for file in data_files]
-    
-    cmd = [
-        "pyinstaller",
-        "--onefile",
-        "--name", os.path.splitext(script_name)[0],
-    ] + add_data_args + [script_name]
-    
-    subprocess.run(cmd, check=True)
+# Define the names of your main scripts
+main_scripts = ["CopyPastePacker.py", "ConfigSetup.py", "DataDashboard.py"]
 
-# List of scripts and their associated data files
-scripts_and_data = [
-    ("CopyPastePacker.py", ["UPCCodes.xlsx", "input.txt", "CopyPastePack.db"]),
-    ("ConfigSetup.py", ["UPCCodes.xlsx", "input.txt", "CopyPastePack.db"]),
-    ("DataDashboard.py", ["UPCCodes.xlsx", "input.txt", "CopyPastePack.db"])
+# Common PyInstaller options
+common_options = [
+    '--add-data=UPCCodes.xlsx:.',
+    '--add-data=CopyPastePack.db:.',
+    '--hidden-import=pandas',
+    '--hidden-import=sqlite3',
+    '--hidden-import=tkinter',
+    '--hidden-import=re',
 ]
 
-# Build each executable
-for script, data_files in scripts_and_data:
-    print(f"Building {script}...")
-    build_executable(script, data_files)
+def build_executable(script_name, is_windowed):
+    output_name = os.path.splitext(script_name)[0]
+    if is_windowed:
+        output_name += "_Windowed"
+    else:
+        output_name += "_Console"
 
-print("All executables built successfully!")
+    pyinstaller_command = [
+        '--name=%s' % output_name,
+        '--onefile',
+    ]
 
-# Create distribution folder
-dist_folder = "DistributionPackage"
-os.makedirs(dist_folder, exist_ok=True)
+    if is_windowed:
+        pyinstaller_command.append('--windowed')
 
-# Move executables and data files to distribution folder
-for script, data_files in scripts_and_data:
-    executable_name = os.path.splitext(script)[0] + (".exe" if sys.platform.startswith('win') else "")
-    src_path = os.path.join("dist", executable_name)
-    dst_path = os.path.join(dist_folder, executable_name)
-    if os.path.exists(src_path):
-        os.rename(src_path, dst_path)
-    for data_file in data_files:
-        if os.path.exists(data_file):
-            os.rename(data_file, os.path.join(dist_folder, data_file))
+    pyinstaller_command.extend(common_options)
+    pyinstaller_command.append(script_name)
 
-print(f"Distribution package created in {dist_folder}")
+    print(f"Building {'windowed' if is_windowed else 'console'} version of {script_name}...")
+    run(pyinstaller_command)
+
+# Run PyInstaller for all scripts
+if __name__ == '__main__':
+    for script in main_scripts:
+        build_executable(script, is_windowed=True)
+        build_executable(script, is_windowed=False)
+
+    # After PyInstaller finishes, copy necessary files to the dist folder
+    dist_dir = 'dist'
+   
+    # Copy CopyPastePack.db
+    shutil.copy('CopyPastePack.db', dist_dir)
+   
+    # Copy UPCCodes.xlsx
+    shutil.copy('UPCCodes.xlsx', dist_dir)
+
+    print(f"Build complete. Executables and necessary files can be found in {dist_dir}")
+    print("The following executables have been created:")
+    for script in main_scripts:
+        base_name = os.path.splitext(script)[0]
+        print(f"  {base_name}_Windowed.exe (Windowed version)")
+        print(f"  {base_name}_Console.exe (Console version for debugging)")
