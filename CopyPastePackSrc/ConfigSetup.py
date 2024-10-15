@@ -344,6 +344,11 @@ class MatchingApp:
             phrases_length = len(phrases)
             phrasequantity = 1
             
+            print("---------------------------------------------------------------------------------")
+
+            print("PHRASES", phrases)
+            print("PACKAGENUMBERPHRASE", self.packagenumberphrase)
+
             # Extract order number
             for phrase in phrases:
                 match = re.search(f"{re.escape(self.packagenumberphrase)} ([^\s]+)", phrase)
@@ -355,6 +360,10 @@ class MatchingApp:
             if not order_num:
                 print("Warning: No order number found for this block. Skipping...")
                 continue
+
+            # Initialize the order in the dictionary, even if no items are found
+            if order_num not in order_dict:
+                order_dict[order_num] = []
 
             splitting_keywords_list = [None] * len(self.keywords_2d_list)
             keyword_positions = dict()
@@ -472,26 +481,20 @@ class MatchingApp:
                         barcode = upc  # Use the UPC code directly
                         item = " ".join(acceptable_words)  # join the remaining words as the item
                         
-                        if order_num not in order_dict:
-                            order_dict[order_num] = [(item, barcode, 1)]
-                        else:
-                            item_found = False
-                            for i, (item_, barcode_, count) in enumerate(order_dict[order_num]):
-                                if item_ == item and barcode_ == barcode:
-                                    item_found = True
-                                    order_dict[order_num][i] = (item_, barcode_, count + 1)
-                                    print(f"Updated existing item quantity: {item_}, New quantity: {count + 1}")
-                                    break
-                            if not item_found:
-                                order_dict[order_num].append((item, barcode, 1))
-                                print(f"Added new item to order {order_num}: {item}")
+                        item_found = False
+                        for i, (item_, barcode_, count) in enumerate(order_dict[order_num]):
+                            if item_ == item and barcode_ == barcode:
+                                item_found = True
+                                order_dict[order_num][i] = (item_, barcode_, count + 1)
+                                print(f"Updated existing item quantity: {item_}, New quantity: {count + 1}")
+                                break
+                        if not item_found:
+                            order_dict[order_num].append((item, barcode, 1))
+                            print(f"Added new item to order {order_num}: {item}")
         
         print("Final order_dict:")
         print(order_dict)
-        if order_dict:
-            self.display_matched_order(order_dict)
-        else:
-            self.display_results("No matches found.")
+        self.display_matched_order(order_dict)
         
         print("Finished perform_full_matching")
 
@@ -504,22 +507,25 @@ class MatchingApp:
         for order_num, items in order_dict.items():
             self.results_text.insert(tk.END, f"Order Number: {order_num}\n", "normal")
             
-            if order_num in self.last_order_dict:
-                last_items = self.last_order_dict[order_num]
-                last_items_dict = {item[0]: (item[1], item[2]) for item in last_items}
-                
-                for i, (item, barcode, count) in enumerate(items, start=1):
-                    if item in last_items_dict:
-                        last_barcode, last_count = last_items_dict[item]
-                        if count != last_count or barcode != last_barcode:
-                            self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
-                        else:
-                            self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "normal")
-                    else:
-                        self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
+            if not items:
+                self.results_text.insert(tk.END, "No items found for this order\n", "blue")
             else:
-                for i, (item, barcode, count) in enumerate(items, start=1):
-                    self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
+                if order_num in self.last_order_dict:
+                    last_items = self.last_order_dict[order_num]
+                    last_items_dict = {item[0]: (item[1], item[2]) for item in last_items}
+                    
+                    for i, (item, barcode, count) in enumerate(items, start=1):
+                        if item in last_items_dict:
+                            last_barcode, last_count = last_items_dict[item]
+                            if count != last_count or barcode != last_barcode:
+                                self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
+                            else:
+                                self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "normal")
+                        else:
+                            self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
+                else:
+                    for i, (item, barcode, count) in enumerate(items, start=1):
+                        self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
             
             self.results_text.insert(tk.END, "\n", "normal")
         
@@ -799,7 +805,7 @@ class MatchingApp:
         self.update_step_indicator()
 
         self.directions = [
-            "Step 1: Highlight Each Incomplete Phrase. Maintain order for the next step. Press Ctrl+L after each highlight.",
+            "Step 1: Highlight Each Incomplete Phrase. Make sure to EXCLUDE things like quantity. Maintain order for the next step. Press Ctrl+L after each highlight.",
             "Step 2: Highlight the word that will be appended to the item describers below. Press Ctrl+L after each highlight.",
             "Step 3: Check results on the right. New items are highlighted in blue"
         ]

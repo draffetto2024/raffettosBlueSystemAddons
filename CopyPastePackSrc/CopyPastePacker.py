@@ -112,15 +112,11 @@ class App():
         WHERE packedtimestamp IS NULL AND DATE(generatedtimestamp) = ?
         """, (today,))
         
-        #We only want to check for the unpacked orders for today. If the user misses and order, which is fine,
-        #we assume the order will be on the text for tomorrow. It will still be in the system but will get a new generatedtimestamp and be packed accordingly
-        
         order_ids = cursor.fetchall()
         self.item_list.delete(0, tk.END)
         self.item_list.insert(tk.END, "Order IDs:")
         for order_id in order_ids:
             self.item_list.insert(tk.END, order_id[0])
-        conn.commit()
         conn.close()
 
     def update_count(self):
@@ -315,7 +311,7 @@ def read_excel_file(file_path):
 def start_packing_sequence(order_dict):
     root = tk.Tk()
     root.title("Order Packer")
-    root.geometry("400x200")
+    root.geometry("1600x800")
     app = App(root, order_dict)
     app.run()
 
@@ -405,6 +401,17 @@ def enter_text(acceptable_phrases):
         modified_phrases = []  #\ list to store modified phrases
         phrases_length = len(phrases)
         phrasequantity = None
+
+        print("PHRASES", phrases)
+        print("PACKAGENUMBERPHRASE", packagenumberphrase)
+
+        # Extract order number
+        for phrase in phrases:
+            match = re.search(f"{re.escape(packagenumberphrase)} ([^\s]+)", phrase)
+            if match:
+                order_num = ''.join([char for char in match.group(1) if char.isdigit()])
+                print(f"Found order number: {order_num}")
+                break
         
         pairKeywordFound = False
         global keywords_2d_list
@@ -421,9 +428,6 @@ def enter_text(acceptable_phrases):
                         current_position = (i, keyword_position)
                         if keyword not in keyword_positions or current_position < keyword_positions[keyword]:
                             keyword_positions[keyword] = current_position
-
-        print("keywords_2d_list", keywords_2d_list)
-        print("removals_list", removals_list)
         
         # Now, find the keyword with the lowest index
         splitting_keywords_list = [None] * len(keywords_2d_list)
@@ -499,18 +503,24 @@ def enter_text(acceptable_phrases):
         phrasequantity = 1
         while i < len(phrases):
             phrase = phrases[i].replace("’", "'")
+            phrase = phrase.strip()
+            packagenumberphrase = packagenumberphrase.strip()
             
-            match = re.search(f"{re.escape(packagenumberphrase)} ([^\s]+)", phrase)
-            try:
-                order_num = match.group(1)
-                
-                try:
-                    order_num = ''.join([char for char in order_num if char.isdigit()])
-                    
-                except:
-                    pass
-            except:
-                pass
+            # print("PACKAGENUMBERPHRASE ", packagenumberphrase)
+            # print("PHRASE ", phrase)
+
+            # # Try to match "package: <number>"
+            # match = re.search(r'package:\s*#?(\d+)', phrase, re.IGNORECASE)
+            # if match:
+            #     order_num = match.group(1)
+            #     print(f"Found order number from 'package:': {order_num}")
+            #     break
+
+            # match = re.search(f"{re.escape(packagenumberphrase)} ([^\s]+)", phrase)
+            # if match:
+            #     order_num = ''.join([char for char in match.group(1) if char.isdigit()])
+            #     print(f"Found order number: {order_num}")
+            #     break
         
             for quantindex, quantphrase in enumerate(quantityphrases):
                 if quantphrase.replace("’","'") in phrase:
@@ -576,11 +586,11 @@ def enter_text(acceptable_phrases):
 
 def print_orders(order_dict):
     print("Order Dictionary:")
-    print("{:<15} {:<30} {:<10} {:<15}".format('Order Number', 'Item', 'Barcode', 'Count'))
+    print("{:<15} {:<30} {:<15} {:<10}".format('Order Number', 'Item', 'Barcode', 'Count'))
     print("=" * 75)
     for order_num, items in order_dict.items():
         for item, barcode, count in items:
-            print("{:<15} {:<30} {:<10} {:<15}".format(order_num, item, barcode, count))
+            print("{:<15} {:<30} {:<15} {:<10}".format(order_num, item, barcode, count))
 
 def display_phrases_as_table(phrases):
     # Print header
@@ -739,11 +749,11 @@ def choose_option():
             for order_num, items in order_dict.items():
                 for item, barcode, count in items:
                     cursor.execute("INSERT INTO orders (order_num, item, item_barcode, count, generatedtimestamp) VALUES (?, ?, ?, ?, ?)",
-                     (order_num, item, barcode, count, generatedtimestamp))
-            
+                                (order_num, item, barcode, count, generatedtimestamp))
+
             for order_num in order_dict:
                 cursor.execute("INSERT INTO ordersandtimestampsonly (order_num, generatedtimestamp) VALUES (?, ?)",
-                 (order_num, generatedtimestamp))
+                            (order_num, generatedtimestamp))
             conn.commit()
             conn.close()
         elif option == "3":

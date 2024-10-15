@@ -1,48 +1,57 @@
-Package: 35118906
-Customer Order: 23092383
-
-    3 - Choose Your Own Fresh Pasta - 4 lbs.
-        Pasta 1: Black Pepper
-        Cut 1: Pappardelle (1")
-        Pasta 2: Spinach
-        Cut 2: Pappardelle (1")
-        Pasta 3: Rosemary
-        Cut 3: Linguine (1/8")
-        Pasta 4: Plain Egg
-        Cut 4: Pappardelle (1")
-
-	
-Michael HurleyBoerne, TX
-	
+Select package #35006450
+Package: 35006450
+Customer Order: 23021261
+Toggle package details
+2 - Macaroni and Cheese - 4 lbs.
+Plain Egg Linguine
+AJ Olson
+The Dalles, OR
 UPS
-Next Day Air Saver
-	
+Next Day Air
 Shipping Label: Printed
-9/19/24 at 7:03am
-Select package #35134946
-	
-Package: 35134946
-Customer Order: 17078101
+9/6/24 at 6:54am
 
-    1 - Choose Your Own Fresh Pasta - 4 lbs.
-        Pasta 1: Plain Egg
-        Cut 1: Linguine (1/8")
-        Pasta 2: Plain Egg
-        Cut 2: Linguine (1/8")
-        Pasta 3: Plain Egg
-        Cut 3: Linguine (1/8")
-        Pasta 4: Plain Egg
-        Cut 4: Linguine (1/8")
-    1 - Choose Your Own Fresh Pasta Sauce - 4 Pack
-        Sauce: Marinara
-        Sauce: Marinara
-        Sauce: Marinara
-        Sauce: Marinara
+Select package #35023815
+Package: 35023815
+Customer Order: 23032263
+Toggle package details
+1 - Fresh Pasta + Ravioli Dinner for 8
+Alex Klag
+Brightwaters, NY
+UPS
+Ground
+Shipping Label: Printed
+9/6/24 at 6:54am
+
+Select package #35034195
+Package: 35034195
+Customer Order: 23038687
+Toggle package details
+1 - Fresh Pasta + Ravioli Dinner for 8
+Anne Watson
+New Orleans, LA
+UPS
+Next Day Air
+Shipping Label: Printed
+9/6/24 at 6:54am
+
+Select package #35036309
+Package: 35036309
+Customer Order: 21098240
+Toggle package details
+1 - Macaroni and Cheese - 4 lbs.
+sara zilkha
+Aspen, CO
+UPS
+Next Day Air
+Shipping Label: Printed
+9/6/24 at 6:54am
+
+Select package #35039444
+Package: 35039444
+Customer Order: 23041886
+Toggle package details
 1 - Choose Your Own Ravioli - 3 Pack
-    Cheese
-    Goat
-    Roasted Red Pepper
-    1 - Homemade Fresh Gnocchi Trio - 6 lbs.
-
-	
-Elaine JenksWilmington, 
+Cheese
+Cheese
+Cheese + Spinach
