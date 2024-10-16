@@ -325,6 +325,30 @@ class MatchingApp:
         conn.close()
         print("Database configurations loaded successfully.")
 
+    def split_blocks(self, text, keyword):
+        # Split the text on the keyword
+        parts = text.split(keyword)
+        
+        # The first part doesn't need the keyword prepended
+        blocks = [parts[0]]
+        
+        # For all other parts, prepend the keyword
+        for part in parts[1:]:
+            blocks.append(keyword + part)
+        
+        return blocks
+
+    def print_blocks(self, blocks, block_separator="=" * 50):
+        print("\nBlocks:")
+        for i, block in enumerate(blocks, 1):
+            print(f"\n{block_separator}")
+            print(f"Block {i}:")
+            print(f"{block_separator}")
+            
+            # Split the block into lines and print each line
+            lines = block.split('\n')
+            for line in lines:
+                print(line.strip())
 
     def perform_full_matching(self):
         print("Starting perform_full_matching")
@@ -332,12 +356,13 @@ class MatchingApp:
         print(f"Input text: {text_input}")
         order_dict = {}
         
-        blocks = re.split(f'({re.escape(self.blockseperatorkeyword)})', text_input)
-        blocks_with_keyword = [blocks[i] + (blocks[i + 1] if i + 1 < len(blocks) else '') for i in range(0, len(blocks), 2)]
-        
-        print(f"Number of blocks: {len(blocks_with_keyword)}")
-        
-        for block in blocks_with_keyword:
+        print("TEXT INPUT", text_input)
+        print('BLOCKSEPERKEYWORD' , self.blockseperatorkeyword)
+
+        blocks = self.split_blocks(text_input, self.blockseperatorkeyword)
+        self.print_blocks(blocks)        
+
+        for block in blocks:
             order_num = ""
             phrases = block.split("\n")
             modified_phrases = []  # list to store modified phrases

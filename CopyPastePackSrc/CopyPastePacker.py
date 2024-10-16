@@ -365,6 +365,30 @@ def read_acceptable_phrases():
 
     return read_excel_file(ACCEPTABLE_PHRASES_FILE)
 
+def print_blocks(blocks, block_separator="=" * 50):
+    print("\nBlocks:")
+    for i, block in enumerate(blocks, 1):
+        print(f"\n{block_separator}")
+        print(f"Block {i}:")
+        print(f"{block_separator}")
+        
+        # Split the block into lines and print each line
+        lines = block.split('\n')
+        for line in lines:
+            print(line.strip())
+
+def split_blocks(text, keyword):
+    # Split the text on the keyword
+    parts = text.split(keyword)
+    
+    # The first part doesn't need the keyword prepended
+    blocks = [parts[0]]
+    
+    # For all other parts, prepend the keyword
+    for part in parts[1:]:
+        blocks.append(keyword + part)
+    
+    return blocks
 
 def enter_text(acceptable_phrases):
     with open(path_to_txt, "r") as file:
@@ -390,12 +414,11 @@ def enter_text(acceptable_phrases):
         
     conn.close()
     
-    blocks = re.split(f'({blockseperatorkeyword})', text_input)
+    blocks = split_blocks(text_input, blockseperatorkeyword)
+    print_blocks(blocks)
 
-    # Concatenate each pair of adjacent elements in the list, so that the keyword is appended to the preceding block
-    blocks_with_keyword = [blocks[i] + (blocks[i + 1] if i + 1 < len(blocks) else '') for i in range(0, len(blocks), 2)]
-    
-    for block in blocks_with_keyword:
+
+    for block in blocks:
         order_num = ""
         phrases = block.split("\n")
         modified_phrases = []  #\ list to store modified phrases
@@ -588,9 +611,17 @@ def print_orders(order_dict):
     print("Order Dictionary:")
     print("{:<15} {:<30} {:<15} {:<10}".format('Order Number', 'Item', 'Barcode', 'Count'))
     print("=" * 75)
+
+    print(order_dict.items())
+
     for order_num, items in order_dict.items():
-        for item, barcode, count in items:
-            print("{:<15} {:<30} {:<15} {:<10}".format(order_num, item, barcode, count))
+        if items:
+            for item, barcode, count in items:
+                print("{:<15} {:<30} {:<15} {:<10}".format(order_num, item, barcode, count))
+        else:
+            print("{:<15} {:<60}".format(order_num, "No items found for this order"))
+        print("-" * 75)  # Add a separator line after each order
+    print(f"\nTotal number of orders: {len(order_dict)}")
 
 def display_phrases_as_table(phrases):
     # Print header
