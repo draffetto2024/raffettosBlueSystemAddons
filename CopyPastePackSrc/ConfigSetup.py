@@ -236,7 +236,7 @@ class MatchingApp:
 
 
     def load_upc_codes(self):
-        path_to_xlsx = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'UPCCodes.xlsx')
+        path_to_xlsx = "./UPCCodes.xlsx"  # Changed to use relative path
         df = pd.read_excel(path_to_xlsx, engine='openpyxl', header=None, dtype=str)
         df.columns = ["Item Name", "UPC Code"]
         df["Item Name"] = df["Item Name"].str.lower()
@@ -246,7 +246,7 @@ class MatchingApp:
         self.upc_codes = dict(zip(df["Item Name"], df["UPC Code"]))
         print(f"Loaded {len(self.upc_codes)} UPC codes")
         print("Sample UPC codes:")
-        for item, upc in list(self.upc_codes.items())[:5]:
+        for item, upc in list(self.upc_codes.items()):
             print(f"  {item}: {upc}")
 
     def load_database_configurations(self):
@@ -486,6 +486,8 @@ class MatchingApp:
                     linebreaks = exactphrase.count("\n")
                     remaining_lines = phrases[i:i + linebreaks + 1]
                     blockforexactcheck = "\n".join(remaining_lines)
+                    print("EXACTPHRASE", exactphrase)
+                    print("BLOCKFOREXACTCHECK", blockforexactcheck)
                     if exactphrase in blockforexactcheck:
                         for item in self.exactphraseitems_2d[exactindex]:
                             for _ in range(phrasequantity):

@@ -612,8 +612,6 @@ def print_orders(order_dict):
     print("{:<15} {:<30} {:<15} {:<10}".format('Order Number', 'Item', 'Barcode', 'Count'))
     print("=" * 75)
 
-    print(order_dict.items())
-
     for order_num, items in order_dict.items():
         if items:
             for item, barcode, count in items:
