@@ -633,6 +633,104 @@ def display_phrases_as_table(phrases):
         item_name = " ".join(parts[:-1])
         print("|", item_name.ljust(48), "|", upc.ljust(18), "|")
 
+def display_todays_products():
+    conn = None
+    try:
+        # Read all products from the UPC Excel file with header row
+        df = pd.read_excel(path_to_xlsx, engine='openpyxl', dtype=str)
+        
+        # Get column names
+        first_col = df.columns[0]  # First column
+        second_col = df.columns[1]  # Second column
+        
+        # Create a view of valid rows (doesn't modify original Excel)
+        valid_products = df[df[first_col].notna() & df[second_col].notna()].copy()
+        
+        # Filter out any rows that contain headers
+        valid_products = valid_products[~valid_products[first_col].str.lower().isin(['item name', 'product name', 'name', 'upc', 'upc code'])]
+        
+        # Rename columns to our standard names
+        valid_products.columns = ["Item Name", "UPC Code"]
+        
+        # Convert item names to lowercase to match database
+        valid_products["Item Name"] = valid_products["Item Name"].str.lower()
+        # Remove .0 from UPC codes if present and ensure they're strings
+        valid_products["UPC Code"] = valid_products["UPC Code"].astype(str).str.rstrip('.0')
+        
+        # Connect to database and get today's orders
+        conn = sqlite3.connect(path_to_db)
+        cursor = conn.cursor()
+        
+        # Get today's date
+        today = datetime.date.today()
+        
+        # Query to get product counts for today's orders
+        query = """
+        SELECT 
+            o.item,
+            SUM(o.count) as total_count,
+            o.item_barcode
+        FROM orders o
+        WHERE DATE(o.generatedtimestamp) = ?
+        AND o.packedtimestamp IS NULL
+        GROUP BY o.item, o.item_barcode
+        """
+        
+        cursor.execute(query, (today,))
+        today_products = {item.lower(): (count, barcode) for item, count, barcode in cursor.fetchall()}
+        
+        # Calculate the maximum lengths for formatting
+        max_item_length = max(len(str(item)) for item in valid_products["Item Name"])
+        max_item_length = min(max_item_length, 50)  # Cap at 50 characters
+        
+        # Print header
+        print("\nComplete Products Summary (In UPC Excel Order)")
+        print("=" * (max_item_length + 35))
+        print(f"{'Product Name'.ljust(max_item_length)} | {'Quantity'.center(10)} | {'UPC'.center(15)}")
+        print("-" * (max_item_length + 35))
+        
+        # Print each product in the order from the Excel file
+        total_items = 0
+        total_active_products = 0
+        
+        for _, row in valid_products.iterrows():
+            try:
+                item_name = str(row["Item Name"]).strip()
+                upc = str(row["UPC Code"]).strip()
+                
+                if not item_name or not upc:  # Skip if either is empty after stripping
+                    continue
+                    
+                # Get count from today's orders, or 0 if not present
+                count = 0
+                if item_name in today_products:
+                    count = today_products[item_name][0]
+                    total_items += count
+                    total_active_products += 1
+                
+                truncated_item = item_name[:max_item_length]
+                print(f"{truncated_item.ljust(max_item_length)} | {str(count).center(10)} | {str(upc).center(15)}")
+                
+            except Exception as e:
+                print(f"Error processing row: {e}")
+                continue  # Skip any problematic rows
+        
+        # Print footer with totals
+        print("-" * (max_item_length + 35))
+        print(f"Total Products in Database: {len(valid_products)}")
+        print(f"Products with Orders Today: {total_active_products}")
+        print(f"Total Items to Pack: {total_items}")
+        
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+    except Exception as e:
+        print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()  # This will print the full error trace
+    finally:
+        if conn:
+            conn.close()
+
 # Step 3: Define a function to prompt user to choose an option and perform that option
 def choose_option():
     global acceptable_phrases
@@ -646,7 +744,8 @@ def choose_option():
 3. Check customer order numbers and related phrases
 4. Delete today's orders
 5. View UPC Codes
-6. Exit\n""")
+6. Exit
+7. Today's Products at a Glance\n""")
         if option == "4":
             option = input("Are you sure you want to delete today's orders? Yes/No")
             if option.lower() == "yes" or option.lower() == "y":
@@ -795,6 +894,8 @@ def choose_option():
            
         elif option == "6":
             break
+        elif option == "7":
+            display_todays_products()
         elif option == "5":
             display_phrases_as_table(acceptable_phrases)
         else:

@@ -17,6 +17,110 @@ else:
 path_to_db = os.path.join(application_path, 'CopyPastePack.db')
 
 class MatchingApp:
+    # Add these helper functions at the start of the MatchingApp class
+
+    def check_block_separator_duplicate(self, block_separator, package_phrase):
+        """Check if block separator or package phrase already exists"""
+        conn = sqlite3.connect(path_to_db)
+        c = conn.cursor()
+        
+        # Check for either matching block separator or package phrase
+        c.execute("""
+            SELECT blockseperator, packagenumberphrase 
+            FROM blockseperator 
+            WHERE blockseperator = ? OR packagenumberphrase = ?
+        """, (block_separator, package_phrase))
+        
+        result = c.fetchone()
+        conn.close()
+        
+        if result:
+            message = f"Cannot add new entry - duplicate found:\n"
+            if result[0] == block_separator:
+                message += f"Block separator '{block_separator}' already exists"
+            if result[1] == package_phrase:
+                message += f"\nPackage phrase '{package_phrase}' already exists"
+            messagebox.showerror("Duplicate Entry", message)
+            return True
+        return False
+
+    def check_quantity_duplicate(self, phrase):
+        """Check if quantity phrase already exists"""
+        conn = sqlite3.connect(path_to_db)
+        c = conn.cursor()
+        
+        c.execute("SELECT phrases FROM quantitys WHERE phrases = ?", (phrase,))
+        result = c.fetchone()
+        conn.close()
+        
+        if result:
+            messagebox.showerror("Duplicate Entry", 
+                f"Cannot add new entry - the quantity phrase:\n'{phrase}'\nalready exists")
+            return True
+        return False
+
+    def check_exact_phrase_duplicate(self, phrase):
+        """Check if exact phrase already exists"""
+        conn = sqlite3.connect(path_to_db)
+        c = conn.cursor()
+        
+        c.execute("SELECT exactphrases FROM exactphrases WHERE exactphrases = ?", (phrase,))
+        result = c.fetchone()
+        conn.close()
+        
+        if result:
+            messagebox.showerror("Duplicate Entry", 
+                f"Cannot add new entry - the exact phrase:\n'{phrase}'\nalready exists")
+            return True
+        return False
+
+    def check_pairing_duplicate(self, keywords):
+        """Check if keyword combination already exists"""
+        conn = sqlite3.connect(path_to_db)
+        c = conn.cursor()
+        
+        # Get all existing keywords
+        c.execute("SELECT keywords FROM pairings")
+        existing_keywords = c.fetchall()
+        conn.close()
+        
+        # Convert new keywords to a set for comparison
+        new_keywords_set = set(keywords.split('<'))
+        
+        # Check against each existing keyword combination
+        for (existing,) in existing_keywords:
+            if existing and set(existing.split('<')) == new_keywords_set:
+                messagebox.showerror("Duplicate Entry", 
+                    f"Cannot add new entry - the keyword combination:\n'{keywords}'\nalready exists")
+                return True
+        return False
+
+    def check_incomplete_phrase_duplicate(self, phrase):
+        """Check if incomplete phrase already exists"""
+        conn = sqlite3.connect(path_to_db)
+        c = conn.cursor()
+        
+        c.execute("SELECT phrases FROM incompletephrases WHERE phrases = ?", (phrase,))
+        result = c.fetchone()
+        conn.close()
+        
+        if result:
+            messagebox.showerror("Duplicate Entry", 
+                f"Cannot add new entry - the incomplete phrase:\n'{phrase}'\nalready exists")
+            return True
+        return False
+
+    # Add this new method to the MatchingApp class:
+    def reload_upc_codes(self):
+        """Reload the UPC codes from the Excel file"""
+        try:
+            self.load_upc_codes()  # Reload the UPC codes
+            messagebox.showinfo("Success", "UPC Codes have been reloaded successfully!")
+            print("UPC Codes reloaded successfully")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to reload UPC Codes: {str(e)}")
+            print(f"Error reloading UPC codes: {str(e)}")
+
     def __init__(self, root):
         self.root = root
         self.root.title("Matching Setup Application")
@@ -66,12 +170,16 @@ class MatchingApp:
         entry_header = ttk.Label(middle_frame, text="Entry box for orders", font=("Arial", 12, "bold"))
         entry_header.pack(pady=(0, 5))
         
-        self.text_widget = tk.Text(middle_frame, wrap=tk.WORD, width=50, height=20, font=("Arial", 12))
-        self.text_widget.pack(fill=tk.BOTH, expand=True)
-        # self.text_widget.bind('<Control-l>', self.on_selection)
-        # self.root.bind('<Control-n>', self.next_step)
+        # Create scrollbar for left text widget
+        left_scrollbar = ttk.Scrollbar(middle_frame)
+        left_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        # Right third: Results (using a Text widget)
+        self.text_widget = tk.Text(middle_frame, wrap=tk.WORD, width=50, height=20, font=("Arial", 12),
+                                yscrollcommand=left_scrollbar.set)
+        self.text_widget.pack(fill=tk.BOTH, expand=True)
+        left_scrollbar.config(command=self.text_widget.yview)
+        
+        # Right third: Results
         results_frame = ttk.Frame(main_frame, padding="10")
         results_frame.grid(row=1, column=2, sticky=(tk.N, tk.S, tk.W, tk.E))
         
@@ -79,12 +187,58 @@ class MatchingApp:
         output_header = ttk.Label(results_frame, text="Output display", font=("Arial", 12, "bold"))
         output_header.pack(pady=(0, 5))
         
-        self.results_text = tk.Text(results_frame, wrap=tk.WORD, width=50, height=20, font=("Arial", 12), state='disabled')
+        # Create scrollbar for right text widget
+        right_scrollbar = ttk.Scrollbar(results_frame)
+        right_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.results_text = tk.Text(results_frame, wrap=tk.WORD, width=50, height=20, font=("Arial", 12),
+                                yscrollcommand=right_scrollbar.set)
         self.results_text.pack(fill=tk.BOTH, expand=True)
+        right_scrollbar.config(command=self.results_text.yview)
+
+        # Configure scrollbars and text widgets to sync together
+        def on_left_scroll(*args):
+            """Sync both text widgets when left scrollbar is moved"""
+            self.text_widget.yview(*args)
+            self.results_text.yview(*args)
+            return "break"
+        
+        def on_right_scroll(*args):
+            """Sync both text widgets when right scrollbar is moved"""
+            self.results_text.yview(*args)
+            self.text_widget.yview(*args)
+            return "break"
+
+        def on_text_scroll(*args):
+            """Update scrollbars and sync text when text widget is scrolled"""
+            self.text_widget.yview_moveto(args[0])
+            self.results_text.yview_moveto(args[0])
+            return "break"
+
+        # Configure scrollbars
+        left_scrollbar.config(command=on_left_scroll)
+        right_scrollbar.config(command=on_right_scroll)
+        
+        # Configure text widgets to use scrollbars
+        self.text_widget.config(yscrollcommand=lambda *args: (
+            left_scrollbar.set(*args),
+            right_scrollbar.set(*args),
+            on_text_scroll(*args)
+        ))
+        self.results_text.config(yscrollcommand=lambda *args: (
+            left_scrollbar.set(*args),
+            right_scrollbar.set(*args),
+            on_text_scroll(*args)
+        ))
 
         # Configure tags for coloring
         self.results_text.tag_configure("normal", foreground="black")
         self.results_text.tag_configure("blue", foreground="blue")
+        
+        # Replace the existing scroll bindings with these:
+        # Bind mousewheel scrolling
+        self.text_widget.bind("<MouseWheel>", self.on_mousewheel)
+        self.results_text.bind("<MouseWheel>", self.on_mousewheel)
         
         # Bottom: Option buttons
         options_frame = ttk.Frame(main_frame, padding="10")
@@ -109,9 +263,13 @@ class MatchingApp:
             
             self.buttons.append((btn_frame, btn))
         
-        # Modify the Next Step button to use the on_next_step method
-        self.next_button = ttk.Button(options_frame, text="Next Step", command=self.on_next_step)
-        self.next_button.grid(row=0, column=len(self.buttons), padx=5, pady=5)
+        # # Modify the Next Step button to use the on_next_step method
+        # self.next_button = ttk.Button(options_frame, text="Next Step", command=self.on_next_step)
+        # self.next_button.grid(row=0, column=len(self.buttons), padx=5, pady=5)
+
+        # Add Reload UPC Codes button
+        self.reload_upc_button = ttk.Button(options_frame, text="Reload UPC Codes", command=self.reload_upc_codes)
+        self.reload_upc_button.grid(row=0, column=len(self.buttons), padx=5, pady=5)
         
         # Add Full Matching button
         self.full_matching_button = ttk.Button(options_frame, text="Full Matching", command=self.perform_full_matching)
@@ -125,6 +283,33 @@ class MatchingApp:
         main_frame.columnconfigure(2, weight=1)
         main_frame.rowconfigure(1, weight=1)
         options_frame.columnconfigure(tuple(range(len(self.buttons) + 1)), weight=1)
+
+    # Add these new methods to the MatchingApp class:
+    def on_mousewheel(self, event):
+        """Handle mousewheel scrolling for both text widgets"""
+        # Get the widget that triggered the event
+        widget = event.widget
+        
+        # Determine scroll direction (Windows)
+        delta = -1 * (event.delta // 120)
+        
+        # Scroll both text widgets
+        self.text_widget.yview_scroll(delta, "units")
+        self.results_text.yview_scroll(delta, "units")
+        return "break"  # Prevent default scrolling
+
+    def sync_scrolling(self, event=None):
+        """Synchronize scrolling position between text widgets"""
+        # Get the widget that triggered the event
+        widget = event.widget
+        
+        # Get the first visible line of the widget that was scrolled
+        fraction = widget.yview()[0]
+        
+        # Update both text widgets to the same position
+        self.text_widget.yview_moveto(fraction)
+        self.results_text.yview_moveto(fraction)
+        return "break"  # Prevent default scrolling
 
     def set_active_function(self, function):
         if self.active_button:
@@ -526,39 +711,93 @@ class MatchingApp:
         print("Finished perform_full_matching")
 
     def display_matched_order(self, order_dict):
+        # Store current scroll position
+        current_position = self.results_text.yview()[0]
+
+        print("\n=== Starting display_matched_order ===")
         self.results_text.config(state='normal')
         self.results_text.delete('1.0', tk.END)
         
-        self.results_text.insert(tk.END, "Matched Orders:\n\n", "normal")
+        # Get the text from the left text box and split into blocks
+        left_text = self.text_widget.get('1.0', tk.END)
+        print("BLOCKSEP", self.blockseperatorkeyword)
+        blocks = self.split_blocks((left_text.strip()).lower(), self.blockseperatorkeyword)
+        print(blocks)
+        print(f"Number of blocks: {len(blocks)}")
         
-        for order_num, items in order_dict.items():
-            self.results_text.insert(tk.END, f"Order Number: {order_num}\n", "normal")
+        for block in blocks:
+            if not block.strip():
+                continue
+                
+            # Find the order number for this block
+            order_num = None
+            for line in block.split('\n'):
+                match = re.search(f"{re.escape(self.packagenumberphrase)} ([^\s]+)", line)
+                if match:
+                    order_num = ''.join([char for char in match.group(1) if char.isdigit()])
+                    print(f"Found order number: {order_num}")
+                    break
             
-            if not items:
-                self.results_text.insert(tk.END, "No items found for this order\n", "blue")
-            else:
-                if order_num in self.last_order_dict:
-                    last_items = self.last_order_dict[order_num]
-                    last_items_dict = {item[0]: (item[1], item[2]) for item in last_items}
+            if order_num:
+                # Count lines in THIS SPECIFIC block
+                block_lines = len([line for line in block.split('\n') if line.strip()])
+                print(f"\nProcessing order {order_num} with {block_lines} lines in its block")
+                lines_used = 0
+                
+                # Insert order header
+                self.results_text.insert(tk.END, f"Order Number: {order_num}\n", "normal")
+                lines_used += 1
+                
+                # Insert items
+                if order_num in order_dict:
+                    items = order_dict[order_num]
+                    print(f"Number of items for order {order_num}: {len(items)}")
                     
-                    for i, (item, barcode, count) in enumerate(items, start=1):
-                        if item in last_items_dict:
-                            last_barcode, last_count = last_items_dict[item]
-                            if count != last_count or barcode != last_barcode:
-                                self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
-                            else:
-                                self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "normal")
+                    if not items:
+                        self.results_text.insert(tk.END, "No items found for this order\n", "blue")
+                        lines_used += 1
+                    else:
+                        if order_num in self.last_order_dict:
+                            last_items = self.last_order_dict[order_num]
+                            last_items_dict = {item[0]: (item[1], item[2]) for item in last_items}
+                            
+                            for i, (item, barcode, count) in enumerate(items, start=1):
+                                if item in last_items_dict:
+                                    last_barcode, last_count = last_items_dict[item]
+                                    if count != last_count or barcode != last_barcode:
+                                        self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
+                                    else:
+                                        self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "normal")
+                                else:
+                                    self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
+                                lines_used += 1
                         else:
-                            self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
-                else:
-                    for i, (item, barcode, count) in enumerate(items, start=1):
-                        self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
-            
-            self.results_text.insert(tk.END, "\n", "normal")
+                            for i, (item, barcode, count) in enumerate(items, start=1):
+                                self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
+                                lines_used += 1
+                
+                print(f"Lines used in display: {lines_used}")
+                print(f"Lines in original block: {block_lines}")
+                
+                # Calculate and add padding to align with left side
+                padding_needed = max(0, block_lines - lines_used)
+                print(f"Adding {padding_needed} padding lines for alignment")
+                
+                if padding_needed > 0:
+                    self.results_text.insert(tk.END, '\n' * padding_needed)
+                
+                # Add a separator line between orders
+                self.results_text.insert(tk.END, "-" * 50 + "\n", "normal")
         
+        print("=== Finished display_matched_order ===")
+
+
         self.results_text.config(state='disabled')
-        self.results_text.see("1.0")
-        
+        # After all content is added and widget is configured, restore scroll position
+        self.results_text.yview_moveto(current_position)
+        # Synchronize the left text widget to match
+        self.text_widget.yview_moveto(current_position)
+
         self.last_order_dict = order_dict.copy()
 
     def open_item_input_window(self):
@@ -667,7 +906,7 @@ class MatchingApp:
         self.update_step_indicator()
         
         self.directions = [
-            "Step 1: Highlight one order as a block of text including any important words before or after and press Ctrl+L to commit it",
+            "Step 1: Highlight one order as a block of text including any important words before or after and press Ctrl+L to commit it. Ctrl+N to go to next step",
             "Step 2: Highlight a different order as a block of text and press Ctrl+L to commit it",
             "Step 3: Check if the keyword is at the start of each block",
             "Step 4: Highlight phrase where package number will appear right after and press Ctrl+L to commit it",
@@ -706,6 +945,10 @@ class MatchingApp:
                     self.display_results("Error: Block separator or package number phrase is missing. Please complete all steps.")
                     return
 
+                # Add duplicate check
+                if self.check_block_separator_duplicate(blockseperator, packagenumberphrase):
+                    return
+
                 conn = sqlite3.connect(path_to_db)
                 c = conn.cursor()
                 
@@ -731,7 +974,7 @@ class MatchingApp:
         self.update_step_indicator()
         
         self.directions = [
-            "Step 1: Highlight Each Keyword/Identifier in Each Phrase. The order in which you highlighted should match way the item would be read. Press Ctrl+L after each highlight.",
+            "Step 1: Highlight Each Keyword/Identifier, NOT the actual data part, of a singlular pairing schema. The order in which you highlighted should match way the item would be read. Press Ctrl+L after each highlight. Ctrl+N to go to next step",
             "Step 2: Highlight the Data You DO NOT Care About in Each Phrase. Any data that isn't a keyword or removal will be considered part of the item. Press Ctrl+L after each highlight.",
             "Step 3: Check results on the right. New items are highlighted in blue"
         ]
@@ -749,6 +992,12 @@ class MatchingApp:
             elif self.current_direction_index == 2:
                 if not keywordslist:
                     self.display_results("Error: No keywords entered. Please complete all steps.")
+                    return
+
+                keywords = '<'.join(keywordslist)
+                
+                # Add duplicate check
+                if self.check_pairing_duplicate(keywords):
                     return
 
                 conn = sqlite3.connect(path_to_db)
@@ -777,7 +1026,7 @@ class MatchingApp:
         self.update_step_indicator()
 
         self.directions = [
-            "Step 1: Highlight Each full phrase containing the quantity for an item. If you plan to do multiple at a time, maintain the order for the next step. Press Ctrl+L after each highlight.",
+            "Step 1: Highlight Each full phrase containing the quantity for an item. If you plan to do multiple at a time, maintain the order for the next step. Press Ctrl+L after each highlight. Ctrl+N to go to next step",
             "Step 2: Highlight the quantity in each phrase. Again if doing multiple, highlight the first phrase's quantity first. Press Ctrl+L after each highlight.",
             "Step 3: Check results on the right. New items are highlighted in blue"
         ]
@@ -813,6 +1062,11 @@ class MatchingApp:
                         words = phrase.split()
                         del words[dat]
                         phrase = " ".join(words)
+                        
+                        # Add duplicate check
+                        if self.check_quantity_duplicate(phrase):
+                            continue
+                        
                         c.execute("INSERT INTO quantitys (keywordstype, phrases, positions) VALUES (?, ?, ?)",
                                 (keyword_type, phrase, str(dat)))
                     except:
@@ -832,7 +1086,7 @@ class MatchingApp:
         self.update_step_indicator()
 
         self.directions = [
-            "Step 1: Highlight Each Incomplete Phrase. Make sure to EXCLUDE things like quantity. Maintain order for the next step. Press Ctrl+L after each highlight.",
+            "Step 1: Highlight Each Incomplete Phrase. Make sure to EXCLUDE things like quantity. Maintain order for the next step. Press Ctrl+L after each highlight. Ctrl+N to go to next step",
             "Step 2: Highlight the word that will be appended to the item describers below. Press Ctrl+L after each highlight.",
             "Step 3: Check results on the right. New items are highlighted in blue"
         ]
@@ -865,6 +1119,11 @@ class MatchingApp:
                 while phraseslist and data:
                     phrase = phraseslist.pop(0)
                     dat = data.pop(0)
+                    
+                    # Add duplicate check
+                    if self.check_incomplete_phrase_duplicate(phrase):
+                        continue
+                    
                     c.execute("INSERT INTO incompletephrases (keywordstype, phrases, secondarykeywords) VALUES (?, ?, ?)",
                             (keyword_type, phrase, dat))
                 
@@ -882,7 +1141,7 @@ class MatchingApp:
         self.update_step_indicator()
 
         self.directions = [
-            "Step 1: Highlight One Exact Order Phrase. Make sure to EXCLUDE data that can change (Like Quantity). Press Ctrl+L to commit it.",
+            "Step 1: Highlight One Exact Order Phrase. Make sure to EXCLUDE data that can change (Like Quantity). Press Ctrl+L to commit it. Ctrl+N to go to next step",
             "Step 2: A new window will open. Enter each item to be added when this phrase is seen. These items should match your UPC items and the website item format.",
             "Step 3: Check results on the right. New items are highlighted in blue"
         ]
@@ -903,6 +1162,10 @@ class MatchingApp:
             elif self.current_direction_index == 2:
                 if not self.exactphrase or not self.itemslist:
                     self.display_results("Error: Exact phrase or items are missing. Please complete all steps.")
+                    return
+
+                # Add duplicate check
+                if self.check_exact_phrase_duplicate(self.exactphrase):
                     return
 
                 conn = sqlite3.connect(path_to_db)
