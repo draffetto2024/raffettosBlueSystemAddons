@@ -145,6 +145,8 @@ class MatchingApp:
         # Add these lines to bind Ctrl+L and Ctrl+N
         self.root.bind('<Control-l>', self.on_selection)
         self.root.bind('<Control-n>', self.on_next_step)
+        self.root.bind('<Control-m>', lambda e: self.perform_full_matching())
+
 
     def setup_ui(self):
         main_frame = ttk.Frame(self.root, padding="10")
@@ -262,10 +264,6 @@ class MatchingApp:
             btn.configure(command=lambda b=btn_frame, c=command: self.on_button_click(b, c))
             
             self.buttons.append((btn_frame, btn))
-        
-        # # Modify the Next Step button to use the on_next_step method
-        # self.next_button = ttk.Button(options_frame, text="Next Step", command=self.on_next_step)
-        # self.next_button.grid(row=0, column=len(self.buttons), padx=5, pady=5)
 
         # Add Reload UPC Codes button
         self.reload_upc_button = ttk.Button(options_frame, text="Reload UPC Codes", command=self.reload_upc_codes)
@@ -345,30 +343,45 @@ class MatchingApp:
                 label.configure(font=("Arial", 12), foreground="black")
 
     def on_button_click(self, clicked_frame, function):
+        print("\n=== Starting button click ===")
+        current_position = self.text_widget.yview()[0]
+        print("Initial current_position:", current_position)
+        
         if self.active_button:
             self.active_button[0].config(highlightbackground='#E6F3FF', highlightthickness=2)
         
         clicked_frame.config(highlightbackground='#4682B4', highlightthickness=2)
         self.active_button = (clicked_frame, function)
         self.current_function = function
-        self.current_step = 0  # Reset to first step when new function is selected
+        self.current_step = 0
         
-        # Clear previous results
+        # Clear and update the results text
         self.results_text.config(state='normal')
         self.results_text.delete('1.0', tk.END)
         self.results_text.config(state='disabled')
-                
-        # Force update of the UI
-        self.root.update_idletasks()
         
-        function()  # This will set self.max_steps and update the step indicator
+        # Run the function first - this sets up the directions list
+        function()
         
-        # Update step indicator
+        # Now update UI elements after directions are populated
         self.update_step_indicator()
-        
-        # Reset and update directions
         self.current_direction_index = 0
-        self.update_directions(self.directions[self.current_direction_index])
+        
+        if self.directions:
+            self.update_directions(self.directions[self.current_direction_index])
+        
+        # Use after_idle to ensure all content is loaded before restoring position
+        def restore_positions():
+            print("Restoring positions after content load")
+            print("Attempting to restore to:", current_position)
+            self.results_text.yview_moveto(current_position)
+            self.text_widget.yview_moveto(current_position)
+            print("Final positions:")
+            print("Text widget position:", self.text_widget.yview()[0])
+            print("Results text position:", self.results_text.yview()[0])
+        
+        self.root.after_idle(restore_positions)
+        print("=== Finished button click setup ===\n")
 
     def on_next_step(self, event=None):
         # This method will be called by both the Next Step button and Ctrl+N
@@ -391,12 +404,21 @@ class MatchingApp:
             messagebox.showinfo("No Mode Selected", "You must select a mode before using the next step button")
             return
 
+    # First modify update_directions to not reset the scroll position:
     def update_directions(self, new_text):
+        # Store current position
+        print("\n=== Starting update_directions ===")
+        current_position = self.text_widget.yview()[0]
+        print("Position at start of update_directions:", current_position)
+        
         self.directions_text.set(new_text)
         self.selected_text = ""
         self.results_text.config(state='normal')
         self.results_text.delete('1.0', tk.END)
         self.results_text.config(state='disabled')
+    
+        print("Position after updates:", self.text_widget.yview()[0])
+        print("=== Finished update_directions ===\n")
 
     def on_selection(self, event=None):
         try:
@@ -536,16 +558,16 @@ class MatchingApp:
                 print(line.strip())
 
     def perform_full_matching(self):
+        print("\n=== Starting full matching ===")
+        current_position = self.text_widget.yview()[0]
+        print("Full matching - Initial position:", current_position)
         print("Starting perform_full_matching")
         text_input = self.text_widget.get("1.0", tk.END).lower().strip()
         print(f"Input text: {text_input}")
         order_dict = {}
-        
-        print("TEXT INPUT", text_input)
-        print('BLOCKSEPERKEYWORD' , self.blockseperatorkeyword)
 
         blocks = self.split_blocks(text_input, self.blockseperatorkeyword)
-        self.print_blocks(blocks)        
+        # self.print_blocks(blocks)        
 
         for block in blocks:
             order_num = ""
@@ -554,10 +576,10 @@ class MatchingApp:
             phrases_length = len(phrases)
             phrasequantity = 1
             
-            print("---------------------------------------------------------------------------------")
+            # print("---------------------------------------------------------------------------------")
 
-            print("PHRASES", phrases)
-            print("PACKAGENUMBERPHRASE", self.packagenumberphrase)
+            # print("PHRASES", phrases)
+            # print("PACKAGENUMBERPHRASE", self.packagenumberphrase)
 
             # Extract order number
             for phrase in phrases:
@@ -587,8 +609,8 @@ class MatchingApp:
                             if keyword not in keyword_positions or current_position < keyword_positions[keyword]:
                                 keyword_positions[keyword] = current_position
 
-            print("keywords_2d_list", self.keywords_2d_list)
-            print("removals_list", self.removals_list)
+            # print("keywords_2d_list", self.keywords_2d_list)
+            # print("removals_list", self.removals_list)
             
             # Now, find the keyword with the lowest index
             for keyword, position in keyword_positions.items():
@@ -606,10 +628,10 @@ class MatchingApp:
                     sub_blocks = block.split(splittingkeyword)
                     sub_blocks = [splittingkeyword + sub_block for sub_block in sub_blocks if sub_block.strip()]
                     prev_sub_block = ""
-                    print(f"Sub-blocks for keyword '{splittingkeyword}':")
-                    for sb in sub_blocks:
-                        print(sb)
-                        print("--------------------------------------------------------------------------------------------")
+                    # print(f"Sub-blocks for keyword '{splittingkeyword}':")
+                    # for sb in sub_blocks:
+                        # print(sb)
+                        # print("--------------------------------------------------------------------------------------------")
 
                     for sub_block in sub_blocks:
                         processed_block = self.split_data(sub_block, keywords_list)  # process each sub block
@@ -623,7 +645,7 @@ class MatchingApp:
                         last_line = ""
                         last_phrase = ""
 
-                        print("PREV_SUB_BLOCK", prev_sub_block)
+                        # print("PREV_SUB_BLOCK", prev_sub_block)
                         
                         lines = prev_sub_block.splitlines()
                         for line in lines:
@@ -661,18 +683,17 @@ class MatchingApp:
                         incompletekeyword = self.secondarykeywords[incompindex]
                 
                 if incompletekeyword:
-                    print("phrasequantity " + str(phrasequantity))
+                    # print("phrasequantity " + str(phrasequantity))
                     for _ in range(phrasequantity):
                         modified_phrases.append(phrase + " " + incompletekeyword)
-                        print((phrase + " " + incompletekeyword).strip())
+                        # print((phrase + " " + incompletekeyword).strip())
                 
                 # Exact phrases may be multi-lined
                 for exactindex, exactphrase in enumerate(self.exactphrases):
                     linebreaks = exactphrase.count("\n")
                     remaining_lines = phrases[i:i + linebreaks + 1]
                     blockforexactcheck = "\n".join(remaining_lines)
-                    print("EXACTPHRASE", exactphrase)
-                    print("BLOCKFOREXACTCHECK", blockforexactcheck)
+                   
                     if exactphrase in blockforexactcheck:
                         for item in self.exactphraseitems_2d[exactindex]:
                             for _ in range(phrasequantity):
@@ -707,6 +728,9 @@ class MatchingApp:
         print("Final order_dict:")
         print(order_dict)
         self.display_matched_order(order_dict)
+
+        print("Full matching - After display, position:", self.text_widget.yview()[0])
+        print("=== Finished full matching ===\n")
         
         print("Finished perform_full_matching")
 
@@ -714,16 +738,16 @@ class MatchingApp:
         # Store current scroll position
         current_position = self.results_text.yview()[0]
 
-        print("\n=== Starting display_matched_order ===")
+        # print("\n=== Starting display_matched_order ===")
         self.results_text.config(state='normal')
         self.results_text.delete('1.0', tk.END)
         
         # Get the text from the left text box and split into blocks
         left_text = self.text_widget.get('1.0', tk.END)
-        print("BLOCKSEP", self.blockseperatorkeyword)
+        # print("BLOCKSEP", self.blockseperatorkeyword)
         blocks = self.split_blocks((left_text.strip()).lower(), self.blockseperatorkeyword)
-        print(blocks)
-        print(f"Number of blocks: {len(blocks)}")
+        # print(blocks)
+        # print(f"Number of blocks: {len(blocks)}")
         
         for block in blocks:
             if not block.strip():
@@ -735,13 +759,13 @@ class MatchingApp:
                 match = re.search(f"{re.escape(self.packagenumberphrase)} ([^\s]+)", line)
                 if match:
                     order_num = ''.join([char for char in match.group(1) if char.isdigit()])
-                    print(f"Found order number: {order_num}")
+                    # print(f"Found order number: {order_num}")
                     break
             
             if order_num:
                 # Count lines in THIS SPECIFIC block
                 block_lines = len([line for line in block.split('\n') if line.strip()])
-                print(f"\nProcessing order {order_num} with {block_lines} lines in its block")
+                # print(f"\nProcessing order {order_num} with {block_lines} lines in its block")
                 lines_used = 0
                 
                 # Insert order header
@@ -751,7 +775,7 @@ class MatchingApp:
                 # Insert items
                 if order_num in order_dict:
                     items = order_dict[order_num]
-                    print(f"Number of items for order {order_num}: {len(items)}")
+                    # print(f"Number of items for order {order_num}: {len(items)}")
                     
                     if not items:
                         self.results_text.insert(tk.END, "No items found for this order\n", "blue")
@@ -776,12 +800,12 @@ class MatchingApp:
                                 self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
                                 lines_used += 1
                 
-                print(f"Lines used in display: {lines_used}")
-                print(f"Lines in original block: {block_lines}")
+                # print(f"Lines used in display: {lines_used}")
+                # print(f"Lines in original block: {block_lines}")
                 
                 # Calculate and add padding to align with left side
                 padding_needed = max(0, block_lines - lines_used)
-                print(f"Adding {padding_needed} padding lines for alignment")
+                # print(f"Adding {padding_needed} padding lines for alignment")
                 
                 if padding_needed > 0:
                     self.results_text.insert(tk.END, '\n' * padding_needed)
@@ -789,7 +813,7 @@ class MatchingApp:
                 # Add a separator line between orders
                 self.results_text.insert(tk.END, "-" * 50 + "\n", "normal")
         
-        print("=== Finished display_matched_order ===")
+        # print("=== Finished display_matched_order ===")
 
 
         self.results_text.config(state='disabled')
@@ -1189,11 +1213,36 @@ class MatchingApp:
 
 
     def display_results(self, text, tag="normal"):
+        print("\n=== Starting display_results ===")
+        current_position = self.text_widget.yview()[0]
+        print("Current position before clear:", current_position)
+        
+        # Store the original yscrollcommand callbacks
+        text_scroll = self.text_widget.cget('yscrollcommand')
+        results_scroll = self.results_text.cget('yscrollcommand')
+        
+        # Temporarily disable scroll sync
+        self.text_widget.config(yscrollcommand=lambda *args: None)
+        self.results_text.config(yscrollcommand=lambda *args: None)
+        
+        # Update content
         self.results_text.config(state='normal')
         self.results_text.delete('1.0', tk.END)
         self.results_text.insert(tk.END, text, tag)
         self.results_text.config(state='disabled')
-        self.results_text.see("1.0")  # Scroll to the top
+        
+        # Restore scroll positions
+        self.text_widget.yview_moveto(current_position)
+        self.results_text.yview_moveto(current_position)
+        
+        # Re-enable scroll sync
+        self.text_widget.config(yscrollcommand=text_scroll)
+        self.results_text.config(yscrollcommand=results_scroll)
+        
+        print("Positions after restore:")
+        print("Text position:", self.text_widget.yview()[0])
+        print("Results position:", self.results_text.yview()[0])
+        print("=== Finished display_results ===\n")
 
 def main():
     try:
