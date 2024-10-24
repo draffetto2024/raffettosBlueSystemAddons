@@ -247,12 +247,23 @@ class MatchingApp:
         main_frame.rowconfigure(1, weight=1)
         options_frame.columnconfigure(tuple(range(len(self.buttons) + 1)), weight=1)
 
+    def disable_scroll_sync(self):
+        """Disable synchronized scrolling between text boxes"""
+        # Restore original scrollbar configurations
+        self.text_widget.config(yscrollcommand=self.left_scrollbar.set)
+        self.results_text.config(yscrollcommand=self.right_scrollbar.set)
+        self.left_scrollbar.config(command=self.text_widget.yview)
+        self.right_scrollbar.config(command=self.results_text.yview)
+
     def enable_scroll_sync(self):
         """Enable synchronized scrolling between text boxes"""
         def combined_scroll(*args):
-            # Update both text widgets and scrollbars
+            # Update both text widgets
             self.text_widget.yview_moveto(args[0])
             self.results_text.yview_moveto(args[0])
+            # Update both scrollbars visually
+            self.left_scrollbar.set(*self.text_widget.yview())
+            self.right_scrollbar.set(*self.results_text.yview())
             
         # Configure both text widgets to use combined scroll
         self.text_widget.config(yscrollcommand=combined_scroll)
@@ -262,31 +273,12 @@ class MatchingApp:
         def on_scrollbar(*args):
             self.text_widget.yview(*args)
             self.results_text.yview(*args)
+            # Update scrollbar visuals
+            self.left_scrollbar.set(*self.text_widget.yview())
+            self.right_scrollbar.set(*self.results_text.yview())
         
         self.left_scrollbar.config(command=on_scrollbar)
         self.right_scrollbar.config(command=on_scrollbar)
-
-    def disable_scroll_sync(self):
-        """Disable synchronized scrolling between text boxes"""
-        # Restore original scrollbar configurations
-        self.text_widget.config(yscrollcommand=self.left_scrollbar.set)
-        self.results_text.config(yscrollcommand=self.right_scrollbar.set)
-        self.left_scrollbar.config(command=self.text_widget.yview)
-        self.right_scrollbar.config(command=self.results_text.yview)
-
-    def on_mousewheel(self, event):
-        # Get the widget that triggered the event
-        widget = event.widget
-
-        # Determine scroll direction (Windows)
-        delta = -1 * (event.delta // 120)
-
-        # Scroll both text widgets
-        self.text_widget.yview_scroll(delta, "units")
-        self.results_text.yview_scroll(delta, "units")
-
-        self.sync_scrolling(event)
-        return "break"  # Prevent default scrolling
 
     def sync_scrolling(self, event=None):
         """Synchronize scrolling position between text widgets"""
@@ -299,6 +291,26 @@ class MatchingApp:
         # Update both text widgets to the same position
         self.text_widget.yview_moveto(fraction)
         self.results_text.yview_moveto(fraction)
+        
+        # Update scrollbar visuals
+        self.left_scrollbar.set(*self.text_widget.yview())
+        self.right_scrollbar.set(*self.results_text.yview())
+        return "break"  # Prevent default scrolling
+
+    def on_mousewheel(self, event):
+        # Get the widget that triggered the event
+        widget = event.widget
+
+        # Determine scroll direction (Windows)
+        delta = -1 * (event.delta // 120)
+
+        # Scroll both text widgets
+        self.text_widget.yview_scroll(delta, "units")
+        self.results_text.yview_scroll(delta, "units")
+
+        # Update scrollbar visuals
+        self.left_scrollbar.set(*self.text_widget.yview())
+        self.right_scrollbar.set(*self.results_text.yview())
         return "break"  # Prevent default scrolling
 
     def set_active_function(self, function):
@@ -385,8 +397,18 @@ class MatchingApp:
             messagebox.showinfo("End of Process", "You've reached the end of this matching process. Please select a new matching type or close the application.")
             return
 
+        # Clear the results text box
+        self.results_text.config(state='normal')
+        self.results_text.delete('1.0', tk.END)
+        self.results_text.config(state='disabled')
+
+        # Reset the selected text
+        self.selected_text = ""
+        
+        # Move to next step
         self.current_step = (self.current_step + 1) % self.max_steps
         self.update_step_indicator()
+        
         if len(self.directions) > 0:
             self.current_direction_index = (self.current_direction_index + 1) % len(self.directions)
             self.update_directions(self.directions[self.current_direction_index])
@@ -830,10 +852,21 @@ class MatchingApp:
 
 
         self.results_text.config(state='disabled')
-        # After all content is added and widget is configured, restore scroll position
-        self.results_text.yview_moveto(current_position)
-        # Synchronize the left text widget to match
-        self.text_widget.yview_moveto(current_position)
+
+        # Restore the initial scroll positions
+        self.text_widget.yview_moveto(self.initial_text_position[0])
+        self.results_text.yview_moveto(self.initial_results_position[0])
+
+        # Use after_idle to ensure all content is loaded before restoring position
+        def restore_positions():
+            self.text_widget.yview_moveto(self.initial_text_position[0])
+            self.results_text.yview_moveto(self.initial_results_position[0])
+            
+            # Explicitly update the scrollbars to match the restored positions
+            self.text_widget.event_generate('<Configure>', when='tail')
+            self.results_text.event_generate('<Configure>', when='tail')
+
+        self.root.after_idle(restore_positions)
 
         self.last_order_dict = order_dict.copy()
 
