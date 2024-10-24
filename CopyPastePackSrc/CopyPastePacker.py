@@ -26,7 +26,8 @@ from tkinter import messagebox
 import sqlite3
 
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
+from PIL import Image, ImageDraw, ImageFont, ImageTk
 
 import pandas as pd
 
@@ -59,87 +60,392 @@ path_to_txt = os.path.join(application_path, 'input.txt')
 class App():
     def __init__(self, master, order_dict):
         self.master = master
-        
-        
         self.order_dict = order_dict
-        self.item_list = tk.Listbox(self.master, font=("Arial", 20))
-        self.item_list.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+        
+        # Create main container frame
+        self.main_container = tk.Frame(self.master)
+        self.main_container.pack(fill=tk.BOTH, expand=True)
+        
+        # Create fixed header frame
+        self.header_frame = tk.Frame(self.main_container)
+        self.header_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        # Create barcode entry section in header
+        self.barcode_label = tk.Label(self.header_frame, text="Scan order barcode:", font=("Arial", 20))
+        self.barcode_label.pack(side=tk.LEFT, padx=10)
         
         self.barcode_var = tk.StringVar()
-        self.package_var = tk.StringVar()
-        self.order_label = tk.Label(self.master, text="")
-        
-        self.package_label = tk.Label(self.master, text="")
-        self.package_entry = tk.Entry(self.master, textvariable=self.package_var)
-
-        self.barcode_label = tk.Label(self.master, text="Scan order barcode:", font=("Arial", 20))
-        self.barcode_entry = tk.Entry(self.master, textvariable=self.barcode_var)
+        self.barcode_entry = tk.Entry(self.header_frame, textvariable=self.barcode_var, font=("Arial", 16))
+        self.barcode_entry.pack(side=tk.LEFT, padx=10)
         self.barcode_entry.focus()
         self.barcode_entry.bind("<Return>", self.check_order)
         
-        self.barcode_label.pack(side=tk.TOP)
-        self.barcode_entry.pack(side=tk.TOP)
+        # Create buttons frame in header
+        self.buttons_frame = tk.Frame(self.header_frame)
+        self.buttons_frame.pack(side=tk.RIGHT, padx=10)
         
-        self.abort_btn = tk.Button(self.master, text="Abort Order", command=self.abort_order, height=4)
-        self.abort_btn.pack(side=tk.BOTTOM)
-
+        # Create abort button
+        self.abort_btn = tk.Button(self.buttons_frame, text="Abort Order", command=self.abort_order,
+                                 height=2, font=("Arial", 12))
+        self.abort_btn.pack(side=tk.LEFT, padx=5)
+        
+        # Create remaining orders count button
+        self.count_var = tk.StringVar()
+        self.count_button = tk.Button(self.buttons_frame, textvariable=self.count_var,
+                                    command=self.display_remaining, height=2, font=("Arial", 12))
+        self.count_button.pack(side=tk.LEFT, padx=5)
+        
+        # Create scrollable canvas for grid of images
+        self.canvas_frame = tk.Frame(self.main_container)
+        self.canvas_frame.pack(fill=tk.BOTH, expand=True)
+        
+        self.canvas = tk.Canvas(self.canvas_frame)
+        self.scrollbar = tk.Scrollbar(self.canvas_frame, orient="vertical", command=self.canvas.yview)
+        
+        self.scrollable_frame = tk.Frame(self.canvas)
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
+        
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        
+        # Pack canvas and scrollbar
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Bind mouse wheel
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        
+        # Initialize variables for image handling
+        self.image_frames = []  # List to store frame references
+        self.photo_references = []  # Keep references to prevent garbage collection
+        
+        # Create default image
+        self.default_photo = self.create_default_image((200, 200))
+        
+        # Load product data
+        try:
+            _, self.upc_to_image = read_excel_file(path_to_xlsx, return_mappings=True)
+        except Exception as e:
+            print(f"Error loading product data: {e}")
+            self.upc_to_image = {}
+            messagebox.showwarning("Warning", "Error loading product images. The packer will continue without images.")
+        
+        # Initialize other variables
         self.item_entry = None
         self.current_order = None
         
-        self.count_var = tk.StringVar()
-        
-        self.count_button = tk.Button(self.master, textvariable=self.count_var, command = self.display_remaining, height =4)
-        self.count_button.pack(side = tk.BOTTOM)
-        
         self.update_count()
         
+    def _on_mousewheel(self, event):
+        self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    def load_product_data(self):
+        """Load product data from Excel with error handling"""
+        try:
+            df = pd.read_excel(path_to_xlsx, engine='openpyxl', dtype=str)
+            
+            # Handle different possible column structures
+            if "Item Name" not in df.columns or "UPC Code" not in df.columns:
+                # Try numeric columns if named columns don't exist
+                df.columns = ["Item Name", "UPC Code", "Image Path"] if len(df.columns) >= 3 else ["Item Name", "UPC Code"]
+            
+            # Ensure Image Path column exists
+            if "Image Path" not in df.columns:
+                df["Image Path"] = ""
+            
+            # Clean data
+            df["Item Name"] = df["Item Name"].str.lower()
+            df["UPC Code"] = df["UPC Code"].str.rstrip('.0')
+            df["Image Path"] = df["Image Path"].fillna("")
+            
+            # Create mappings
+            upc_to_image = dict(zip(df["UPC Code"], df["Image Path"]))
+            items_dict = {row["Item Name"]: (row["UPC Code"], row["Image Path"]) 
+                         for _, row in df.iterrows()}
+            
+            return items_dict, upc_to_image
+            
+        except Exception as e:
+            print(f"Error reading Excel file: {e}")
+            raise
+
+    def create_default_image(self, size=(200, 200)):
+        """Create a default 'No Image Available' image"""
+        try:
+            # Create a new image with a light gray background
+            img = Image.new('RGB', size, color='lightgray')
+            draw = ImageDraw.Draw(img)
+            
+            # Add text
+            text = "No Image\nAvailable"
+            
+            # Try to use a standard font, fall back to default if not available
+            try:
+                font = ImageFont.truetype("arial.ttf", 20)
+            except:
+                font = ImageFont.load_default()
+            
+            # Center the text
+            text_bbox = draw.multiline_textbbox((0, 0), text, font=font, align="center")
+            text_width = text_bbox[2] - text_bbox[0]
+            text_height = text_bbox[3] - text_bbox[1]
+            x = (size[0] - text_width) / 2
+            y = (size[1] - text_height) / 2
+            
+            # Draw the text in dark gray
+            draw.multiline_text((x, y), text, fill='darkgray', font=font, align="center")
+            
+            return ImageTk.PhotoImage(img)
+        except Exception as e:
+            print(f"Error creating default image: {e}")
+            # Return None if we can't create the image
+            return None
+
+    def load_and_resize_image(self, image_path, target_size=(200, 200)):
+        """Load and resize an image from path with error handling"""
+        try:
+            # Check if image path is empty or None
+            if not image_path:
+                return self.default_photo
+
+            # Check if file exists
+            if not os.path.exists(image_path):
+                print(f"Image not found: {image_path}")
+                return self.default_photo
+
+            # Try to open and process the image
+            with Image.open(image_path) as img:
+                # Convert to RGB if necessary
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Resize image maintaining aspect ratio
+                img.thumbnail(target_size, Image.Resampling.LANCZOS)
+                
+                # Create PhotoImage
+                return ImageTk.PhotoImage(img)
+
+        except (OSError, IOError) as e:
+            print(f"Error loading image {image_path}: {e}")
+            return self.default_photo
+        except Exception as e:
+            print(f"Unexpected error loading image {image_path}: {e}")
+            return self.default_photo
+
+    def display_images(self, items):
+        """Display images in a grid layout with selectable text information"""
+        # Clear existing images
+        for frame in self.image_frames:
+            frame.destroy()
+        self.image_frames.clear()
+        self.photo_references.clear()
+        
+        # Configure grid columns
+        grid_columns = 3  # Number of columns in the grid
+        current_row = 0
+        current_col = 0
+        
+        try:
+            for item, barcode, count in items:
+                # Create frame for this item
+                item_frame = tk.Frame(self.scrollable_frame, relief=tk.RAISED, borderwidth=1)
+                item_frame.grid(row=current_row, column=current_col, padx=10, pady=10, sticky="nsew")
+                
+                # Get image
+                image_path = self.upc_to_image.get(barcode, "")
+                photo = self.load_and_resize_image(image_path)
+                if photo:
+                    self.photo_references.append(photo)
+                
+                # Create and pack image label
+                image_label = tk.Label(item_frame, image=photo if photo else self.default_photo)
+                image_label.image = photo if photo else self.default_photo
+                image_label.pack(side=tk.LEFT, padx=5, pady=5)
+                
+                # Create frame for text information
+                text_frame = tk.Frame(item_frame)
+                text_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+                
+                # Create Text widget for all information
+                text_widget = tk.Text(text_frame, wrap=tk.WORD, height=6, width=30)
+                text_widget.pack(fill=tk.BOTH, expand=True, pady=5)
+                
+                # Configure Text widget
+                text_widget.configure(font=("Arial", 12))
+                text_widget.tag_configure("bold", font=("Arial", 12, "bold"))
+                
+                # Insert information with tags
+                text_widget.insert(tk.END, item + "\n", "bold")
+                text_widget.insert(tk.END, f"Quantity: {count}\n")
+                text_widget.insert(tk.END, f"UPC: {barcode}")
+                
+                # Make read-only but still selectable
+                text_widget.configure(state="disabled")
+                
+                # Allow copy with Ctrl+C
+                def copy_selection(event=None):
+                    try:
+                        selected_text = text_widget.get("sel.first", "sel.last")
+                        self.master.clipboard_clear()
+                        self.master.clipboard_append(selected_text)
+                    except tk.TclError:
+                        pass  # No selection
+                    return "break"
+                
+                text_widget.bind("<Control-c>", copy_selection)
+                
+                # Enable selection but disable editing
+                def prevent_modification(event):
+                    return "break"
+                
+                text_widget.bind("<Key>", prevent_modification)
+                
+                self.image_frames.append(item_frame)
+                
+                # Update grid position
+                current_col += 1
+                if current_col >= grid_columns:
+                    current_col = 0
+                    current_row += 1
+                    
+        except Exception as e:
+            print(f"Error displaying images: {e}")
+            messagebox.showwarning("Warning", "Error displaying some images.")
+        
     def abort_order(self):
+        """Handle order abortion"""
         self.current_order = None
         self.reset_window()
         self.barcode_entry.bind("<Return>", self.check_order)
     
     def display_remaining(self):
-        conn = sqlite3.connect(path_to_db)
-        cursor = conn.cursor()
-        
-        # Get today's date
-        today = datetime.date.today()
-
-        # Execute the SQL query
-        cursor.execute("""
-        SELECT DISTINCT order_num
-        FROM orders
-        WHERE packedtimestamp IS NULL AND DATE(generatedtimestamp) = ?
-        """, (today,))
-        
-        order_ids = cursor.fetchall()
-        self.item_list.delete(0, tk.END)
-        self.item_list.insert(tk.END, "Order IDs:")
-        for order_id in order_ids:
-            self.item_list.insert(tk.END, order_id[0])
-        conn.close()
+        """Display remaining orders in a popup window with selectable text"""
+        try:
+            # Create popup window
+            popup = tk.Toplevel(self.master)
+            popup.title("Remaining Orders")
+            popup.geometry("400x600")
+            
+            # Create main text widget
+            text_widget = tk.Text(popup, wrap=tk.WORD, font=("Arial", 12))
+            scrollbar = tk.Scrollbar(popup, orient="vertical", command=text_widget.yview)
+            text_widget.configure(yscrollcommand=scrollbar.set)
+            
+            # Configure tags for formatting
+            text_widget.tag_configure("header", font=("Arial", 14, "bold"), spacing3=10)
+            text_widget.tag_configure("order_num", font=("Arial", 12, "bold"))
+            text_widget.tag_configure("normal", font=("Arial", 12))
+            
+            # Get remaining orders from database
+            conn = sqlite3.connect(path_to_db)
+            cursor = conn.cursor()
+            
+            # Convert today's date to string in ISO format
+            today = datetime.date.today().isoformat()
+            
+            cursor.execute("""
+            SELECT DISTINCT order_num, COUNT(item) as item_count, SUM(count) as total_items
+            FROM orders
+            WHERE packedtimestamp IS NULL 
+            AND DATE(generatedtimestamp) = DATE(?)
+            GROUP BY order_num
+            ORDER BY order_num
+            """, (today,))
+            
+            orders = cursor.fetchall()
+            
+            # Insert header
+            text_widget.insert(tk.END, "Remaining Orders\n\n", "header")
+            
+            if orders:
+                for order_num, item_count, total_items in orders:
+                    text_widget.insert(tk.END, f"Order: {order_num}\n", "order_num")
+                    text_widget.insert(tk.END, f"Unique Items: {item_count}\n", "normal")
+                    text_widget.insert(tk.END, f"Total Items: {total_items}\n", "normal")
+                    text_widget.insert(tk.END, "-" * 40 + "\n\n", "normal")
+            else:
+                text_widget.insert(tk.END, "No remaining orders\n", "normal")
+            
+            conn.close()
+            
+            # Make text widget read-only but selectable
+            text_widget.configure(state="disabled")
+            
+            # Add copy functionality
+            def copy_selection(event=None):
+                try:
+                    selected_text = text_widget.get("sel.first", "sel.last")
+                    popup.clipboard_clear()
+                    popup.clipboard_append(selected_text)
+                except tk.TclError:
+                    pass  # No selection
+                return "break"
+            
+            text_widget.bind("<Control-c>", copy_selection)
+            
+            # Pack widgets
+            scrollbar.pack(side="right", fill="y")
+            text_widget.pack(side="left", fill="both", expand=True)
+            
+            # Add close button
+            close_button = tk.Button(popup, 
+                                text="Close", 
+                                command=popup.destroy,
+                                font=("Arial", 12))
+            close_button.pack(pady=10)
+            
+            # Make the popup modal
+            popup.transient(self.master)
+            popup.grab_set()
+            
+            # Center the popup
+            popup.update_idletasks()
+            width = popup.winfo_width()
+            height = popup.winfo_height()
+            x = (popup.winfo_screenwidth() // 2) - (width // 2)
+            y = (popup.winfo_screenheight() // 2) - (height // 2)
+            popup.geometry(f"{width}x{height}+{x}+{y}")
+            
+        except Exception as e:
+            print(f"Error displaying remaining orders: {e}")
+            messagebox.showerror("Error", "Failed to display remaining orders")
 
     def update_count(self):
-        
-        conn = sqlite3.connect(path_to_db)
-        cursor = conn.cursor()
-        
-        # Get today's date
-        today = datetime.date.today()
-        
-        query = """
-        SELECT COUNT(DISTINCT order_num)
-        FROM orders
-        WHERE packedtimestamp IS NULL AND DATE(generatedtimestamp) = ?
-        """
-        
-        cursor.execute(query, (today,))
-        count = cursor.fetchone()[0]
-        self.count_var.set(f"Remaining Orders: {count}")
-        
-        
-        conn.commit()
-        conn.close()
+        """Update the count of remaining orders"""
+        try:
+            conn = sqlite3.connect(path_to_db)
+            cursor = conn.cursor()
+            
+            # Convert today's date to string in ISO format
+            today = datetime.date.today().isoformat()
+            
+            query = """
+            SELECT COUNT(DISTINCT order_num) as order_count,
+                COUNT(DISTINCT item) as item_count,
+                SUM(count) as total_items
+            FROM orders
+            WHERE packedtimestamp IS NULL 
+            AND DATE(generatedtimestamp) = DATE(?)
+            """
+            
+            cursor.execute(query, (today,))
+            order_count, item_count, total_items = cursor.fetchone()
+            
+            # Handle None values
+            total_items = total_items or 0
+            item_count = item_count or 0
+            order_count = order_count or 0
+            
+            self.count_var.set(f"Orders: {order_count}\nItems: {total_items}")
+            
+            conn.close()
+            
+        except Exception as e:
+            print(f"Error updating count: {e}")
+            self.count_var.set("Count Error")
     
     def enter_package_number(self, event): # unused
        
@@ -167,44 +473,54 @@ class App():
             self.master.update()
 
     def reset_window(self):
-        self.item_list.delete(0, tk.END)
+        """Reset the window state"""
+        # Clear barcode entry
         self.barcode_var.set("")
-        self.package_var.set("")
-        self.package_label.config(text="")
-        self.order_label.pack_forget()
-        self.barcode_entry.pack(side=tk.TOP)
-        self.barcode_label.pack(side=tk.TOP)
+        
+        # Clear images and frames
+        for frame in self.image_frames:
+            frame.destroy()
+        self.image_frames.clear()
+        self.photo_references.clear()
+        
+        # Reset entry widgets
+        self.barcode_entry.pack(side=tk.LEFT, padx=10)
+        self.barcode_label.pack(side=tk.LEFT, padx=10)
         self.barcode_entry.focus()
+        
+        # Clear item entry if it exists
         if self.item_entry is not None:
             self.item_entry.destroy()
             self.item_entry = None
             
     def check_order(self, event):
-        global order_num
+        """Handle order barcode scanning"""
         order_num = self.barcode_var.get()
         if order_num in self.order_dict:
             self.current_order = self.order_dict[order_num]
-            self.item_list.delete(0, tk.END)
-            for item in self.current_order:
-                item_name = item[0]
-                item_count = item[2]
-                item_barcode = item[1]
-                item_text = f"{item_barcode} - {item_name} ({item_count})"
-                self.item_list.insert(tk.END, item_text.center(50))
+            self.current_order_num = order_num  # Store for later use
+            
+            # Display the order items
+            self.display_images(self.current_order)
+            
+            # Hide barcode entry and show item entry
             self.barcode_entry.pack_forget()
             self.barcode_label.pack_forget()
             self.barcode_entry.unbind("<Return>")
             self.barcode_entry.delete(0, tk.END)
-            self.item_entry = tk.Entry(self.master)
             
-            self.item_entry.pack(side=tk.TOP)
+            # Create and setup item entry
+            self.item_entry = tk.Entry(self.header_frame, font=("Arial", 16))
+            self.item_entry.pack(side=tk.LEFT, padx=10)
             self.item_entry.focus()
             self.item_entry.bind("<Return>", self.scan_item)
         else:
-            self.item_list.delete(0, tk.END)
-            self.item_list.insert(tk.END, "Order not found")
+            messagebox.showerror("Error", "Order not found")
+            self.barcode_entry.delete(0, tk.END)
+
 
     def scan_item(self, event):
+        """Handle item barcode scanning with real-time updates"""
         item_barcode = self.item_entry.get()
         remaining_counts = {item[1]: item[2] for item in self.current_order}
         count_remaining = remaining_counts.get(item_barcode)
@@ -219,94 +535,111 @@ class App():
         if count_remaining == 0:
             self.current_order = [item for item in self.current_order if item[1] != item_barcode]
         else:
-            self.current_order = [(item[0], item[1], count_remaining) if item[1] == item_barcode else item for item in self.current_order]
+            self.current_order = [(item[0], item[1], count_remaining) if item[1] == item_barcode else item 
+                                for item in self.current_order]
     
         self.item_entry.delete(0, tk.END)
         
+        # Update display immediately
+        if self.current_order:
+            self.display_images(self.current_order)
         
-        #Order has been filled 
+        # Order has been filled
         if len(self.current_order) == 0:
-            
-            self.item_entry.unbind("<Return>")
-            self.item_entry.delete(0, tk.END)
-          
-            self.item_list.delete(0, tk.END)
-            
-            # Connect to the database
-            conn = sqlite3.connect(path_to_db)
-            cursor = conn.cursor()
-            
-            global packaged_order_dict
-            # Get the current date and time
-            now = datetime.datetime.now()
-            
-            # Format the date and time as mm/dd/yy and a time
-            packedtimestamp = now
-            global order_num
-            
-            # Execute the SQL statement to update the timestamp
-            sql = "UPDATE orders SET packedtimestamp = ? WHERE order_num = ?"
-            cursor.execute(sql, (packedtimestamp, order_num))
-            
-            # Execute the SQL statement to update the timestamp
-            sql = "UPDATE ordersandtimestampsonly SET packedtimestamp = ? WHERE order_num = ?"
-            cursor.execute(sql, (packedtimestamp, order_num))
-            
-            
-            # Commit the changes and close the connection
-            conn.commit()
-            conn.close()
-            
-            self.update_count()
+            self.complete_order()
+        
+    def complete_order(self):
+        """Handle order completion"""
+        self.item_entry.unbind("<Return>")
+        self.item_entry.destroy()
+        self.item_entry = None
+        
+        # Update database
+        conn = sqlite3.connect(path_to_db)
+        cursor = conn.cursor()
+        
+        now = datetime.datetime.now()
+        
+        # Update orders
+        cursor.execute("UPDATE orders SET packedtimestamp = ? WHERE order_num = ?",
+                      (now, self.current_order_num))
+        
+        # Update timestamps
+        cursor.execute("UPDATE ordersandtimestampsonly SET packedtimestamp = ? WHERE order_num = ?",
+                      (now, self.current_order_num))
+        
+        conn.commit()
+        conn.close()
+        
+        self.update_count()
+        self.reset_window()
+        
+        # Clear the display
+        for frame in self.image_frames:
+            frame.destroy()
+        self.image_frames.clear()
+        self.photo_references.clear()
+        
+        self.barcode_entry.focus()
+        self.barcode_entry.bind("<Return>", self.check_order)
 
-            self.reset_window()
-            self.barcode_entry.focus()
-            self.barcode_entry.bind("<Return>", self.check_order)
-    
-        else:
-            self.item_list.delete(0, tk.END)
-            for item in self.current_order:
-                item_name = item[0]
-                item_count = item[2]
-                item_barcode = item[1]
-                if item_barcode == 0:
-                    remaining_items = count_remaining
-                else:
-                    remaining_items = remaining_counts.get(item_barcode, item_count)
-                item_text = f"{item_barcode} - {item_name} ({item_count})"
-                self.item_list.insert(tk.END, item_text.center(50))
-            self.item_entry.focus()
 
     def run(self):
         #self.exit_btn.pack(side=tk.BOTTOM)
         self.master.mainloop()
 
-def read_excel_file(file_path):
+def read_excel_file(file_path, return_mappings=False):
     """
-    Reads an Excel file and returns a list of phrases where each phrase is "item_name barcode"
+    Reads an Excel file with product information including optional image paths
+    Args:
+        file_path: Path to the Excel file
+        return_mappings: If True, returns dictionaries for image mapping; if False, returns phrases list
     """
-    # Read the Excel file into a dataframe without headers
-    df = pd.read_excel(file_path, engine='openpyxl', header=None, dtype=str)
-    
-    # If the file does not have named columns, assume the first column is "Item Name" and second is "UPC Code"
-    if 0 not in df.columns and 1 not in df.columns:
-        df.columns = ["Item Name", "UPC Code"]
-    else:
-        df.rename(columns={0: "Item Name", 1: "UPC Code"}, inplace=True)
+    try:
+        # Read the Excel file into a dataframe
+        df = pd.read_excel(file_path, engine='openpyxl', dtype=str)
+        
+        # Get number of columns
+        num_columns = len(df.columns)
+        
+        if num_columns == 2:
+            # If only 2 columns, assume they are Item Name and UPC Code
+            if "Item Name" not in df.columns or "UPC Code" not in df.columns:
+                df.columns = ["Item Name", "UPC Code"]
+            # Add empty Image Path column
+            df["Image Path"] = ""
+        elif num_columns >= 3:
+            # If 3 or more columns, use first three
+            df = df.iloc[:, :3]  # Take only first three columns
+            df.columns = ["Item Name", "UPC Code", "Image Path"]
+        else:
+            raise ValueError(f"Excel file must have at least 2 columns. Found {num_columns} columns.")
 
-    # Convert item names to lowercase
-    df["Item Name"] = df["Item Name"].str.lower()
+        # Clean the data
+        df["Item Name"] = df["Item Name"].str.lower()
+        df["UPC Code"] = df["UPC Code"].str.rstrip('.0')
+        df["Image Path"] = df["Image Path"].fillna("")
 
-    # If UPC codes have ".0" at the end, remove it
-    df["UPC Code"] = df["UPC Code"].str.rstrip('.0')
+        if return_mappings:
+            # Create mappings for image handling
+            upc_to_image = dict(zip(df["UPC Code"], df["Image Path"]))
+            items_dict = {row["Item Name"]: (row["UPC Code"], row["Image Path"]) 
+                         for _, row in df.iterrows()}
+            return items_dict, upc_to_image
+        else:
+            # Return phrases for order processing
+            phrases = []
+            for _, row in df.iterrows():
+                item_name = row["Item Name"]
+                upc_code = row["UPC Code"]
+                phrases.append(f"{item_name} {upc_code}")
+            return phrases
 
-    phrases = []
-    for _, row in df.iterrows():
-        item_name = row["Item Name"]
-        upc_code = row["UPC Code"]
-        phrases.append(f"{item_name} {upc_code}")
-
-    return phrases
+    except Exception as e:
+        print(f"Error reading Excel file: {e}")
+        if return_mappings:
+            return {}, {}
+        return []
 
 def start_packing_sequence(order_dict):
     root = tk.Tk()
@@ -747,145 +1080,153 @@ def choose_option():
 6. Exit
 7. Today's Products at a Glance\n""")
         if option == "4":
-            option = input("Are you sure you want to delete today's orders? Yes/No")
-            if option.lower() == "yes" or option.lower() == "y":
-                conn = sqlite3.connect(path_to_db)
-                cursor = conn.cursor()
-                
-                # Get today's date
-                today = datetime.date.today()
-                
-    
-                # Execute the SQL query
-                cursor.execute("""
-                DELETE
-                FROM orders
-                WHERE DATE(generatedtimestamp) = ?
-                """, (today,))
-                
-                # Execute the SQL query
-                cursor.execute("""
-                DELETE
-                FROM ordersandtimestampsonly
-                WHERE DATE(generatedtimestamp) = ?
-                """, (today,))
-                
-                conn.commit()
-                conn.close()
-                print("Today's orders deleted")
+            confirmation = input("Are you sure you want to delete today's orders? Yes/No: ").lower()
+            if confirmation in ["yes", "y"]:
+                try:
+                    conn = sqlite3.connect(path_to_db)
+                    cursor = conn.cursor()
+                    
+                    # Get today's date at midnight (start of day)
+                    today_start = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                    # Get tomorrow's date at midnight
+                    tomorrow_start = today_start + datetime.timedelta(days=1)
+                    
+                    # Delete from orders table
+                    cursor.execute("""
+                        DELETE FROM orders 
+                        WHERE generatedtimestamp >= ? 
+                        AND generatedtimestamp < ?
+                    """, (today_start, tomorrow_start))
+                    orders_deleted = cursor.rowcount
+                    
+                    # Delete from ordersandtimestampsonly table
+                    cursor.execute("""
+                        DELETE FROM ordersandtimestampsonly 
+                        WHERE generatedtimestamp >= ? 
+                        AND generatedtimestamp < ?
+                    """, (today_start, tomorrow_start))
+                    timestamps_deleted = cursor.rowcount
+                    
+                    conn.commit()
+                    
+                    # Clear the in-memory order dictionary
+                    order_dict = {}
+                    
+                    print(f"Successfully deleted {orders_deleted} orders and {timestamps_deleted} timestamps from today")
+                    
+                except sqlite3.Error as e:
+                    print(f"Database error occurred: {e}")
+                    conn.rollback()
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+                    conn.rollback()
+                finally:
+                    conn.close()
+            else:
+                print("Delete operation cancelled")
            
         elif option == "1":
+            
+           # Clear all global lists before loading new data
+            global keywords_2d_list
+            global removals_list
+            global quantityphrases
+            global quantitypositions
+            global incompletephrases
+            global secondarykeywords
+            global exactphrases
+            global exactphraseitems_2d
+            
+            # Reset all global lists
+            keywords_2d_list = []
+            removals_list = []
+            quantityphrases = []
+            quantitypositions = []
+            incompletephrases = []
+            secondarykeywords = []
+            exactphrases = []
+            exactphraseitems_2d = []
             
             # Connect to the SQLite database
             conn = sqlite3.connect(path_to_db)
             c = conn.cursor()
             
-            # Query the database for records where the keywordstype is 'pairing'
-            c.execute("SELECT DISTINCT * FROM pairings WHERE keywordstype = 'pairing'")
-            
-            # Initialize the lists to hold the keywords and removals
-            
-            global keywords_2d_list
-            global removals_list
-            
-            # Loop through the rows returned by the query
-            for row in c.fetchall():
-                keywordstype, keywords_string, removals_string = row
-                keywords_string = keywords_string.lower()  # Convert to lowercase
-                removals_string = removals_string.lower()  # Convert to lowercase
+            try:
+                # Load pairings
+                c.execute("SELECT DISTINCT * FROM pairings WHERE keywordstype = 'pairing'")
+                for row in c.fetchall():
+                    keywordstype, keywords_string, removals_string = row
+                    keywords_list = keywords_string.lower().split('<')
+                    removals = removals_string.lower().split('<')
+                    keywords_2d_list.append(keywords_list)
+                    removals_list.extend(removals)
                 
-                # Split the strings back into lists
-                keywords_list = keywords_string.split('<')
-                removals = removals_string.split('<')
-            
-                # Add the lists to the appropriate 2D list or list
-                keywords_2d_list.append(keywords_list)
-                removals_list.extend(removals)
+                # Load exact phrases
+                c.execute("SELECT DISTINCT * FROM exactphrases WHERE keywordstype = 'exactphrase'")
+                for row in c.fetchall():
+                    keywordstype, exactphrases_string, exactphraseitems_string = row
+                    exactphrases_list = exactphrases_string.lower().split('<')
+                    exactitems = exactphraseitems_string.lower().split('<')
+                    exactphrases.extend(exactphrases_list)
+                    exactphraseitems_2d.append(exactitems)
                 
-            # Query the database for records where the keywordstype is 'exactphrase'
-            c.execute("SELECT DISTINCT * FROM exactphrases WHERE keywordstype = 'exactphrase'")
-            
-            # Initialize the lists to hold the keywords and removals
-            
-            global exactphrases
-            global exactphraseitems_2d
-            
-            # Loop through the rows returned by the query
-            for row in c.fetchall():
-                keywordstype, exactphrases_string, exactphraseitems_string = row
-            
-                exactphrases_string = exactphrases_string.lower()  # Convert to lowercase
-                exactphraseitems_string = exactphraseitems_string.lower()  #    
-            
-                # Split the strings back into lists
-                exactphrases_list = exactphrases_string.split('<')
-                exactitems = exactphraseitems_string.split('<')
-            
-                # Add the lists to the appropriate 2D list or list
-                exactphrases.extend(exactphrases_list)
-                exactphraseitems_2d.append(exactitems)
-            
-            # Connect to the database (create it if it doesn't exist)
-            conn = sqlite3.connect(path_to_db)
-
-            # Create a cursor to execute SQL commands
-            cursor = conn.cursor()   
-            
-            # Query the database for records where the keywordstype is 'pairing'
-            c.execute("SELECT DISTINCT * FROM quantitys WHERE keywordstype = 'Quantity'")
-            
-            global quantityphrases
-            global quantitypositions
-            
-            # Loop through the rows returned by the query
-            rows = c.fetchall()
-            # Loop through each row and append the values to the respective lists
-            for row in rows:
-                quantityphrase = row[1].lower()  # Convert to lowercase
-                quantityphrases.append(quantityphrase)  # Assuming 'phrases' is the 2nd column
-                quantitypositions.append(int(row[2]))  # Assuming 'positions' is the 3rd column
-
-            print("quantity phrases", quantityphrases)
-            print("quantitypositions", quantitypositions)
+                # Load quantities
+                c.execute("SELECT DISTINCT * FROM quantitys WHERE keywordstype = 'Quantity'")
+                for row in c.fetchall():
+                    quantityphrase = row[1].lower()
+                    quantityphrases.append(quantityphrase)
+                    quantitypositions.append(int(row[2]))
                 
-            
-            c.execute("SELECT DISTINCT * FROM incompletephrases WHERE keywordstype = 'Incomplete Phrase'")
-            
-            global incompletephrases
-            global secondarykeywords
-            
-            # Loop through the rows returned by the query
-            rows = c.fetchall()
-            # Loop through each row and append the values to the respective lists
-            for row in rows:
-                incompletephrase = (row[1].lower()).strip()  # Convert to lowercase
-                secondarykeyword = (row[2].lower()).strip()  # Convert to lowercase
-                incompletephrases.append(incompletephrase)  # Assuming 'phrases' is the 2nd column
-                secondarykeywords.append(secondarykeyword)  # Assuming 'positions' is the 3rd column
-
-                print(incompletephrases)
-                print(secondarykeywords)
-
-            order_dict = enter_text(acceptable_phrases)
-            
-            # Get the current date and time
-            generatedtimestamp = datetime.datetime.now()
-            
-            # Format the date and time as mm/dd/yy and a time
-            #generatedtimestamp = now.strftime("%m/%d/%Y %I:%M %p")
-            
-            for order_num, items in order_dict.items():
-                for item, barcode, count in items:
-                    cursor.execute("INSERT INTO orders (order_num, item, item_barcode, count, generatedtimestamp) VALUES (?, ?, ?, ?, ?)",
-                                (order_num, item, barcode, count, generatedtimestamp))
-
-            for order_num in order_dict:
-                cursor.execute("INSERT INTO ordersandtimestampsonly (order_num, generatedtimestamp) VALUES (?, ?)",
-                            (order_num, generatedtimestamp))
-            conn.commit()
-            conn.close()
-        elif option == "3":
-            print_orders(order_dict)
+                # Load incomplete phrases
+                c.execute("SELECT DISTINCT * FROM incompletephrases WHERE keywordstype = 'Incomplete Phrase'")
+                for row in c.fetchall():
+                    incompletephrase = row[1].lower().strip()
+                    secondarykeyword = row[2].lower().strip()
+                    incompletephrases.append(incompletephrase)
+                    secondarykeywords.append(secondarykeyword)
+                
+                # Process orders
+                order_dict = enter_text(acceptable_phrases)
+                
+                # Delete existing orders for today before inserting new ones
+                today = datetime.datetime.now().date()
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM orders WHERE DATE(generatedtimestamp) = ?", (today,))
+                cursor.execute("DELETE FROM ordersandtimestampsonly WHERE DATE(generatedtimestamp) = ?", (today,))
+                
+                # Insert new orders
+                generatedtimestamp = datetime.datetime.now()
+                for order_num, items in order_dict.items():
+                    for item, barcode, count in items:
+                        cursor.execute("""
+                            INSERT INTO orders 
+                            (order_num, item, item_barcode, count, generatedtimestamp) 
+                            VALUES (?, ?, ?, ?, ?)""",
+                            (order_num, item, barcode, count, generatedtimestamp))
+                    
+                    cursor.execute("""
+                        INSERT INTO ordersandtimestampsonly 
+                        (order_num, generatedtimestamp) 
+                        VALUES (?, ?)""",
+                        (order_num, generatedtimestamp))
+                
+                conn.commit()
+                print("Orders uploaded successfully!")
+                
+            except Exception as e:
+                print(f"Error during upload: {str(e)}")
+                conn.rollback()
+            finally:
+                conn.close()
+        if option == "3":
+                try:
+                    if not order_dict:
+                        print("\nNo orders have been uploaded yet. Please use option 1 to upload orders first.")
+                    else:
+                        print_orders(order_dict)
+                except Exception as e:
+                    print(f"\nError displaying orders: {str(e)}")
+                    print("Please make sure orders have been uploaded using option 1.")
         elif option == "2":
             try:
                 start_packing_sequence(order_dict)
