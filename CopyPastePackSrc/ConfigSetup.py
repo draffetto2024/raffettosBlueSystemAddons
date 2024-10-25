@@ -468,18 +468,38 @@ class MatchingApp:
             self.results_text.yview_moveto(current_position)
 
     def load_upc_codes(self):
-        path_to_xlsx = "./UPCCodes.xlsx"  # Changed to use relative path
-        df = pd.read_excel(path_to_xlsx, engine='openpyxl', header=None, dtype=str)
-        df.columns = ["Item Name", "UPC Code"]
-        df["Item Name"] = df["Item Name"].str.lower()
-        df["UPC Code"] = df["UPC Code"].str.rstrip('.0')
-        # Remove any rows with NaN values
-        df = df.dropna()
-        self.upc_codes = dict(zip(df["Item Name"], df["UPC Code"]))
-        print(f"Loaded {len(self.upc_codes)} UPC codes")
-        print("Sample UPC codes:")
-        for item, upc in list(self.upc_codes.items()):
-            print(f"  {item}: {upc}")
+        path_to_xlsx = "./UPCCodes.xlsx"  # Using relative path
+        try:
+            # Read all columns, but we'll only use the ones we need
+            df = pd.read_excel(path_to_xlsx, engine='openpyxl', header=None, dtype=str)
+            
+            # Ensure we have at least two columns
+            if df.shape[1] < 2:
+                raise ValueError("UPCCodes.xlsx must have at least 2 columns")
+                
+            # Only use the first two columns regardless of how many exist
+            df = df.iloc[:, [0, 1]]  # Select only first two columns
+            df.columns = ["Item Name", "UPC Code"]
+            
+            # Clean up the data
+            df["Item Name"] = df["Item Name"].str.lower()
+            df["UPC Code"] = df["UPC Code"].str.rstrip('.0')
+            
+            # Remove any rows with NaN values
+            df = df.dropna()
+            
+            # Create the dictionary
+            self.upc_codes = dict(zip(df["Item Name"], df["UPC Code"]))
+            
+            print(f"Loaded {len(self.upc_codes)} UPC codes")
+            print("Sample of loaded UPC codes:")
+            # Print first few entries as a sample
+            for item, upc in list(self.upc_codes.items())[:3]:
+                print(f"  {item}: {upc}")
+                
+        except Exception as e:
+            print(f"Error loading UPC codes: {str(e)}")
+            self.upc_codes = {}  # Initialize empty dict if loading fails
 
     def load_database_configurations(self):
         conn = sqlite3.connect(path_to_db)
