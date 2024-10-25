@@ -348,8 +348,13 @@ class MatchingApp:
 
     def on_button_click(self, clicked_frame, function):
         print("\n=== Starting button click ===")
-        current_position = self.text_widget.yview()[0]
-        print("Initial current_position:", current_position)
+        # Store the current positions of both text widgets
+        text_position = self.text_widget.yview()[0]
+        results_position = self.results_text.yview()[0]
+        print(f"Initial positions - Text: {text_position}, Results: {results_position}")
+        
+        # Disable sync from any previous full matching
+        self.disable_scroll_sync()
         
         if self.active_button:
             self.active_button[0].config(highlightbackground='#E6F3FF', highlightthickness=2)
@@ -374,12 +379,11 @@ class MatchingApp:
         if self.directions:
             self.update_directions(self.directions[self.current_direction_index])
         
-        # Use after_idle to ensure all content is loaded before restoring position
+        # Use after_idle to ensure all content is loaded before restoring positions
         def restore_positions():
             print("Restoring positions after content load")
-            print("Attempting to restore to:", current_position)
-            self.results_text.yview_moveto(current_position)
-            self.text_widget.yview_moveto(current_position)
+            self.text_widget.yview_moveto(text_position)
+            self.results_text.yview_moveto(results_position)
             print("Final positions:")
             print("Text widget position:", self.text_widget.yview()[0])
             print("Results text position:", self.results_text.yview()[0])
@@ -770,19 +774,16 @@ class MatchingApp:
         print("Finished perform_full_matching")
 
     def display_matched_order(self, order_dict):
-        # Store current scroll position
-        current_position = self.results_text.yview()[0]
+        # Store current scroll position at the start
+        current_position = self.text_widget.yview()[0]
+        print("\nDisplay matched order - Initial position:", current_position)
 
-        # print("\n=== Starting display_matched_order ===")
         self.results_text.config(state='normal')
         self.results_text.delete('1.0', tk.END)
         
         # Get the text from the left text box and split into blocks
         left_text = self.text_widget.get('1.0', tk.END)
-        # print("BLOCKSEP", self.blockseperatorkeyword)
         blocks = self.split_blocks((left_text.strip()).lower(), self.blockseperatorkeyword)
-        # print(blocks)
-        # print(f"Number of blocks: {len(blocks)}")
         
         for block in blocks:
             if not block.strip():
@@ -794,23 +795,17 @@ class MatchingApp:
                 match = re.search(f"{re.escape(self.packagenumberphrase)} ([^\s]+)", line)
                 if match:
                     order_num = ''.join([char for char in match.group(1) if char.isdigit()])
-                    # print(f"Found order number: {order_num}")
                     break
             
             if order_num:
-                # Count lines in THIS SPECIFIC block
                 block_lines = len([line for line in block.split('\n') if line.strip()])
-                # print(f"\nProcessing order {order_num} with {block_lines} lines in its block")
                 lines_used = 0
                 
-                # Insert order header
                 self.results_text.insert(tk.END, f"Order Number: {order_num}\n", "normal")
                 lines_used += 1
                 
-                # Insert items
                 if order_num in order_dict:
                     items = order_dict[order_num]
-                    # print(f"Number of items for order {order_num}: {len(items)}")
                     
                     if not items:
                         self.results_text.insert(tk.END, "No items found for this order\n", "blue")
@@ -835,39 +830,26 @@ class MatchingApp:
                                 self.results_text.insert(tk.END, f"Item {i}: {count} {item}\n", "blue")
                                 lines_used += 1
                 
-                # print(f"Lines used in display: {lines_used}")
-                # print(f"Lines in original block: {block_lines}")
-                
-                # Calculate and add padding to align with left side
                 padding_needed = max(0, block_lines - lines_used)
-                # print(f"Adding {padding_needed} padding lines for alignment")
                 
                 if padding_needed > 0:
                     self.results_text.insert(tk.END, '\n' * padding_needed)
                 
-                # Add a separator line between orders
                 self.results_text.insert(tk.END, "-" * 50 + "\n", "normal")
-        
-        # print("=== Finished display_matched_order ===")
-
 
         self.results_text.config(state='disabled')
 
-        # Restore the initial scroll positions
-        self.text_widget.yview_moveto(self.initial_text_position[0])
-        self.results_text.yview_moveto(self.initial_results_position[0])
-
-        # Use after_idle to ensure all content is loaded before restoring position
-        def restore_positions():
-            self.text_widget.yview_moveto(self.initial_text_position[0])
-            self.results_text.yview_moveto(self.initial_results_position[0])
-            
-            # Explicitly update the scrollbars to match the restored positions
-            self.text_widget.event_generate('<Configure>', when='tail')
-            self.results_text.event_generate('<Configure>', when='tail')
-
-        self.root.after_idle(restore_positions)
-
+        # Restore both text widgets to the original position
+        def restore_position():
+            print("Restoring position after display")
+            self.text_widget.yview_moveto(current_position)
+            self.results_text.yview_moveto(current_position)
+            print("Final positions:")
+            print("Text widget position:", self.text_widget.yview()[0])
+            print("Results text position:", self.results_text.yview()[0])
+        
+        self.root.after_idle(restore_position)
+        
         self.last_order_dict = order_dict.copy()
 
     def open_item_input_window(self):
