@@ -172,11 +172,98 @@ class App():
             print(f"Error reading Excel file: {e}")
             raise
 
+    def load_and_resize_image(self, image_path, target_size=(200, 200)):
+        """
+        Load and resize an image from path with support for multiple formats
+        Supported formats: JPG, JPEG, PNG, GIF, BMP, ICO, TIFF, WebP
+        """
+        try:
+            # Check if image path is empty or None
+            if not image_path:
+                print("No image path provided")
+                return self.default_photo
+
+            # Check if file exists
+            if not os.path.exists(image_path):
+                print(f"Image not found at path: {image_path}")
+                return self.default_photo
+
+            # Get file extension
+            file_extension = os.path.splitext(image_path)[1].lower()
+            
+            # List of supported formats
+            supported_formats = {
+                '.jpg': 'JPEG',
+                '.jpeg': 'JPEG',
+                '.png': 'PNG',
+                '.gif': 'GIF',
+                '.bmp': 'BMP',
+                '.ico': 'ICO',
+                '.tiff': 'TIFF',
+                '.webp': 'WEBP'
+            }
+            
+            if file_extension not in supported_formats:
+                print(f"Unsupported image format: {file_extension}")
+                print(f"Supported formats are: {', '.join(supported_formats.keys())}")
+                return self.default_photo
+
+            # Try to open and process the image
+            with Image.open(image_path) as img:
+                # Handle RGBA images (like PNGs with transparency)
+                if img.mode == 'RGBA':
+                    # Create a white background
+                    background = Image.new('RGB', img.size, 'white')
+                    # Paste the image on the background using alpha channel
+                    background.paste(img, mask=img.split()[3])
+                    img = background
+                # Convert other modes to RGB if necessary
+                elif img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Calculate aspect ratio
+                aspect_ratio = img.width / img.height
+                
+                # Determine new size maintaining aspect ratio
+                if aspect_ratio > 1:
+                    # Width is larger
+                    new_width = target_size[0]
+                    new_height = int(target_size[0] / aspect_ratio)
+                else:
+                    # Height is larger or equal
+                    new_height = target_size[1]
+                    new_width = int(target_size[1] * aspect_ratio)
+                
+                # Resize image using high-quality resampling
+                img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                
+                # Create white background of target size
+                background = Image.new('RGB', target_size, 'white')
+                
+                # Calculate position to center image
+                x = (target_size[0] - new_width) // 2
+                y = (target_size[1] - new_height) // 2
+                
+                # Paste resized image onto center of white background
+                background.paste(img, (x, y))
+                
+                return ImageTk.PhotoImage(background)
+
+        except Image.UnidentifiedImageError:
+            print(f"Could not identify image format for: {image_path}")
+            return self.default_photo
+        except (OSError, IOError) as e:
+            print(f"Error loading image {image_path}: {e}")
+            return self.default_photo
+        except Exception as e:
+            print(f"Unexpected error loading image {image_path}: {e}")
+            return self.default_photo
+
     def create_default_image(self, size=(200, 200)):
-        """Create a default 'No Image Available' image"""
+        """Create a default 'No Image Available' image with improved visuals"""
         try:
             # Create a new image with a light gray background
-            img = Image.new('RGB', size, color='lightgray')
+            img = Image.new('RGB', size, color='#f0f0f0')  # Light gray background
             draw = ImageDraw.Draw(img)
             
             # Add text
@@ -184,56 +271,50 @@ class App():
             
             # Try to use a standard font, fall back to default if not available
             try:
-                font = ImageFont.truetype("arial.ttf", 20)
-            except:
+                # Try multiple font options
+                font_options = [
+                    ('arial.ttf', 20),
+                    ('Arial.ttf', 20),
+                    ('Helvetica.ttf', 20),
+                    ('segoe.ttf', 20)
+                ]
+                
+                font = None
+                for font_name, font_size in font_options:
+                    try:
+                        font = ImageFont.truetype(font_name, font_size)
+                        break
+                    except OSError:
+                        continue
+                
+                if font is None:
+                    font = ImageFont.load_default()
+                    
+            except Exception:
                 font = ImageFont.load_default()
             
             # Center the text
             text_bbox = draw.multiline_textbbox((0, 0), text, font=font, align="center")
             text_width = text_bbox[2] - text_bbox[0]
             text_height = text_bbox[3] - text_bbox[1]
-            x = (size[0] - text_width) / 2
-            y = (size[1] - text_height) / 2
+            x = (size[0] - text_width) // 2
+            y = (size[1] - text_height) // 2
+            
+            # Draw a light border
+            border_width = 2
+            draw.rectangle([0, 0, size[0]-1, size[1]-1], 
+                        outline='#d0d0d0', width=border_width)
             
             # Draw the text in dark gray
-            draw.multiline_text((x, y), text, fill='darkgray', font=font, align="center")
+            draw.multiline_text((x, y), text, fill='#505050', 
+                            font=font, align="center")
             
             return ImageTk.PhotoImage(img)
         except Exception as e:
             print(f"Error creating default image: {e}")
-            # Return None if we can't create the image
-            return None
-
-    def load_and_resize_image(self, image_path, target_size=(200, 200)):
-        """Load and resize an image from path with error handling"""
-        try:
-            # Check if image path is empty or None
-            if not image_path:
-                return self.default_photo
-
-            # Check if file exists
-            if not os.path.exists(image_path):
-                print(f"Image not found: {image_path}")
-                return self.default_photo
-
-            # Try to open and process the image
-            with Image.open(image_path) as img:
-                # Convert to RGB if necessary
-                if img.mode != 'RGB':
-                    img = img.convert('RGB')
-                
-                # Resize image maintaining aspect ratio
-                img.thumbnail(target_size, Image.Resampling.LANCZOS)
-                
-                # Create PhotoImage
-                return ImageTk.PhotoImage(img)
-
-        except (OSError, IOError) as e:
-            print(f"Error loading image {image_path}: {e}")
-            return self.default_photo
-        except Exception as e:
-            print(f"Unexpected error loading image {image_path}: {e}")
-            return self.default_photo
+            # Create an absolute fallback image
+            img = Image.new('RGB', size, color='lightgray')
+            return ImageTk.PhotoImage(img)
 
     def display_images(self, items):
         """Display images in a grid layout with selectable text information"""
