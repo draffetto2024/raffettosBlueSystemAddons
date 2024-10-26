@@ -646,6 +646,13 @@ def start_packing_sequence(order_dict):
     root.title("Order Packer")
     root.geometry("1600x800")
     app = App(root, order_dict)
+
+    # Focus the window
+    root.lift()  # Lift the window to the top
+    root.attributes('-topmost', True)  # Make it topmost
+    root.after_idle(root.attributes, '-topmost', False)  # Disable topmost after focusing
+    root.focus_force()  # Force focus
+
     app.run()
 
 def split_data(text, keywords):
@@ -1069,7 +1076,7 @@ def display_todays_products():
             conn.close()
 
 def load_todays_orders():
-    """Load any unpacked orders from today from the database"""
+    """Load any unpacked orders from today from the database in the format expected by start_packing_sequence"""
     try:
         # Connect to database
         conn = sqlite3.connect(path_to_db)
@@ -1094,13 +1101,28 @@ def load_todays_orders():
         cursor.execute(query, (today,))
         results = cursor.fetchall()
         
-        # Create order dictionary
+        # Create order dictionary in the original format
         order_dict = {}
         for order_num, item, barcode, count in results:
+            # Ensure order_num is a string
+            order_num = str(order_num).strip()
             if order_num not in order_dict:
                 order_dict[order_num] = []
-            order_dict[order_num].append((item, barcode, count))
+                
+            # Add the item tuple in the format (item_name, barcode, count)
+            item_tuple = (str(item).strip(), str(barcode).strip(), int(count))
+            order_found = False
             
+            # Update count if item already exists
+            for i, (existing_item, existing_barcode, existing_count) in enumerate(order_dict[order_num]):
+                if existing_item == item_tuple[0] and existing_barcode == item_tuple[1]:
+                    order_found = True
+                    break
+                    
+            if not order_found:
+                order_dict[order_num].append(item_tuple)
+            
+        print("Loaded orders:", list(order_dict.keys()))  # Debug print
         return order_dict
         
     except sqlite3.Error as e:
@@ -1283,18 +1305,7 @@ def choose_option():
             
             if option == "2":
                 try:
-                    root = tk.Tk()
-                    root.title("Order Packer")
-                    root.geometry("1600x800")
-                    app = App(root, order_dict)
-                    
-                    # Focus the window
-                    root.lift()  # Lift the window to the top
-                    root.attributes('-topmost', True)  # Make it topmost
-                    root.after_idle(root.attributes, '-topmost', False)  # Disable topmost after focusing
-                    root.focus_force()  # Force focus
-                    
-                    app.run()
+                    start_packing_sequence(order_dict)
                 except Exception as e:
                     print(f"Error starting packing sequence: {e}")
             else:  # option == "3"
