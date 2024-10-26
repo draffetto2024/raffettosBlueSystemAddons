@@ -26,6 +26,7 @@ path_to_xlsx = os.path.join(application_path, 'UPCCodes.xlsx')
 path_to_txt = os.path.join(application_path, 'input.txt')
 
 column_names_global = []
+detail_windows = []  # List to keep track of open detail windows
 
 def construct_sql_query_with_params(table_name, column_names, record_data):
     conditions = []
@@ -75,11 +76,14 @@ def on_delete_key_pressed(event, main_tree, search_tree):
     if not messagebox.askyesno("Confirm Deletion", msg):
         return
 
-    table_name = table_combobox.get()  # Assuming table_combobox is globally accessible
-    delete_record_from_db(table_name, record_data)  # Your function to delete the record from the database
+    table_name = table_combobox.get()
+    delete_record_from_db(table_name, record_data)
+    
+    # Close all detail windows
+    close_all_detail_windows()
     
     # Refresh data
-    display_data()  # Your function to refresh data in both treeviews
+    display_data()
 
     # Also remove the item from the originating Treeview
     if origin_tree.exists(item[0]):
@@ -94,7 +98,7 @@ def on_search_tree_click(event):
 
 def display_data():
     global tree
-    global column_names_global  # Declare global inside function
+    global column_names_global
     table_name = table_combobox.get()
     if not table_name or table_name not in table_names:
         return
@@ -124,7 +128,7 @@ def display_data():
     for row in data:
         tree.insert('', tk.END, values=row)
     
-    column_names_global = column_names  # Store for future reference
+    column_names_global = column_names
 
 
 def on_tree_click(event):
@@ -155,8 +159,10 @@ def display_record_data(data):
     new_window = tk.Toplevel(root)
     new_window.title("Record Details")
     record_label_new_window = tk.Label(new_window, text=", ".join(map(str, data)), font=("Arial", 14, "bold"), wraplength=800)
-
     record_label_new_window.pack()
+    
+    # Add the window to our list of detail windows
+    detail_windows.append(new_window)
 
 # Add these lines to create empty lists
 search_entries = []
@@ -233,6 +239,13 @@ def on_closing():
     # Here, we can add any logic to handle window closing, such as closing database connections or saving data.
     # But since you're opening and closing connections within each function, there's nothing specific to add here.
     root.destroy()
+
+def close_all_detail_windows():
+    global detail_windows
+    for window in detail_windows:
+        if window.winfo_exists():
+            window.destroy()
+    detail_windows = []
     
 def clear_dashboard():
     # Clear the main Treeview
@@ -249,6 +262,9 @@ def clear_dashboard():
         column.set("")
     search_entries.clear()
     search_columns.clear()
+    
+    # Close all detail windows
+    close_all_detail_windows()
     
     # Reset the table Combobox
     table_combobox.set("")
@@ -269,6 +285,95 @@ def clear_dashboard():
     # Reset these to their default state
     search_entry.delete(0, tk.END)
     search_column_combobox.set("")
+
+def bulk_delete_records():
+    # Get current search conditions
+    conditions = []
+    params = []
+
+    for search_entry, search_column in zip(search_entries, search_columns):
+        search_query = search_entry.get()
+        column_name = search_column.get()
+        
+        if search_query and column_name:
+            conditions.append(f"{column_name} LIKE ?")
+            params.append(f"%{search_query}%")
+
+    if not conditions:
+        messagebox.showwarning("Warning", "Please enter search criteria before attempting bulk delete.")
+        return
+
+    # Construct and execute a SELECT query first to show how many records will be affected
+    condition_str = " AND ".join(conditions)
+    select_query = f"SELECT COUNT(*) FROM {table_combobox.get()} WHERE {condition_str}"
+
+    conn = sqlite3.connect(path_to_db)
+    c = conn.cursor()
+    c.execute(select_query, params)
+    record_count = c.fetchone()[0]
+    conn.close()
+
+    if record_count == 0:
+        messagebox.showinfo("Info", "No records match the search criteria.")
+        return
+
+    # Create a custom confirmation dialog
+    confirm_dialog = tk.Toplevel(root)
+    confirm_dialog.title("Confirm Bulk Delete")
+    confirm_dialog.geometry("400x150")
+    confirm_dialog.transient(root)  # Make dialog modal
+    confirm_dialog.grab_set()
+    
+    # Center the dialog on the screen
+    confirm_dialog.geometry(f"+{root.winfo_x() + 150}+{root.winfo_y() + 150}")
+
+    # Warning message
+    message = f"Are you sure you want to delete {record_count} records?\nThis action cannot be undone!"
+    warning_label = tk.Label(confirm_dialog, text=message, wraplength=350, pady=20)
+    warning_label.pack()
+
+    # Button frame
+    button_frame = tk.Frame(confirm_dialog)
+    button_frame.pack(pady=10)
+
+    def on_yes():
+        # Execute the delete query
+        delete_query = f"DELETE FROM {table_combobox.get()} WHERE {condition_str}"
+        conn = sqlite3.connect(path_to_db)
+        c = conn.cursor()
+        c.execute(delete_query, params)
+        conn.commit()
+        conn.close()
+        
+        # Close all detail windows
+        close_all_detail_windows()
+        
+        # Refresh the display
+        display_data()
+        
+        # Clear the search results
+        search_tree.delete(*search_tree.get_children())
+        search_record_label.config(text="")
+        
+        messagebox.showinfo("Success", f"{record_count} records have been deleted.")
+        confirm_dialog.destroy()
+
+    def on_no():
+        confirm_dialog.destroy()
+
+    # Create buttons - No button is focused by default
+    no_button = tk.Button(button_frame, text="No", command=on_no, width=10)
+    yes_button = tk.Button(button_frame, text="Yes", command=on_yes, width=10)
+    
+    no_button.pack(side=tk.LEFT, padx=10)
+    yes_button.pack(side=tk.LEFT, padx=10)
+    
+    # Set focus to "No" button and bind Enter key
+    no_button.focus_set()
+    
+    # Bind Enter key to "No" button and Escape key to dialog
+    confirm_dialog.bind('<Return>', lambda e: on_no())
+    confirm_dialog.bind('<Escape>', lambda e: on_no())
 
 
 root = tk.Tk()
@@ -319,8 +424,15 @@ search_column_combobox.grid(row=5, column=1, padx=5, pady=5)
 search_entries.append(search_entry)
 search_columns.append(search_column_combobox)
 
-search_button = tk.Button(center_frame, text="Search", command=on_search)
-search_button.grid(row=4, column=2, rowspan=2, padx=5, pady=5)
+# Create a frame for the search and bulk delete buttons
+button_frame = tk.Frame(center_frame)
+button_frame.grid(row=4, column=2, rowspan=2, padx=5, pady=5)
+
+search_button = tk.Button(button_frame, text="Search", command=on_search)
+search_button.pack(pady=2)
+
+bulk_delete_button = tk.Button(button_frame, text="Bulk Delete", command=bulk_delete_records)
+bulk_delete_button.pack(pady=2)
 
 # Add this button to create new search bars
 add_search_button = tk.Button(center_frame, text="Add Search", command=add_search_row)
