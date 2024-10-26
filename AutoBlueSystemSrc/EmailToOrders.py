@@ -320,12 +320,6 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
             unique_orders[unique_key].append(order)
 
         for row, ((raw_email, customer, email_sent_date), order_list) in enumerate(unique_orders.items(), start=1):
-            # # Raw Email Content
-            # email_text = tk.Text(scrollable_frame, wrap=tk.WORD, width=30, height=5)
-            # email_text.insert(tk.END, raw_email)
-            # email_text.config(state=tk.DISABLED)
-            # email_text.grid(row=row, column=0, padx=5, pady=5, sticky="nsew")
-
             matched_products = []
             quantities = []
             enters_list = []
@@ -342,13 +336,13 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
                 product_codes.append(item_id)
                 customer_ids.add(customer_id)
 
-            # Matched Products
+            # Create other UI elements as before
             products_text = tk.Text(scrollable_frame, wrap=tk.WORD, width=30, height=5)
             products_text.insert(tk.END, "\n".join(matched_products))
             products_text.config(state=tk.DISABLED)
             products_text.grid(row=row, column=1, padx=5, pady=5, sticky="nsew")
 
-             # Raw Email Content (scrollable and clickable)
+            # Email content frame
             email_frame = ttk.Frame(scrollable_frame)
             email_frame.grid(row=row, column=0, padx=5, pady=5, sticky="nsew")
 
@@ -359,10 +353,7 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
             email_scrollbar = ttk.Scrollbar(email_frame, orient="vertical", command=email_text.yview)
             email_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
             email_text.configure(yscrollcommand=email_scrollbar.set)
-
             email_text.config(state=tk.DISABLED)
-            
-            # Bind click event to the email text
             email_text.bind("<Button-1>", lambda e, text=raw_email: show_email_content(text))
 
             # Quantity
@@ -383,14 +374,8 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
             codes_text.config(state=tk.DISABLED)
             codes_text.grid(row=row, column=4, padx=5, pady=5, sticky="nsew")
 
-             # Customer
-            customer_emails = set(order[1] for order in order_list)  # Get unique customer emails from all orders
-            customer_ids = []
-            for email in customer_emails:
-                ids = email_to_customer_ids.get(email.lower(), [email])
-                customer_ids.extend(ids)
-            customer_id_text = ', '.join(set(customer_ids))  # Join unique customer IDs
-            customer_label = ttk.Label(scrollable_frame, text=customer_id_text)
+            # Customer - Just display the customer ID directly
+            customer_label = ttk.Label(scrollable_frame, text=list(customer_ids)[0] if customer_ids else "Unknown")
             customer_label.grid(row=row, column=5, padx=5, pady=5, sticky="nsew")
 
             # Email Sent Date
@@ -406,7 +391,8 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
             entered_status_label.grid(row=row, column=8, padx=5, pady=5, sticky="nsew")
 
             # Add Delete button
-            delete_button = ttk.Button(scrollable_frame, text="Delete", command=lambda r=raw_email, c=customer_id_text, d=email_sent_date: delete_order(r, c, d))
+            delete_button = ttk.Button(scrollable_frame, text="Delete", 
+                                    command=lambda r=raw_email, c=list(customer_ids)[0], d=email_sent_date: delete_order(r, c, d))
             delete_button.grid(row=row, column=10, padx=5, pady=5, sticky="nsew")
 
             # Checkbox
@@ -973,32 +959,37 @@ def read_product_enters_mapping(file_path):
 def read_customer_excel_files(directory_path, product_enters_mapping):
     print(f"Reading customer Excel files from {directory_path}")
     customer_product_codes = {}
-    email_to_customer_ids = {}
+    email_name_to_customer_ids = {}  # Changed from email_to_customer_ids
     
     for filename in os.listdir(directory_path):
         if filename.endswith('.xlsx'):
             try:
-                email, customer_id = filename[:-5].split('_')
-                print(f"\nProcessing file: {filename}")
+                # Parse filename that contains name and email: john_doe_(johndoe@gmail.com)-johndo.xlsx
+                match = re.match(r'(.+?)\((.+?)\)-(.+?)\.xlsx$', filename)
+                if not match:
+                    print(f"Warning: Invalid filename format for {filename}")
+                    continue
+                
+                name = match.group(1).strip('_').replace('_', ' ')  # Convert john_doe to john doe
+                email = match.group(2).lower()
+                customer_id = match.group(3)
                 
                 file_path = os.path.join(directory_path, filename)
                 customer_codes = read_single_customer_file(file_path, customer_id, product_enters_mapping)
                 
                 customer_product_codes[customer_id] = customer_codes
                 
-                if email.lower() in email_to_customer_ids:
-                    email_to_customer_ids[email.lower()].append(customer_id)
-                else:
-                    email_to_customer_ids[email.lower()] = [customer_id]
+                # Create composite key from name and email
+                key = (name.lower(), email)
+                email_name_to_customer_ids[key] = customer_id
                 
                 print(f"Processed {len(customer_codes)} product codes for customer {customer_id}")
-            except ValueError:
-                print(f"Warning: Invalid filename format for {filename}. Skipping this file.")
+            except ValueError as e:
+                print(f"Warning: Invalid filename format for {filename}: {e}")
                 continue
     
-    print(f"\nTotal customers processed: {len(customer_product_codes)}")
-    print(f"Total email to customer ID mappings: {len(email_to_customer_ids)}")
-    return customer_product_codes, email_to_customer_ids
+    return customer_product_codes, email_name_to_customer_ids
+
 
 def read_single_customer_file(file_path, customer_id, product_enters_mapping):
     print(f"Reading file: {file_path}")
@@ -1088,17 +1079,34 @@ def check_imap_connection(mail):
     except:
         return False
 
-import logging
+def extract_email_and_name(email_content):
+    # Look for the specific forward format in metadata: "From: Name <email@domain.com>"
+    forward_pattern = r'From: ([^<]+)<([^>]+)>'
+    matches = re.search(forward_pattern, email_content)
+    
+    if matches:
+        name = matches.group(1).strip()
+        email = matches.group(2).strip()
+        return name, email
+    else:
+        # If no match found, try to find just the email
+        email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', email_content)
+        if email_match:
+            return None, email_match.group(0)
+        else:
+            logging.warning("No email address found in the content")
+            return None, None
 
+
+import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 if __name__ == "__main__":
-
     global product_enters_mapping
     product_enters_mapping = read_product_enters_mapping('ProductSheetWithEnters.xlsx')
 
     # Read customer-specific product codes from individual Excel files
-    customer_product_codes, email_to_customer_ids = read_customer_excel_files('customer_product_codes', product_enters_mapping)
+    customer_product_codes, email_name_to_customer_ids = read_customer_excel_files('customer_product_codes', product_enters_mapping)
 
     # Email details
     username = "gingoso2@gmail.com"
@@ -1107,12 +1115,10 @@ if __name__ == "__main__":
     # Database path
     db_path = 'orders.db'
 
-
-
     # Initialize the database
     initialize_database(db_path)
 
-     # Connect to the server
+    # Connect to the server
     mail = imaplib.IMAP4_SSL("imap.gmail.com")
 
     try:
@@ -1154,8 +1160,8 @@ if __name__ == "__main__":
                             body = get_email_content(msg)
 
                             if body:
-                                email_address = extract_email_address(body)
-                                logging.info(f"Extracted email address: {email_address}")
+                                name, email_address = extract_email_and_name(body)
+                                logging.info(f"Extracted email: {email_address}, name: {name}")
 
                                 # Extract the email sent date
                                 date_tuple = email.utils.parsedate_tz(msg.get('Date'))
@@ -1164,21 +1170,22 @@ if __name__ == "__main__":
                                 else:
                                     email_sent_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-                                # Get customer IDs from email
-                                customer_ids = email_to_customer_ids.get(email_address.lower(), []) if email_address else []
-
-                                if customer_ids:
-                                    for customer_id in customer_ids:
-                                        customer_codes = customer_product_codes.get(customer_id, {})
-                                        process_result = process_email(email_address, body, customer_codes, customer_id, db_path, mail, email_uid, email_sent_date)
-                                        logging.info(f"Email processed for customer {customer_id}: {process_result}")
+                                # Look up customer ID using both name and email
+                                lookup_key = (name.lower() if name else None, email_address.lower())
+                                customer_id = email_name_to_customer_ids.get(lookup_key)
+                                
+                                if customer_id:
+                                    customer_codes = customer_product_codes.get(customer_id, {})
+                                    process_result = process_email(email_address, body, customer_codes, customer_id, 
+                                                                db_path, mail, email_uid, email_sent_date)
+                                    logging.info(f"Email processed for customer {customer_id}: {process_result}")
                                     
                                     if move_email_to_folder(mail, email_uid, "EnteredIntoABS"):
                                         logging.info(f"Email from {email_address} moved to EnteredIntoABS folder")
                                     else:
                                         logging.error(f"Failed to move email from {email_address} to EnteredIntoABS folder")
                                 else:
-                                    logging.warning(f"No matching customer found for email from: {email_address}")
+                                    logging.warning(f"No matching customer found for {name} <{email_address}>")
                                     if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
                                         logging.info(f"Email moved to CustomerNotFound folder")
                                     else:
@@ -1222,5 +1229,4 @@ if __name__ == "__main__":
             pass
 
     # Create and run the GUI
-    create_gui(db_path, email_to_customer_ids, product_enters_mapping)
-
+    create_gui(db_path, email_name_to_customer_ids, product_enters_mapping)
