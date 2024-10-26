@@ -172,98 +172,11 @@ class App():
             print(f"Error reading Excel file: {e}")
             raise
 
-    def load_and_resize_image(self, image_path, target_size=(200, 200)):
-        """
-        Load and resize an image from path with support for multiple formats
-        Supported formats: JPG, JPEG, PNG, GIF, BMP, ICO, TIFF, WebP
-        """
-        try:
-            # Check if image path is empty or None
-            if not image_path:
-                print("No image path provided")
-                return self.default_photo
-
-            # Check if file exists
-            if not os.path.exists(image_path):
-                print(f"Image not found at path: {image_path}")
-                return self.default_photo
-
-            # Get file extension
-            file_extension = os.path.splitext(image_path)[1].lower()
-            
-            # List of supported formats
-            supported_formats = {
-                '.jpg': 'JPEG',
-                '.jpeg': 'JPEG',
-                '.png': 'PNG',
-                '.gif': 'GIF',
-                '.bmp': 'BMP',
-                '.ico': 'ICO',
-                '.tiff': 'TIFF',
-                '.webp': 'WEBP'
-            }
-            
-            if file_extension not in supported_formats:
-                print(f"Unsupported image format: {file_extension}")
-                print(f"Supported formats are: {', '.join(supported_formats.keys())}")
-                return self.default_photo
-
-            # Try to open and process the image
-            with Image.open(image_path) as img:
-                # Handle RGBA images (like PNGs with transparency)
-                if img.mode == 'RGBA':
-                    # Create a white background
-                    background = Image.new('RGB', img.size, 'white')
-                    # Paste the image on the background using alpha channel
-                    background.paste(img, mask=img.split()[3])
-                    img = background
-                # Convert other modes to RGB if necessary
-                elif img.mode != 'RGB':
-                    img = img.convert('RGB')
-                
-                # Calculate aspect ratio
-                aspect_ratio = img.width / img.height
-                
-                # Determine new size maintaining aspect ratio
-                if aspect_ratio > 1:
-                    # Width is larger
-                    new_width = target_size[0]
-                    new_height = int(target_size[0] / aspect_ratio)
-                else:
-                    # Height is larger or equal
-                    new_height = target_size[1]
-                    new_width = int(target_size[1] * aspect_ratio)
-                
-                # Resize image using high-quality resampling
-                img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-                
-                # Create white background of target size
-                background = Image.new('RGB', target_size, 'white')
-                
-                # Calculate position to center image
-                x = (target_size[0] - new_width) // 2
-                y = (target_size[1] - new_height) // 2
-                
-                # Paste resized image onto center of white background
-                background.paste(img, (x, y))
-                
-                return ImageTk.PhotoImage(background)
-
-        except Image.UnidentifiedImageError:
-            print(f"Could not identify image format for: {image_path}")
-            return self.default_photo
-        except (OSError, IOError) as e:
-            print(f"Error loading image {image_path}: {e}")
-            return self.default_photo
-        except Exception as e:
-            print(f"Unexpected error loading image {image_path}: {e}")
-            return self.default_photo
-
     def create_default_image(self, size=(200, 200)):
-        """Create a default 'No Image Available' image with improved visuals"""
+        """Create a default 'No Image Available' image"""
         try:
             # Create a new image with a light gray background
-            img = Image.new('RGB', size, color='#f0f0f0')  # Light gray background
+            img = Image.new('RGB', size, color='lightgray')
             draw = ImageDraw.Draw(img)
             
             # Add text
@@ -271,50 +184,56 @@ class App():
             
             # Try to use a standard font, fall back to default if not available
             try:
-                # Try multiple font options
-                font_options = [
-                    ('arial.ttf', 20),
-                    ('Arial.ttf', 20),
-                    ('Helvetica.ttf', 20),
-                    ('segoe.ttf', 20)
-                ]
-                
-                font = None
-                for font_name, font_size in font_options:
-                    try:
-                        font = ImageFont.truetype(font_name, font_size)
-                        break
-                    except OSError:
-                        continue
-                
-                if font is None:
-                    font = ImageFont.load_default()
-                    
-            except Exception:
+                font = ImageFont.truetype("arial.ttf", 20)
+            except:
                 font = ImageFont.load_default()
             
             # Center the text
             text_bbox = draw.multiline_textbbox((0, 0), text, font=font, align="center")
             text_width = text_bbox[2] - text_bbox[0]
             text_height = text_bbox[3] - text_bbox[1]
-            x = (size[0] - text_width) // 2
-            y = (size[1] - text_height) // 2
-            
-            # Draw a light border
-            border_width = 2
-            draw.rectangle([0, 0, size[0]-1, size[1]-1], 
-                        outline='#d0d0d0', width=border_width)
+            x = (size[0] - text_width) / 2
+            y = (size[1] - text_height) / 2
             
             # Draw the text in dark gray
-            draw.multiline_text((x, y), text, fill='#505050', 
-                            font=font, align="center")
+            draw.multiline_text((x, y), text, fill='darkgray', font=font, align="center")
             
             return ImageTk.PhotoImage(img)
         except Exception as e:
             print(f"Error creating default image: {e}")
-            # Create an absolute fallback image
-            img = Image.new('RGB', size, color='lightgray')
-            return ImageTk.PhotoImage(img)
+            # Return None if we can't create the image
+            return None
+
+    def load_and_resize_image(self, image_path, target_size=(200, 200)):
+        """Load and resize an image from path with error handling"""
+        try:
+            # Check if image path is empty or None
+            if not image_path:
+                return self.default_photo
+
+            # Check if file exists
+            if not os.path.exists(image_path):
+                print(f"Image not found: {image_path}")
+                return self.default_photo
+
+            # Try to open and process the image
+            with Image.open(image_path) as img:
+                # Convert to RGB if necessary
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Resize image maintaining aspect ratio
+                img.thumbnail(target_size, Image.Resampling.LANCZOS)
+                
+                # Create PhotoImage
+                return ImageTk.PhotoImage(img)
+
+        except (OSError, IOError) as e:
+            print(f"Error loading image {image_path}: {e}")
+            return self.default_photo
+        except Exception as e:
+            print(f"Unexpected error loading image {image_path}: {e}")
+            return self.default_photo
 
     def display_images(self, items):
         """Display images in a grid layout with selectable text information"""
@@ -1053,17 +972,21 @@ def display_todays_products():
         # Read all products from the UPC Excel file with header row
         df = pd.read_excel(path_to_xlsx, engine='openpyxl', dtype=str)
         
-        # Get column names
+        # Create a view with just the first two columns
+        valid_products = df.iloc[:, :2].copy()
+        
+        # Get column names from first two columns
         first_col = df.columns[0]  # First column
         second_col = df.columns[1]  # Second column
         
-        # Create a view of valid rows (doesn't modify original Excel)
-        valid_products = df[df[first_col].notna() & df[second_col].notna()].copy()
+        # Filter out any rows with missing data in first two columns
+        valid_products = valid_products[valid_products[first_col].notna() & 
+                                      valid_products[second_col].notna()]
         
         # Filter out any rows that contain headers
         valid_products = valid_products[~valid_products[first_col].str.lower().isin(['item name', 'product name', 'name', 'upc', 'upc code'])]
         
-        # Rename columns to our standard names
+        # Now we can safely rename the columns since we only have two
         valid_products.columns = ["Item Name", "UPC Code"]
         
         # Convert item names to lowercase to match database
@@ -1145,6 +1068,51 @@ def display_todays_products():
         if conn:
             conn.close()
 
+def load_todays_orders():
+    """Load any unpacked orders from today from the database"""
+    try:
+        # Connect to database
+        conn = sqlite3.connect(path_to_db)
+        cursor = conn.cursor()
+        
+        # Get today's date
+        today = datetime.datetime.now().date()
+        
+        # Query to get all unpacked orders from today
+        query = """
+        SELECT 
+            o.order_num,
+            o.item,
+            o.item_barcode,
+            o.count
+        FROM orders o
+        WHERE DATE(o.generatedtimestamp) = ?
+        AND o.packedtimestamp IS NULL
+        ORDER BY o.order_num
+        """
+        
+        cursor.execute(query, (today,))
+        results = cursor.fetchall()
+        
+        # Create order dictionary
+        order_dict = {}
+        for order_num, item, barcode, count in results:
+            if order_num not in order_dict:
+                order_dict[order_num] = []
+            order_dict[order_num].append((item, barcode, count))
+            
+        return order_dict
+        
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return {}
+    except Exception as e:
+        print(f"Error loading today's orders: {e}")
+        return {}
+    finally:
+        if conn:
+            conn.close()
+
 # Step 3: Define a function to prompt user to choose an option and perform that option
 def choose_option():
     global acceptable_phrases
@@ -1152,6 +1120,10 @@ def choose_option():
     global packaged_order_dict
     acceptable_phrases = read_acceptable_phrases()
     while True:
+        # Load any existing orders from today
+        existing_orders = load_todays_orders()
+        if existing_orders:
+            order_dict = existing_orders
         option = input("""Choose an option:
 1. Upload today's orders from input.txt file
 2. Start Packing Today's Orders
@@ -1299,20 +1271,37 @@ def choose_option():
                 conn.rollback()
             finally:
                 conn.close()
-        if option == "3":
+        elif option == "2" or option == "3":
+            # Check if there are any orders for today
+            current_orders = load_todays_orders()
+            if not current_orders:
+                print("\nNo orders found for today. Please upload orders using option 1 first.")
+                continue
+            
+            # Update order_dict with current orders
+            order_dict = current_orders
+            
+            if option == "2":
                 try:
-                    if not order_dict:
-                        print("\nNo orders have been uploaded yet. Please use option 1 to upload orders first.")
-                    else:
-                        print_orders(order_dict)
+                    root = tk.Tk()
+                    root.title("Order Packer")
+                    root.geometry("1600x800")
+                    app = App(root, order_dict)
+                    
+                    # Focus the window
+                    root.lift()  # Lift the window to the top
+                    root.attributes('-topmost', True)  # Make it topmost
+                    root.after_idle(root.attributes, '-topmost', False)  # Disable topmost after focusing
+                    root.focus_force()  # Force focus
+                    
+                    app.run()
+                except Exception as e:
+                    print(f"Error starting packing sequence: {e}")
+            else:  # option == "3"
+                try:
+                    print_orders(order_dict)
                 except Exception as e:
                     print(f"\nError displaying orders: {str(e)}")
-                    print("Please make sure orders have been uploaded using option 1.")
-        elif option == "2":
-            try:
-                start_packing_sequence(order_dict)
-            except NameError:
-                print("You must enter text into the input file to begin packing")
            
         elif option == "6":
             break
