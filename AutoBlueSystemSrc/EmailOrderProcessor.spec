@@ -2,7 +2,7 @@
 from PyInstaller.utils.hooks import collect_data_files
 from PyInstaller.utils.hooks import collect_submodules
 
-datas = [('customer_product_codes', 'customer_product_codes'), ('orders.db', '.')]
+datas = [('customer_product_codes', 'customer_product_codes'), ('orders.db', '.'), ('ProductSheetWithEnters.xlsx', '.')]
 hiddenimports = ['pandas', 'nltk', 'sqlite3', 'tkcalendar', 'pyautogui', 'babel.numbers', 'babel.dates']
 datas += collect_data_files('babel')
 hiddenimports += collect_submodules('babel')

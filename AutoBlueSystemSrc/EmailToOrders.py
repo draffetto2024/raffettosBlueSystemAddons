@@ -1,5 +1,6 @@
 import imaplib
 import email
+import email.parser
 from email.header import decode_header
 from bs4 import BeautifulSoup
 from email.utils import parseaddr
@@ -16,6 +17,7 @@ from tkinter import messagebox
 from tkinter import scrolledtext
 import pyautogui
 import keyboard
+import traceback
 
 def read_grid_excel(file_path):
     df = pd.read_excel(file_path, header=0, index_col=0)
@@ -119,38 +121,34 @@ def write_orders_to_db(db_path, customer_email, customer_id, orders, raw_email, 
 
 # Function to extract email content
 def get_email_content(msg):
-    body = None
+    """First checks for attachments, then falls back to regular email content"""
+    attachment_data = get_attachment_content(msg)
+    
+    if attachment_data['content']:
+        print("\n=== Using Attachment Content ===")
+        print(attachment_data['content'])
+        if attachment_data['from_header']:
+            print(f"\n=== Original From Header ===")
+            print(attachment_data['from_header'])
+        return attachment_data
+    
+    print("\n=== Using Regular Email Content ===")
+    result = {'content': None, 'from_header': msg.get('From')}
+    
     if msg.is_multipart():
         for part in msg.walk():
-            content_type = part.get_content_type()
-            content_disposition = str(part.get("Content-Disposition"))
-
-            if content_type == "text/plain" and "attachment" not in content_disposition:
-                try:
-                    body = part.get_payload(decode=True).decode()
-                    break
-                except:
-                    continue
-            elif "text/html" in content_type:
-                try:
-                    soup = BeautifulSoup(part.get_payload(decode=True).decode(), "html.parser")
-                    body = soup.get_text()
-                    break
-                except:
-                    continue
+            if part.get_content_type() == 'text/html':
+                html_content = part.get_payload(decode=True).decode()
+                soup = BeautifulSoup(html_content, 'html.parser')
+                result['content'] = soup.get_text()
+                break
+            elif part.get_content_type() == 'text/plain':
+                result['content'] = part.get_payload(decode=True).decode()
+                break
     else:
-        content_type = msg.get_content_type()
-        try:
-            body = msg.get_payload(decode=True).decode()
-            if "text/html" in content_type:
-                soup = BeautifulSoup(body, "html.parser")
-                body = soup.get_text()
-        except:
-            pass
+        result['content'] = msg.get_payload(decode=True).decode() if msg.get_payload() else None
     
-    if body:
-        body = body.replace('\r\n', '\n').strip()
-    return body
+    return result
 
 # Function to extract email address from the "From" field
 # def extract_email_address(from_field):
@@ -173,13 +171,30 @@ def extract_email_address(email_content):
             return None
 
 def process_email(from_, body, customer_codes, customer_id, db_path, mail, msg_id, email_sent_date):
-    email_address = extract_email_address(body)
+    # email_address = extract_email_address(body)
     #print(f"Processing email from: {email_address}")
     #print(f"Customer ID: {customer_id}")
     #print(f"Customer codes: {customer_codes}")
 
     # Extract orders from the email body using the customer-specific product codes
+
+    #We might have dict or just email content here. 
+
+    BODY = body
+
+    # Assume BODY is already defined
+    if isinstance(BODY, dict):
+        # If BODY is a dict, set 'body' to the value of the 'content' field
+        body = BODY.get('content', '')  # Use empty string as default if 'content' is missing
+    else:
+        # If BODY is not a dict, use it directly as the body
+        body = BODY
+
+    print("BODY", body)
+
     orders = extract_orders(body, customer_codes)
+
+    print("ORDERS", orders)
     #print(f"Orders extracted: {orders}")
 
     if orders:
@@ -294,7 +309,7 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
 
         if filter_date:
             next_date = filter_date + timedelta(days=1)
-            cursor.execute('''
+            cursor.execute(''' 
             SELECT raw_email, customer, item_id, quantity, enters, item, email_sent_date, date_to_be_entered, entered_status, customer_id
             FROM orders
             WHERE date_to_be_entered >= ? AND date_to_be_entered < ?
@@ -1079,23 +1094,98 @@ def check_imap_connection(mail):
     except:
         return False
 
-def extract_email_and_name(email_content):
-    # Look for the specific forward format in metadata: "From: Name <email@domain.com>"
-    forward_pattern = r'From: ([^<]+)<([^>]+)>'
-    matches = re.search(forward_pattern, email_content)
+def extract_email_and_name(email_data):
+    """Extract email and name from both forwarded and original email formats"""
+    print("\n=== Extracting Name and Email ===")
     
-    if matches:
-        name = matches.group(1).strip()
-        email = matches.group(2).strip()
+    # First check the From header if available
+    if email_data.get('from_header'):
+        print(f"Using From header: {email_data['from_header']}")
+        print("Here")
+        name, email = parseaddr(email_data['from_header'])
+        print("NAME", name)
+        print("EMAIL", email)
+        if email:
+            print(f"Found in header - Name: {name}, Email: {email}")
+            return name, email
+    
+    # If no header or header parsing failed, check content
+    email_content = email_data.get('content', '')
+    print("Checking content first few lines:")
+    print('\n'.join(email_content.split('\n')[:6]))
+    
+    # Try original format
+    original_pattern = r'^([^<]+)\s*<([^>]+)>'
+    original_match = re.search(original_pattern, email_content, re.MULTILINE)
+    
+    # Try forwarded format
+    forward_pattern = r'From:\s*([^<]+)\s*<([^>]+)>'
+    forward_match = re.search(forward_pattern, email_content, re.MULTILINE)
+    
+    if original_match:
+        name = original_match.group(1).strip()
+        email = original_match.group(2).strip()
+        print(f"Found in original format - Name: {name}, Email: {email}")
         return name, email
-    else:
-        # If no match found, try to find just the email
-        email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', email_content)
-        if email_match:
-            return None, email_match.group(0)
-        else:
-            logging.warning("No email address found in the content")
-            return None, None
+    elif forward_match:
+        name = forward_match.group(1).strip()
+        email = forward_match.group(2).strip()
+        print(f"Found in forwarded format - Name: {name}, Email: {email}")
+        return name, email
+    
+    # Fallback: any email
+    email_pattern = r'<([^>]+@[^>]+)>'
+    email_match = re.search(email_pattern, email_content)
+    if email_match:
+        email = email_match.group(1)
+        print(f"Found email only: {email}")
+        return None, email
+    
+    print("No name/email found")
+    return None, None
+
+def get_attachment_content(msg):
+    """Extract content and metadata from email attachments (.eml files)"""
+    print("\n=== Processing Email Attachment ===")
+    
+    attachment_data = {'content': None, 'from_header': None}
+    
+    if msg.is_multipart():
+        for part in msg.walk():
+            if part.get_content_type() == 'message/rfc822':
+                print("Found RFC822 attachment")
+                attached_email = part.get_payload()[0]
+                
+                # Get the From header from the attached email
+                attachment_data['from_header'] = attached_email.get('From')
+                print(f"From header in attachment: {attachment_data['from_header']}")
+                
+                # Get HTML content
+                for subpart in attached_email.walk():
+                    if subpart.get_content_type() == 'text/html':
+                        print("Found HTML content in attachment")
+                        html_content = subpart.get_payload(decode=True).decode()
+                        soup = BeautifulSoup(html_content, 'html.parser')
+                        
+                        # Extract data from table rows
+                        rows = soup.find_all('tr')
+                        order_text = []
+                        
+                        print("\n=== Processing Table Rows ===")
+                        for row in rows:
+                            cells = row.find_all(['td', 'th'])
+                            if cells:
+                                row_text = [cell.get_text(strip=True) for cell in cells]
+                                if any(text for text in row_text):
+                                    line = '\t'.join(row_text)
+                                    print(f"Row content: {line}")
+                                    order_text.append(line)
+                        
+                        attachment_data['content'] = '\n'.join(order_text)
+                        
+                return attachment_data
+    
+    return attachment_data
 
 
 import logging
@@ -1122,20 +1212,8 @@ if __name__ == "__main__":
     mail = imaplib.IMAP4_SSL("imap.gmail.com")
 
     try:
-        # Login to your account
         mail.login(username, password)
-
-        # Ensure the CustomerNotFound folder exists
-        if not ensure_imap_folder_exists(mail, 'CustomerNotFound'):
-            logging.error("Unable to proceed due to folder creation issue.")
-            raise Exception("Folder creation failed")
-        else:
-            logging.info("CustomerNotFound folder is ready")
-
-        # Select the "Orders" mailbox
         mail.select("Orders")
-
-        # Search for all emails in the "Orders" inbox
         status, messages = mail.uid('search', None, "ALL")
 
         if status == 'OK':
@@ -1157,6 +1235,8 @@ if __name__ == "__main__":
                     if status == 'OK' and msg_data and msg_data[0] is not None:
                         if isinstance(msg_data[0], tuple):
                             msg = email.message_from_bytes(msg_data[0][1])
+                            
+                            # Try to get content from attachment first, then fall back to email body
                             body = get_email_content(msg)
 
                             if body:
@@ -1210,7 +1290,9 @@ if __name__ == "__main__":
                             logging.error(f"Failed to move email that failed to fetch to CustomerNotFound folder")
 
                 except Exception as e:
-                    logging.error(f"Error processing email UID {email_uid.decode()}: {str(e)}")
+                    logging.error(f"Error processing email UID {email_uid.decode()}: {str(e)} {e}")
+                    traceback.print_exc()  # This will print the stack trace to the console for debugging
+
                     if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
                         logging.info(f"Email that caused an error moved to CustomerNotFound folder")
                     else:
