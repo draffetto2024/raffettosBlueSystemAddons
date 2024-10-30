@@ -38,60 +38,46 @@ def read_grid_excel(file_path):
 def extract_orders(email_text, customer_codes):
     orders = []
     email_lines = email_text.strip().split('\n')
+    print("\n=== Starting Order Extraction ===")
+    print(f"Email lines:\n{email_lines}")
 
-    #print("Extracting orders from email:")
-    #print("Customer codes:", customer_codes)
-    #print("Email content:")
-    #print(email_text)
+    for raw_text, (product_info, product_code, enters) in customer_codes.items():
+        print(f"\nChecking match pattern:")
+        print(f"Raw text: '{raw_text}'")
+        pattern_lines = raw_text.split('\n')
+        pattern_length = len(pattern_lines)
+        print(f"Pattern length: {pattern_length} lines")
 
-    def find_multi_line_match(lines, start_index, match_lines):
-        if start_index + len(match_lines) > len(lines):
-            return False
-        return all(clean_line(lines[start_index + i]).startswith(clean_line(match_line))
-                   for i, match_line in enumerate(match_lines))
-
-    # Separate single-line and multi-line matches
-    single_line_matches = {k: v for k, v in customer_codes.items() if '\n' not in k}
-    multi_line_matches = {k: v for k, v in customer_codes.items() if '\n' in k}
-
-    # Sort multi-line matches by number of lines (descending)
-    # This is where we're extracting the line count from the Excel data
-    sorted_multi_line_matches = sorted(multi_line_matches.items(), key=lambda x: len(x[0].split('\n')), reverse=True)
-
-    i = 0
-    while i < len(email_lines):
-        matched = False
-
-        # Check for multi-line matches first
-        for match, (product_info, product_code, enters) in sorted_multi_line_matches:
-            match_lines = match.split('\n')
-            if find_multi_line_match(email_lines, i, match_lines):
-                chunk = '\n'.join(email_lines[i:i+len(match_lines)])
-                #print(f"Multi-line match found: {match} in {chunk}")
-                quantity = extract_quantity(chunk)
-                orders.append((quantity, enters, clean_line(chunk), product_code, quantity, 0))
-                i += len(match_lines)
-                matched = True
+        # For each possible starting position in email
+        for i in range(len(email_lines) - pattern_length + 1):
+            print(f"\nChecking email chunk starting at line {i}:")
+            chunk = email_lines[i:i+pattern_length]
+            print(f"Email chunk: {chunk}")
+            print(f"Pattern lines: {pattern_lines}")
+            
+            # Check if pattern matches this chunk
+            matches = True
+            for pattern_line, chunk_line in zip(pattern_lines, chunk):
+                cleaned_pattern = clean_line(pattern_line)
+                cleaned_chunk = clean_line(chunk_line)
+                print(f"Comparing:")
+                print(f"Pattern: '{cleaned_pattern}'")
+                print(f"Chunk: '{cleaned_chunk}'")
+                if cleaned_pattern not in cleaned_chunk:
+                    matches = False
+                    break
+                    
+            if matches:
+                print("Match found!")
+                chunk_text = '\n'.join(chunk)
+                quantity = extract_quantity(chunk_text)
+                orders.append((quantity, enters, chunk_text, product_code, quantity, 0))
                 break
 
-        # If no multi-line match, check for single-line match
-        if not matched:
-            line = email_lines[i]
-            cleaned_line = clean_line(line)
-            for raw_text, (product_info, product_code, enters) in single_line_matches.items():
-                if all(word.lower() in cleaned_line for word in raw_text.split()):
-                    #print(f"Single-line match found: {raw_text} in {cleaned_line}")
-                    quantity = extract_quantity(cleaned_line)
-                    orders.append((quantity, enters, cleaned_line, product_code, quantity, 0))
-                    matched = True
-                    break
+    print("\n=== Orders Found ===")
+    for order in orders:
+        print(f"Quantity: {order[0]}, Code: {order[3]}, Text: {order[2]}")
 
-        # if not matched:
-            #print(f"No match found for line: {cleaned_line}")
-
-        i += 1  # Always increment i, whether matched or not
-
-    #print(f"Extracted orders: {orders}")
     return orders
 
 def extract_quantity(text):
@@ -121,34 +107,21 @@ def write_orders_to_db(db_path, customer_email, customer_id, orders, raw_email, 
 
 # Function to extract email content
 def get_email_content(msg):
-    """First checks for attachments, then falls back to regular email content"""
+    """Only processes forwarded emails as attachments"""
+    print("\n=== Processing Email Content ===")
     attachment_data = get_attachment_content(msg)
     
-    if attachment_data['content']:
-        print("\n=== Using Attachment Content ===")
-        print(attachment_data['content'])
-        if attachment_data['from_header']:
-            print(f"\n=== Original From Header ===")
-            print(attachment_data['from_header'])
-        return attachment_data
+    if not attachment_data['content']:
+        print("No attachment content found")
+        return {'content': None, 'from_header': None}
     
-    print("\n=== Using Regular Email Content ===")
-    result = {'content': None, 'from_header': msg.get('From')}
+    print("\n=== Using Attachment Content ===")
+    print(attachment_data['content'])
+    if attachment_data['from_header']:
+        print(f"\n=== Original From Header ===")
+        print(attachment_data['from_header'])
     
-    if msg.is_multipart():
-        for part in msg.walk():
-            if part.get_content_type() == 'text/html':
-                html_content = part.get_payload(decode=True).decode()
-                soup = BeautifulSoup(html_content, 'html.parser')
-                result['content'] = soup.get_text()
-                break
-            elif part.get_content_type() == 'text/plain':
-                result['content'] = part.get_payload(decode=True).decode()
-                break
-    else:
-        result['content'] = msg.get_payload(decode=True).decode() if msg.get_payload() else None
-    
-    return result
+    return attachment_data['content']
 
 # Function to extract email address from the "From" field
 # def extract_email_address(from_field):
@@ -170,47 +143,99 @@ def extract_email_address(email_content):
             logging.warning("No email address found in the content")
             return None
 
+def cleanup_nomatch_entries(db_path, customer_id, email_sent_date):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+    DELETE FROM orders 
+    WHERE customer_id = ? 
+    AND email_sent_date = ? 
+    AND item_id = 'NOMATCH'
+    AND EXISTS (
+        SELECT 1 
+        FROM orders 
+        WHERE customer_id = ? 
+        AND email_sent_date = ? 
+        AND item_id != 'NOMATCH'
+    )
+    ''', (customer_id, email_sent_date, customer_id, email_sent_date))
+    
+    conn.commit()
+    conn.close()
+
+def process_nomatch_entries(db_path, customer_product_codes):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Get all NOMATCH entries
+    cursor.execute('''
+    SELECT raw_email, customer_id, email_sent_date
+    FROM orders 
+    WHERE item_id = 'NOMATCH'
+    ''')
+    nomatch_entries = cursor.fetchall()
+    conn.close()
+    
+    for raw_email, customer_id, email_sent_date in nomatch_entries:
+        customer_codes = customer_product_codes.get(customer_id, {})
+        
+        # Try to extract orders with current codes
+        orders = extract_orders(raw_email, customer_codes)
+        
+        if orders:
+            # Write new matches to database
+            write_orders_to_db(db_path, customer_id, customer_id, orders, raw_email, email_sent_date)
+            # Delete the NOMATCH entry
+            delete_nomatch_entry(db_path, customer_id, email_sent_date)
+
+def delete_nomatch_entry(db_path, customer_id, email_sent_date):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('''
+    DELETE FROM orders 
+    WHERE customer_id = ? 
+    AND email_sent_date = ? 
+    AND item_id = 'NOMATCH'
+    ''', (customer_id, email_sent_date))
+    conn.commit()
+    conn.close()
+
+# Modify the process_email function to call cleanup_nomatch_entries
 def process_email(from_, body, customer_codes, customer_id, db_path, mail, msg_id, email_sent_date):
-    # email_address = extract_email_address(body)
-    #print(f"Processing email from: {email_address}")
-    #print(f"Customer ID: {customer_id}")
-    #print(f"Customer codes: {customer_codes}")
+    BODY = body if not isinstance(body, dict) else body.get('content', '')
+    
+    # First, try to get existing orders
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('''
+    SELECT COUNT(*) 
+    FROM orders 
+    WHERE customer_id = ? 
+    AND email_sent_date = ? 
+    AND item_id != 'NOMATCH'
+    ''', (customer_id, email_sent_date))
+    existing_orders = cursor.fetchone()[0]
+    conn.close()
 
-    # Extract orders from the email body using the customer-specific product codes
+    # Extract new orders
+    orders = extract_orders(BODY, customer_codes)
 
-    #We might have dict or just email content here. 
-
-    BODY = body
-
-    # Assume BODY is already defined
-    if isinstance(BODY, dict):
-        # If BODY is a dict, set 'body' to the value of the 'content' field
-        body = BODY.get('content', '')  # Use empty string as default if 'content' is missing
-    else:
-        # If BODY is not a dict, use it directly as the body
-        body = BODY
-
-    print("BODY", body)
-
-    orders = extract_orders(body, customer_codes)
-
-    print("ORDERS", orders)
-    #print(f"Orders extracted: {orders}")
-
-    if orders:
-        # Write orders to the SQL database
-        write_orders_to_db(db_path, email_address, customer_id, orders, body, email_sent_date)
-
-        # Move the email to the EnteredIntoABS inbox only if mail object is provided
-        if mail and msg_id:
-            move_email(mail, msg_id, "EnteredIntoABS")
-            #print("Email processed successfully and moved to EnteredIntoABS")
-        # else:
-        #     #print("Email processed successfully (no email movement performed)")
-        return True
-    else:
-        #print("No orders extracted from the email")
-        return False
+    # If we found matches or already have existing matches
+    if orders or existing_orders > 0:
+        if orders:  # If new matches found, write them
+            write_orders_to_db(db_path, from_, customer_id, orders, BODY, email_sent_date)
+        # Clean up any NOMATCH entries
+        cleanup_nomatch_entries(db_path, customer_id, email_sent_date)
+    else:  # No matches found and no existing matches
+        write_orders_to_db(db_path, from_, customer_id, 
+                          [(1, "4E", "NO MATCHES FOUND", "NOMATCH", 1, 0)], 
+                          BODY, email_sent_date)
+    
+    if mail and msg_id:
+        move_email(mail, msg_id, "EnteredIntoABS")
+    
+    return True
 
 # Function to move an email to another folder
 def move_email(mail, msg_id, destination_folder):
@@ -295,9 +320,10 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
     # Update headers to include Date to be Entered
     headers = ["Raw Email Content", "Matched Products", "Quantity", "Enters", "Product Codes", "Customer", "Email Sent Date", "Date to be Entered", "Entered Status", "Select", "Delete"]
 
+    # Modify populate_grid to clean up NOMATCH entries when loading orders
     def populate_grid(filter_date=None):
         for widget in scrollable_frame.winfo_children():
-                widget.destroy()
+            widget.destroy()
 
         # Update headers
         for col, header in enumerate(headers):
@@ -307,17 +333,56 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
+        # Get all orders for the date range
         if filter_date:
             next_date = filter_date + timedelta(days=1)
             cursor.execute(''' 
-            SELECT raw_email, customer, item_id, quantity, enters, item, email_sent_date, date_to_be_entered, entered_status, customer_id
+            SELECT DISTINCT customer_id, email_sent_date 
+            FROM orders 
+            WHERE date_to_be_entered >= ? AND date_to_be_entered < ?
+            ''', (filter_date.strftime('%Y-%m-%d'), next_date.strftime('%Y-%m-%d')))
+        else:
+            cursor.execute('''
+            SELECT DISTINCT customer_id, email_sent_date 
+            FROM orders 
+            WHERE date_to_be_entered IS NOT NULL
+            ''')
+
+        # Process NOMATCH entries after getting the initial data
+        cursor.execute('''
+        SELECT raw_email, customer_id, email_sent_date
+        FROM orders 
+        WHERE item_id = 'NOMATCH'
+        ''')
+        nomatch_entries = cursor.fetchall()
+        
+        for raw_email, customer_id, email_sent_date in nomatch_entries:
+            customer_codes = customer_product_codes.get(customer_id, {})
+            orders = extract_orders(raw_email, customer_codes)
+            
+            if orders:
+                write_orders_to_db(db_path, customer_id, customer_id, orders, raw_email, email_sent_date)
+                cursor.execute('''
+                DELETE FROM orders 
+                WHERE customer_id = ? 
+                AND email_sent_date = ? 
+                AND item_id = 'NOMATCH'
+                ''', (customer_id, email_sent_date))
+                conn.commit()
+
+        # Now get the cleaned up orders for display
+        if filter_date:
+            cursor.execute(''' 
+            SELECT raw_email, customer, item_id, quantity, enters, item, email_sent_date, 
+                date_to_be_entered, entered_status, customer_id
             FROM orders
             WHERE date_to_be_entered >= ? AND date_to_be_entered < ?
             ORDER BY entered_status ASC, date_to_be_entered ASC
             ''', (filter_date.strftime('%Y-%m-%d'), next_date.strftime('%Y-%m-%d')))
         else:
             cursor.execute('''
-            SELECT raw_email, customer, item_id, quantity, enters, item, email_sent_date, date_to_be_entered, entered_status, customer_id
+            SELECT raw_email, customer, item_id, quantity, enters, item, email_sent_date, 
+                date_to_be_entered, entered_status, customer_id
             FROM orders
             WHERE date_to_be_entered IS NOT NULL
             ORDER BY entered_status ASC, date_to_be_entered ASC
@@ -445,14 +510,13 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
         
         # Updated way to get the email content
         email_frame = scrollable_frame.grid_slaves(row=row, column=0)[0]
-        email_text_widget = email_frame.winfo_children()[0]  # The Text widget is the first child of the Frame
+        email_text_widget = email_frame.winfo_children()[0]
         raw_email = email_text_widget.get("1.0", tk.END).strip()
-        
         email_sent_date = scrollable_frame.grid_slaves(row=row, column=6)[0]['text']
 
-        # Create pop-up window
+        # Create Quick Add window
         popup = tk.Toplevel(root)
-        popup.title("Add New Matching")
+        popup.title("Quick Add Matching")
         popup.geometry("400x200")
 
         tk.Label(popup, text="Matching Phrase:").pack()
@@ -471,14 +535,12 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
                 messagebox.showwarning("Warning", "Both fields must be filled.")
                 return
 
-            # Update Excel file
+            # Update Excel file and database, then confirm success without closing the popup
             if update_customer_excel_file(customer_id, matching_phrase, matched_product):
-                # Reload the order
                 reload_order(customer_id, raw_email, email_sent_date)
-                popup.destroy()
-                messagebox.showinfo("Success", "New matching added and order reloaded.")
+                messagebox.showinfo("Success", "Match added successfully. You can add another or close the window.")
             else:
-                messagebox.showerror("Error", "Failed to update Excel file. Please try again.")
+                messagebox.showerror("Error", "Failed to add match. Please try again.")
 
         # Add the submit button
         submit_button = tk.Button(popup, text="Submit", command=submit_matching)
@@ -557,17 +619,22 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
     def auto_enter_selected():
         selected_orders = []
         already_entered_orders = []
-
-        #print("Beginning Auto Order Entry in 5 seconds.")
+        no_match_orders = []
         time.sleep(5)
 
         for row, var in checkbox_vars.items():
             if var.get():
-                #print(f"Processing row {row}")
-                raw_email_content = scrollable_frame.grid_slaves(row=row, column=0)[0].get("1.0", tk.END).strip()
+                email_frame = scrollable_frame.grid_slaves(row=row, column=0)[0]
+                email_text_widget = email_frame.winfo_children()[0]
+                raw_email_content = email_text_widget.get("1.0", tk.END).strip()
                 customer_id = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']
                 email_sent_date = scrollable_frame.grid_slaves(row=row, column=6)[0]['text']
                 item_ids = scrollable_frame.grid_slaves(row=row, column=4)[0].get("1.0", tk.END).strip()
+                
+                if "NOMATCH" in item_ids:
+                    no_match_orders.append((raw_email_content, customer_id, email_sent_date))
+                    continue
+
                 quantities = scrollable_frame.grid_slaves(row=row, column=2)[0].get("1.0", tk.END).strip()
                 enters = scrollable_frame.grid_slaves(row=row, column=3)[0].get("1.0", tk.END).strip()
                 items = scrollable_frame.grid_slaves(row=row, column=1)[0].get("1.0", tk.END).strip()
@@ -575,26 +642,18 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
                 entered_status = check_entered_status(db_path, raw_email_content, customer_id, email_sent_date)
                 if entered_status == 1:
                     already_entered_orders.append((raw_email_content, customer_id, email_sent_date, item_ids, quantities, enters, items))
-                    #print(f"Order already entered: {customer_id}, {item_ids}")
                 else:
                     selected_orders.append((raw_email_content, customer_id, email_sent_date, item_ids, quantities, enters, items))
-                    #print(f"Order selected for processing: {customer_id}, {item_ids}")
-        
-        #print(f"Total orders selected for processing: {len(selected_orders)}")
-        #print(f"Total orders already entered: {len(already_entered_orders)}")
 
+        if no_match_orders:
+            messagebox.showwarning("Cannot Process", "Selected orders contain unmatched items that cannot be auto-entered.")
+            return
+            
         if selected_orders:
-            #print("Selected orders:")
-            # for order in selected_orders:
-            #     #print(order)
-            
-            # Perform auto order entry
             perform_auto_entry(selected_orders)
-            
-            # Update the entered status in the database for selected rows
+            print("Stuff", [(order[0], order[1], order[2]) for order in selected_orders])
             update_entered_status(db_path, [(order[0], order[1], order[2]) for order in selected_orders])
             
-            # Move processed emails to the ProcessedEmails inbox
             for order in selected_orders:
                 move_email_by_content(order[0], order[1], order[2], "EnteredIntoABS", "ProcessedEmails")
             
@@ -603,13 +662,10 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
                 message += f"\n{len(already_entered_orders)} orders were already entered and skipped."
             
             messagebox.showinfo("Info", message)
-            
-            # Refresh the grid to reflect changes
             populate_grid(date_entry.get_date())
         elif already_entered_orders:
             messagebox.showwarning("Warning", f"All selected orders ({len(already_entered_orders)}) have already been entered.")
         else:
-            #print("No rows selected.")
             messagebox.showwarning("Warning", "No rows selected.")
 
 
@@ -632,13 +688,17 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
 
         unentered_orders = {}
         already_entered_orders = {}
-
-        #print("Beginning Auto Order Entry in 5 seconds.")
-        time.sleep(5)
+        has_no_match = False
 
         for order in orders:
             raw_email, customer, customer_id, item_id, quantity, enters, item, entered_status, email_sent_date, date_to_be_entered = order
             order_key = (raw_email, customer_id, email_sent_date)
+            
+            # Check for NOMATCH entries
+            if "NOMATCH" in item_id:
+                has_no_match = True
+                continue
+                
             if entered_status == 0:
                 if order_key not in unentered_orders:
                     unentered_orders[order_key] = [[], [], [], []]
@@ -654,27 +714,20 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
                 already_entered_orders[order_key][2].append(enters if enters is not None else '4E')
                 already_entered_orders[order_key][3].append(item)
 
+        if has_no_match:
+            messagebox.showwarning("Cannot Process", "Some orders contain unmatched items that cannot be auto-entered. Please review and match these items first.")
+            return
+
         unentered_orders_list = [
             (raw_email, customer_id, email_sent_date, '\n'.join(order_data[0]), '\n'.join(order_data[1]),
             '\n'.join(order_data[2]), '\n'.join(order_data[3]))
             for (raw_email, customer_id, email_sent_date), order_data in unentered_orders.items()
         ]
 
-        #print(f"Total orders to be processed: {len(unentered_orders_list)}")
-        #print(f"Total orders already entered: {len(already_entered_orders)}")
-
         if unentered_orders_list:
-            #print("Orders to be processed:")
-            # for order in unentered_orders_list:
-            #     #print(order)
-            
-            # Perform auto order entry
             perform_auto_entry(unentered_orders_list)
-            
-            # Update the entered status in the database for processed orders
             update_entered_status(db_path, [(order[0], order[1], order[2]) for order in unentered_orders_list])
             
-            # Move processed emails to the ProcessedEmails inbox
             for order in unentered_orders_list:
                 move_email_by_content(order[0], order[1], order[2], "EnteredIntoABS", "ProcessedEmails")
             
@@ -683,13 +736,10 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
                 message += f"\n{len(already_entered_orders)} orders were already entered and skipped."
             
             messagebox.showinfo("Info", message)
-            
-            # Refresh the grid to reflect changes
             populate_grid(date_entry.get_date())
         elif already_entered_orders:
             messagebox.showinfo("Info", f"All orders for the selected date ({len(already_entered_orders)}) have already been entered.")
         else:
-            #print("No orders found for the selected date.")
             messagebox.showwarning("Warning", "No orders found for the selected date.")
 
 
@@ -725,6 +775,7 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
     def perform_delete(raw_email, customer_id, email_sent_date, entered):
         delete_order_from_db(db_path, raw_email, customer_id, email_sent_date)
         if entered:
+            print("RAW_EMAIL", raw_email)
             move_email_by_content(raw_email, customer_id, email_sent_date, "ProcessedEmails", "Orders")
             messagebox.showinfo("Success", "Entered order deleted and email moved back to Orders inbox from ProcessedEmails.")
         else:
@@ -758,29 +809,30 @@ def move_email_by_content(raw_email_content, customer_id, email_sent_date, sourc
         mail.login(username, password)
         mail.select(source_folder)
         
-        # Search for all emails in the folder
         status, messages = mail.search(None, "ALL")
         
+        print("MESSAGES", messages)
         if status == 'OK' and messages[0]:
             for msg_id in messages[0].split():
-                # Fetch the email content
                 status, msg_data = mail.fetch(msg_id, "(RFC822)")
                 if status == 'OK':
                     email_msg = email.message_from_bytes(msg_data[0][1])
                     email_body = get_email_content(email_msg)
                     email_date = email.utils.parsedate_to_datetime(email_msg['Date']).strftime('%Y-%m-%d %H:%M:%S')
+
+                    print("EMAIL MSG", email_msg)
+                    print("EMAIL_BODY", email_body)
                     
-                    if (email_body.strip() == raw_email_content.strip() and
+                    # Handle email_body being either dict or string
+                    if isinstance(email_body, dict):
+                        email_content = email_body.get('content', '')
+                    else:
+                        email_content = email_body
+                        
+                    if (email_content.strip() == raw_email_content.strip() and
                         email_date == email_sent_date):
-                        # Move the email
                         move_email(mail, msg_id, destination_folder)
-                        #print(f"Moved email with ID {msg_id} to {destination_folder}")
                         break
-        #     else:
-        #         #print(f"Email not found in {source_folder} folder")
-        # else:
-        #     #print(f"No emails found in {source_folder} folder")
-    
     finally:
         mail.close()
         mail.logout()
@@ -893,8 +945,8 @@ def update_entered_status(db_path, orders):
         cursor.execute('''
         UPDATE orders
         SET entered_status = 1
-        WHERE raw_email = ? AND customer_id = ? AND email_sent_date = ?
-        ''', (raw_email, customer_id, email_sent_date))
+        WHERE customer_id = ? AND email_sent_date = ?
+        ''', (customer_id, email_sent_date))
 
     conn.commit()
     conn.close()
@@ -1160,7 +1212,7 @@ def get_attachment_content(msg):
                 attachment_data['from_header'] = attached_email.get('From')
                 print(f"From header in attachment: {attachment_data['from_header']}")
                 
-                # Get HTML content
+                # Try HTML first
                 for subpart in attached_email.walk():
                     if subpart.get_content_type() == 'text/html':
                         print("Found HTML content in attachment")
@@ -1169,22 +1221,52 @@ def get_attachment_content(msg):
                         
                         # Extract data from table rows
                         rows = soup.find_all('tr')
-                        order_text = []
+                        if rows:  # If we found table rows
+                            order_text = []
+                            print("\n=== Processing Table Rows ===")
+                            for row in rows:
+                                cells = row.find_all(['td', 'th'])
+                                if cells:
+                                    row_text = [cell.get_text(strip=True) for cell in cells]
+                                    if any(text for text in row_text):
+                                        line = ' '.join(row_text)
+                                        print(f"Row content: {line}")
+                                        order_text.append(line)
+                            
+                            if order_text:  # If we successfully extracted table data
+                                attachment_data['content'] = '\n'.join(order_text)
+                                return attachment_data
+                
+                # If no HTML tables found, try plain text but structure it
+                for subpart in attached_email.walk():
+                    if subpart.get_content_type() == 'text/plain':
+                        print("Processing plain text content")
+                        text_content = subpart.get_payload(decode=True).decode()
+                        lines = text_content.split('\n')
+                        structured_lines = []
                         
-                        print("\n=== Processing Table Rows ===")
-                        for row in rows:
-                            cells = row.find_all(['td', 'th'])
-                            if cells:
-                                row_text = [cell.get_text(strip=True) for cell in cells]
-                                if any(text for text in row_text):
-                                    line = '\t'.join(row_text)
-                                    print(f"Row content: {line}")
-                                    order_text.append(line)
+                        # Group lines that seem to be part of the same item
+                        current_item = []
+                        for line in lines:
+                            line = line.strip()
+                            if not line:  # Skip empty lines
+                                continue
+                            if line.startswith('R') or 'RAVIOLI' in line:  # Potential product line
+                                if current_item:  # Save previous item if exists
+                                    structured_lines.append(' '.join(current_item))
+                                current_item = [line]
+                            elif current_item:  # Continuation of current item
+                                current_item.append(line)
+                            else:  # Header or other information
+                                structured_lines.append(line)
                         
-                        attachment_data['content'] = '\n'.join(order_text)
+                        # Add last item if exists
+                        if current_item:
+                            structured_lines.append(' '.join(current_item))
                         
-                return attachment_data
-    
+                        attachment_data['content'] = '\n'.join(structured_lines)
+                        return attachment_data
+                        
     return attachment_data
 
 
@@ -1240,7 +1322,8 @@ if __name__ == "__main__":
                             body = get_email_content(msg)
 
                             if body:
-                                name, email_address = extract_email_and_name(body)
+                                email_dict = get_attachment_content(msg)
+                                name, email_address = extract_email_and_name(email_dict)
                                 logging.info(f"Extracted email: {email_address}, name: {name}")
 
                                 # Extract the email sent date
