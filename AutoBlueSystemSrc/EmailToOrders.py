@@ -38,45 +38,58 @@ def read_grid_excel(file_path):
 def extract_orders(email_text, customer_codes):
     orders = []
     email_lines = email_text.strip().split('\n')
-    print("\n=== Starting Order Extraction ===")
-    print(f"Email lines:\n{email_lines}")
+    print("\n============= NEW EMAIL PROCESSING =============")
+    print("Email Content:")
+    print("----------------------------------------")
+    print(email_text)
+    print("----------------------------------------")
 
     for raw_text, (product_info, product_code, enters) in customer_codes.items():
-        print(f"\nChecking match pattern:")
-        print(f"Raw text: '{raw_text}'")
-        pattern_lines = raw_text.split('\n')
-        pattern_length = len(pattern_lines)
-        print(f"Pattern length: {pattern_length} lines")
-
+        # Extract quantity from product_info
+        product_quantity = int(product_info.split()[0])  # Get first word and convert to int
+        
         # For each possible starting position in email
-        for i in range(len(email_lines) - pattern_length + 1):
-            print(f"\nChecking email chunk starting at line {i}:")
-            chunk = email_lines[i:i+pattern_length]
-            print(f"Email chunk: {chunk}")
-            print(f"Pattern lines: {pattern_lines}")
+        for i in range(len(email_lines) - len(raw_text.split('\n')) + 1):
+            chunk = email_lines[i:i+len(raw_text.split('\n'))]
             
             # Check if pattern matches this chunk
             matches = True
-            for pattern_line, chunk_line in zip(pattern_lines, chunk):
+            for pattern_line, chunk_line in zip(raw_text.split('\n'), chunk):
                 cleaned_pattern = clean_line(pattern_line)
                 cleaned_chunk = clean_line(chunk_line)
-                print(f"Comparing:")
-                print(f"Pattern: '{cleaned_pattern}'")
-                print(f"Chunk: '{cleaned_chunk}'")
                 if cleaned_pattern not in cleaned_chunk:
                     matches = False
                     break
                     
             if matches:
-                print("Match found!")
                 chunk_text = '\n'.join(chunk)
-                quantity = extract_quantity(chunk_text)
-                orders.append((quantity, enters, chunk_text, product_code, quantity, 0))
+                
+                print("\n!!! MATCH FOUND !!!")
+                print("----------------------------------------")
+                print(f"Matched Text:\n{chunk_text}")
+                print("----------------------------------------")
+                print(f"Pattern that matched: '{raw_text}'")
+                print(f"Product Info: {product_info}")
+                print(f"Extracted Quantity from Product Info: {product_quantity}")
+                print(f"Product Code: {product_code}")
+                print(f"Enters Value: {enters}")
+                print("----------------------------------------")
+                
+                orders.append((product_quantity, enters, chunk_text, product_code, product_quantity, 0))
                 break
 
-    print("\n=== Orders Found ===")
-    for order in orders:
-        print(f"Quantity: {order[0]}, Code: {order[3]}, Text: {order[2]}")
+    print("\n============= FINAL ORDERS SUMMARY =============")
+    if orders:
+        for i, (quantity, enters, text, code, _, _) in enumerate(orders, 1):
+            print(f"\nOrder {i}:")
+            print(f"Product Code: {code}")
+            print(f"Quantity: {quantity}")
+            print(f"Enters: {enters}")
+            print(f"Matched Text: {text}")
+            print("----------------------------------------")
+    else:
+        print("NO MATCHES FOUND IN THIS EMAIL")
+    print("==============================================\n")
 
     return orders
 
@@ -88,7 +101,7 @@ def clean_line(line):
     return re.sub(r'[^a-zA-Z0-9 ]', '', line).lower()
 
 
-def write_orders_to_db(db_path, customer_email, customer_id, orders, raw_email, email_sent_date):
+def write_orders_to_db(db_path, customer_info, orders, raw_email, email_sent_date):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
@@ -98,9 +111,25 @@ def write_orders_to_db(db_path, customer_email, customer_id, orders, raw_email, 
 
     for quantity, enters, raw_product, product_code, _, _ in orders:
         cursor.execute('''
-        INSERT INTO orders (customer, customer_id, quantity, item, item_id, enters, date_generated, date_processed, entered_status, raw_email, email_sent_date, date_to_be_entered)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (customer_email, customer_id, quantity, raw_product, product_code, enters, date_generated, date_processed, 0, raw_email, email_sent_date, date_to_be_entered))
+        INSERT INTO orders (
+            customer, customer_id, quantity, item, item_id, enters, 
+            date_generated, date_processed, entered_status, 
+            raw_email, email_sent_date, date_to_be_entered
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            customer_info['display_string'], 
+            customer_info['id'], 
+            quantity, 
+            raw_product, 
+            product_code, 
+            enters, 
+            date_generated, 
+            date_processed, 
+            0, 
+            raw_email, 
+            email_sent_date, 
+            date_to_be_entered
+        ))
 
     conn.commit()
     conn.close()
@@ -202,35 +231,86 @@ def delete_nomatch_entry(db_path, customer_id, email_sent_date):
     conn.close()
 
 # Modify the process_email function to call cleanup_nomatch_entries
-def process_email(from_, body, customer_codes, customer_id, db_path, mail, msg_id, email_sent_date):
+def process_email(from_email, body, customer_codes, customer_info, db_path, mail, msg_id, email_sent_date):
+    """
+    Process email with customer information.
+    customer_info must be a dictionary containing id, name, email, and display_string
+    """
     BODY = body if not isinstance(body, dict) else body.get('content', '')
     
-    # First, try to get existing orders
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute('''
-    SELECT COUNT(*) 
-    FROM orders 
-    WHERE customer_id = ? 
-    AND email_sent_date = ? 
-    AND item_id != 'NOMATCH'
-    ''', (customer_id, email_sent_date))
-    existing_orders = cursor.fetchone()[0]
-    conn.close()
+    if not isinstance(customer_info, dict) or 'display_string' not in customer_info:
+        raise ValueError("customer_info must be a dictionary with complete customer information")
 
-    # Extract new orders
+    # Generate dates at the start - we'll need these regardless of outcome
+    date_generated = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    date_processed = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    date_to_be_entered = datetime.now().strftime('%Y-%m-%d')
+
+    # Extract orders
     orders = extract_orders(BODY, customer_codes)
 
-    # If we found matches or already have existing matches
-    if orders or existing_orders > 0:
-        if orders:  # If new matches found, write them
-            write_orders_to_db(db_path, from_, customer_id, orders, BODY, email_sent_date)
-        # Clean up any NOMATCH entries
-        cleanup_nomatch_entries(db_path, customer_id, email_sent_date)
-    else:  # No matches found and no existing matches
-        write_orders_to_db(db_path, from_, customer_id, 
-                          [(1, "4E", "NO MATCHES FOUND", "NOMATCH", 1, 0)], 
-                          BODY, email_sent_date)
+    # First, delete any existing records for this exact order
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Delete existing records for this order
+    cursor.execute('''
+    DELETE FROM orders 
+    WHERE customer_id = ? 
+    AND raw_email = ? 
+    AND email_sent_date = ?
+    ''', (customer_info['id'], BODY, email_sent_date))
+    
+    conn.commit()
+
+    # Now insert the new records
+    if orders:
+        for quantity, enters, raw_product, product_code, _, _ in orders:
+            cursor.execute('''
+            INSERT INTO orders (
+                customer, customer_id, quantity, item, item_id, 
+                enters, date_generated, date_processed, entered_status, 
+                raw_email, email_sent_date, date_to_be_entered
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                customer_info['display_string'], 
+                customer_info['id'], 
+                quantity, 
+                raw_product, 
+                product_code, 
+                enters, 
+                date_generated, 
+                date_processed, 
+                0, 
+                BODY, 
+                email_sent_date, 
+                date_to_be_entered
+            ))
+    else:
+        # Insert NOMATCH record if no matches found
+        cursor.execute('''
+        INSERT INTO orders (
+            customer, customer_id, quantity, item, item_id, 
+            enters, date_generated, date_processed, entered_status, 
+            raw_email, email_sent_date, date_to_be_entered
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            customer_info['display_string'],
+            customer_info['id'],
+            1,
+            "NO MATCHES FOUND",
+            "NOMATCH",
+            "4E",
+            date_generated,
+            date_processed,
+            0,
+            BODY,
+            email_sent_date,
+            date_to_be_entered
+        ))
+    
+    conn.commit()
+    conn.close()
     
     if mail and msg_id:
         move_email(mail, msg_id, "EnteredIntoABS")
@@ -486,7 +566,22 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
         email_window = tk.Toplevel(root)
         email_window.title("Full Email Content")
         email_window.geometry("800x600")
+        
+        # Don't make it transient - this allows it to be independent in the window stack
+        email_window.transient()  # Remove parent dependency
+        
+        # Position the window
+        x = root.winfo_x() + 50
+        y = root.winfo_y() + 50
+        email_window.geometry(f"+{x}+{y}")
 
+        # Configure window behavior
+        email_window.attributes('-topmost', False)  # Ensure it's not always on top
+        email_window.focus_force()  # Give it focus without affecting other windows
+        
+        # Prevent this window from becoming the parent of other windows
+        email_window.group()  # Put it in its own window group
+        
         # Add a scrolled text widget to display the email content
         email_content = scrolledtext.ScrolledText(email_window, wrap=tk.WORD, width=80, height=30)
         email_content.pack(expand=True, fill='both', padx=10, pady=10)
@@ -498,6 +593,9 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
         # Add a close button
         close_button = ttk.Button(email_window, text="Close", command=email_window.destroy)
         close_button.pack(pady=10)
+        
+        # Bind Escape key to close
+        email_window.bind('<Escape>', lambda e: email_window.destroy())
 
     def add_matching():
         selected_rows = [row for row, var in checkbox_vars.items() if var.get()]
@@ -505,46 +603,154 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
             messagebox.showwarning("Warning", "Please select a row to add matching.")
             return
 
-        row = selected_rows[0]  # Use the first selected row
-        customer_id = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']
+        row = selected_rows[0]
         
-        # Updated way to get the email content
+        # Get values from the grid
         email_frame = scrollable_frame.grid_slaves(row=row, column=0)[0]
         email_text_widget = email_frame.winfo_children()[0]
         raw_email = email_text_widget.get("1.0", tk.END).strip()
+        
+        customer_id = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']
         email_sent_date = scrollable_frame.grid_slaves(row=row, column=6)[0]['text']
+        
+        print("\n=== Starting Add Matching Process ===")
+        print(f"Selected Order Info:")
+        print(f"Customer ID: {customer_id}")
+        print(f"Email Sent Date: {email_sent_date}")
+        print(f"Raw Email Preview: {raw_email[:100]}...")
+        
+        # Check entered status first
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute('''
+        SELECT entered_status
+        FROM orders 
+        WHERE customer_id = ? 
+        AND raw_email = ? 
+        AND email_sent_date = ?
+        LIMIT 1
+        ''', (customer_id, raw_email, email_sent_date))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        print(f"Entered Status Check Result: {result}")
+        
+        if result and result[0] == 1:
+            messagebox.showwarning(
+                "Cannot Add Match", 
+                "This order has already been entered into the system. Cannot add new matches to entered orders."
+            )
+            return
 
-        # Create Quick Add window
+        # Look up the customer info
+        customer_info = None
+        for key, info in email_name_to_customer_ids.items():
+            if info['id'] == customer_id:
+                customer_info = info
+                break
+
+        print(f"Found Customer Info: {customer_info}")
+
+        if not customer_info:
+            messagebox.showerror("Error", "Could not find customer information for this order.")
+            return
+
+        # Create Quick Add window...
         popup = tk.Toplevel(root)
         popup.title("Quick Add Matching")
         popup.geometry("400x200")
 
-        tk.Label(popup, text="Matching Phrase:").pack()
-        matching_phrase_entry = tk.Entry(popup, width=50)
-        matching_phrase_entry.pack()
+        # Define success popup function BEFORE submit_matching
+        def show_success():
+            success_popup = tk.Toplevel(popup)
+            success_popup.title("Success")
+            success_popup.geometry("300x100")
+            
+            # Position success popup relative to matching popup
+            x = popup.winfo_x() + (popup.winfo_width() - 300) // 2
+            y = popup.winfo_y() + (popup.winfo_height() - 100) // 2
+            success_popup.geometry(f"+{x}+{y}")
+            
+            tk.Label(success_popup, text="Match added successfully and order updated.").pack(pady=20)
+            
+            def close_success(event=None):
+                success_popup.destroy()
+                matching_phrase_entry.delete(0, tk.END)
+                matched_product_entry.delete(0, tk.END)
+                matching_phrase_entry.focus_set()
 
-        tk.Label(popup, text="Matched Product:").pack()
-        matched_product_entry = tk.Entry(popup, width=50)
-        matched_product_entry.pack()
-
-        def submit_matching():
+            success_popup.bind('<Return>', close_success)
+            success_popup.bind('<Escape>', close_success)
+            
+            success_popup.focus_set()
+            tk.Button(success_popup, text="OK", command=close_success).pack()
+        
+        def submit_matching(event=None):
             matching_phrase = matching_phrase_entry.get().strip().lower()
             matched_product = matched_product_entry.get().strip()
+
+            print(f"\n=== Submitting New Match ===")
+            print(f"Matching Phrase: {matching_phrase}")
+            print(f"Matched Product: {matched_product}")
 
             if not matching_phrase or not matched_product:
                 messagebox.showwarning("Warning", "Both fields must be filled.")
                 return
 
-            # Update Excel file and database, then confirm success without closing the popup
-            if update_customer_excel_file(customer_id, matching_phrase, matched_product):
-                reload_order(customer_id, raw_email, email_sent_date)
-                messagebox.showinfo("Success", "Match added successfully. You can add another or close the window.")
+            print("\nUpdating Excel file...")
+            if update_customer_excel_file(customer_info['id'], matching_phrase, matched_product):
+                print("Excel file updated successfully")
+                
+                # Reload customer codes
+                print("\nReloading customer codes...")
+                global customer_product_codes
+                customer_product_codes, _ = read_customer_excel_files('customer_product_codes', product_enters_mapping)
+                
+                # Get updated codes for this customer
+                customer_codes = customer_product_codes.get(customer_info['id'], {})
+                print(f"Updated customer codes: {customer_codes}")
+                
+                if customer_codes:
+                    print("\nAttempting to update existing order...")
+                    # Update the existing order with new matches
+                    if update_existing_order(db_path, customer_info, raw_email, email_sent_date, customer_codes):
+                        print("Order updated successfully")
+                        # Show success message and clear fields
+                        show_success()
+                        # Refresh the grid
+                        populate_grid(date_entry.get_date())
+                    else:
+                        print("Failed to update order")
+                        messagebox.showerror("Error", "Failed to update order with new match.")
+                else:
+                    print("No customer codes found after update")
+                    messagebox.showerror("Error", "No customer codes found after update.")
             else:
-                messagebox.showerror("Error", "Failed to add match. Please try again.")
+                print("Failed to update Excel file")
+                messagebox.showerror("Error", "Failed to add match to Excel file.")
 
-        # Add the submit button
-        submit_button = tk.Button(popup, text="Submit", command=submit_matching)
-        submit_button.pack(pady=10)
+        # Create and pack widgets...
+        frame = ttk.Frame(popup)
+        frame.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
+
+        ttk.Label(frame, text="Matching Phrase:").pack(anchor='w')
+        matching_phrase_entry = ttk.Entry(frame, width=50)
+        matching_phrase_entry.pack(fill=tk.X)
+
+        ttk.Label(frame, text="Matched Product:").pack(anchor='w', pady=(10, 0))
+        matched_product_entry = ttk.Entry(frame, width=50)
+        matched_product_entry.pack(fill=tk.X)
+
+        submit_button = ttk.Button(frame, text="Submit (Enter)", command=submit_matching)
+        submit_button.pack(pady=20)
+
+        # Bind keys
+        matching_phrase_entry.bind('<Return>', lambda e: matched_product_entry.focus_set())
+        matched_product_entry.bind('<Return>', submit_matching)
+        popup.bind('<Escape>', lambda e: popup.destroy())
+
+        matching_phrase_entry.focus_set()
 
     def update_excel_with_new_matching(customer_id, matching_phrase, matched_product):
         directory_path = 'customer_product_codes'
@@ -803,6 +1009,89 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
 
     root.mainloop()
 
+def update_existing_order(db_path, customer_info, raw_email, email_sent_date, customer_codes):
+    """
+    Updates an existing order using only customer info and sent date as identifiers
+    """
+    print("\n=== Starting Update Existing Order ===")
+    print(f"Customer Info: {customer_info}")
+    print(f"Email Sent Date: {email_sent_date}")
+    
+    # First, get the original order's metadata
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    print("\nFetching original order metadata...")
+    cursor.execute('''
+    SELECT date_generated, date_processed, date_to_be_entered, entered_status
+    FROM orders 
+    WHERE customer_id = ? 
+    AND customer = ?
+    AND email_sent_date = ?
+    LIMIT 1
+    ''', (customer_info['id'], customer_info['display_string'], email_sent_date))
+    
+    result = cursor.fetchone()
+    print(f"Original Order Metadata: {result}")
+    
+    if not result:
+        print("No existing order found!")
+        conn.close()
+        return False
+        
+    original_date_generated, original_date_processed, original_date_to_be_entered, entered_status = result
+    
+    # Get all current matches using the updated customer codes
+    orders = extract_orders(raw_email, customer_codes)
+    print(f"\nFound {len(orders)} matches in the email")
+    
+    if orders:
+        # Delete existing matches for this order
+        print("\nDeleting existing matches...")
+        cursor.execute('''
+        DELETE FROM orders 
+        WHERE customer_id = ? 
+        AND customer = ?
+        AND email_sent_date = ?
+        ''', (customer_info['id'], customer_info['display_string'], email_sent_date))
+        
+        deleted_count = cursor.rowcount
+        print(f"Deleted {deleted_count} existing records")
+        
+        # Insert all matches (both old and new)
+        print("\nInserting updated matches...")
+        for quantity, enters, raw_product, product_code, _, _ in orders:
+            print(f"Inserting: {product_code} (Quantity: {quantity}, Enters: {enters})")
+            cursor.execute('''
+            INSERT INTO orders (
+                customer, customer_id, quantity, item, item_id, 
+                enters, date_generated, date_processed, entered_status, 
+                raw_email, email_sent_date, date_to_be_entered
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                customer_info['display_string'],
+                customer_info['id'],
+                quantity,
+                raw_product,
+                product_code,
+                enters,
+                original_date_generated,
+                original_date_processed,
+                0,  # Reset entered_status since we're adding new matches
+                raw_email,
+                email_sent_date,
+                original_date_to_be_entered
+            ))
+        
+        conn.commit()
+        print("Changes committed to database")
+        conn.close()
+        return True
+    
+    print("No matches found to update")
+    conn.close()
+    return False
+
 def move_email_by_content(raw_email_content, customer_id, email_sent_date, source_folder, destination_folder):
     mail = imaplib.IMAP4_SSL("imap.gmail.com")
     try:
@@ -1024,9 +1313,9 @@ def read_product_enters_mapping(file_path):
         return {}
 
 def read_customer_excel_files(directory_path, product_enters_mapping):
-    print(f"Reading customer Excel files from {directory_path}")
+    print("Starting to read customer Excel files...")  # Debug logging
     customer_product_codes = {}
-    email_name_to_customer_ids = {}  # Changed from email_to_customer_ids
+    email_name_to_customer_ids = {}  # This will store the complete customer info
     
     for filename in os.listdir(directory_path):
         if filename.endswith('.xlsx'):
@@ -1041,19 +1330,34 @@ def read_customer_excel_files(directory_path, product_enters_mapping):
                 email = match.group(2).lower()
                 customer_id = match.group(3)
                 
+                print(f"Processing customer - Name: {name}, Email: {email}, ID: {customer_id}")  # Debug logging
+                
                 file_path = os.path.join(directory_path, filename)
                 customer_codes = read_single_customer_file(file_path, customer_id, product_enters_mapping)
                 
                 customer_product_codes[customer_id] = customer_codes
                 
-                # Create composite key from name and email
-                key = (name.lower(), email)
-                email_name_to_customer_ids[key] = customer_id
+                # Create the customer info dictionary
+                customer_info = {
+                    'id': customer_id,
+                    'name': name,
+                    'email': email,
+                    'display_string': f"{name} <{email}>"
+                }
                 
-                print(f"Processed {len(customer_codes)} product codes for customer {customer_id}")
-            except ValueError as e:
-                print(f"Warning: Invalid filename format for {filename}: {e}")
+                # Store using both name and email as key
+                key = (name.lower(), email.lower())
+                email_name_to_customer_ids[key] = customer_info
+                
+                print(f"Added customer info: {customer_info}")  # Debug logging
+                
+            except Exception as e:
+                print(f"Error processing {filename}: {str(e)}")
                 continue
+    
+    # Debug logging
+    print(f"Processed {len(email_name_to_customer_ids)} customers")
+    print("Sample of customer info:", next(iter(email_name_to_customer_ids.values())) if email_name_to_customer_ids else "No customers found")
     
     return customer_product_codes, email_name_to_customer_ids
 
@@ -1298,6 +1602,7 @@ if __name__ == "__main__":
         mail.select("Orders")
         status, messages = mail.uid('search', None, "ALL")
 
+        # In your main processing loop, change this section:
         if status == 'OK':
             email_uids = messages[0].split()
             logging.info(f"Number of messages found: {len(email_uids)}")
@@ -1311,14 +1616,12 @@ if __name__ == "__main__":
                         mail.login(username, password)
                         mail.select("Orders")
 
-                    logging.debug(f"Processing email UID: {email_uid.decode()}")
                     status, msg_data = mail.uid('fetch', email_uid, "(RFC822)")
 
                     if status == 'OK' and msg_data and msg_data[0] is not None:
                         if isinstance(msg_data[0], tuple):
                             msg = email.message_from_bytes(msg_data[0][1])
                             
-                            # Try to get content from attachment first, then fall back to email body
                             body = get_email_content(msg)
 
                             if body:
@@ -1326,22 +1629,22 @@ if __name__ == "__main__":
                                 name, email_address = extract_email_and_name(email_dict)
                                 logging.info(f"Extracted email: {email_address}, name: {name}")
 
-                                # Extract the email sent date
                                 date_tuple = email.utils.parsedate_tz(msg.get('Date'))
                                 if date_tuple:
                                     email_sent_date = datetime.fromtimestamp(email.utils.mktime_tz(date_tuple)).strftime('%Y-%m-%d %H:%M:%S')
                                 else:
                                     email_sent_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-                                # Look up customer ID using both name and email
+                                # Look up customer info using both name and email
                                 lookup_key = (name.lower() if name else None, email_address.lower())
-                                customer_id = email_name_to_customer_ids.get(lookup_key)
+                                customer_info = email_name_to_customer_ids.get(lookup_key)
                                 
-                                if customer_id:
-                                    customer_codes = customer_product_codes.get(customer_id, {})
-                                    process_result = process_email(email_address, body, customer_codes, customer_id, 
+                                if customer_info:  # customer_info is now the full dictionary
+                                    customer_codes = customer_product_codes.get(customer_info['id'], {})
+                                    process_result = process_email(email_address, body, customer_codes, 
+                                                                customer_info,  # Pass the full customer_info dict
                                                                 db_path, mail, email_uid, email_sent_date)
-                                    logging.info(f"Email processed for customer {customer_id}: {process_result}")
+                                    logging.info(f"Email processed for customer {customer_info['id']}: {process_result}")
                                     
                                     if move_email_to_folder(mail, email_uid, "EnteredIntoABS"):
                                         logging.info(f"Email from {email_address} moved to EnteredIntoABS folder")
