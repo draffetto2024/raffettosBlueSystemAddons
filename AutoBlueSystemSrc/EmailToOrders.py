@@ -562,40 +562,36 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
             checkbox_vars[row] = var
 
     def show_email_content(email_text):
-        # Create a new top-level window
-        email_window = tk.Toplevel(root)
+        email_window = tk.Toplevel()
         email_window.title("Full Email Content")
         email_window.geometry("800x600")
         
-        # Don't make it transient - this allows it to be independent in the window stack
-        email_window.transient()  # Remove parent dependency
+        # Configurations to manage focus and stacking
+        email_window.transient(None)  # Independent of the root window
+        email_window.group()          # Groups the window with no specified parent
+        email_window.lift()           # Brings it to the front
+        email_window.attributes('-topmost', False)
         
         # Position the window
         x = root.winfo_x() + 50
         y = root.winfo_y() + 50
         email_window.geometry(f"+{x}+{y}")
-
-        # Configure window behavior
-        email_window.attributes('-topmost', False)  # Ensure it's not always on top
-        email_window.focus_force()  # Give it focus without affecting other windows
         
-        # Prevent this window from becoming the parent of other windows
-        email_window.group()  # Put it in its own window group
+        # Make sure it stays on top of main window but not other popups
+        email_window.attributes('-topmost', False)
         
-        # Add a scrolled text widget to display the email content
+        # Rest of the email window setup...
         email_content = scrolledtext.ScrolledText(email_window, wrap=tk.WORD, width=80, height=30)
         email_content.pack(expand=True, fill='both', padx=10, pady=10)
-
-        # Insert the email text and make it read-only
         email_content.insert(tk.INSERT, email_text)
         email_content.config(state='disabled')
 
-        # Add a close button
         close_button = ttk.Button(email_window, text="Close", command=email_window.destroy)
         close_button.pack(pady=10)
         
-        # Bind Escape key to close
+        # Bind both Escape and window close button ('X')
         email_window.bind('<Escape>', lambda e: email_window.destroy())
+        email_window.protocol("WM_DELETE_WINDOW", email_window.destroy)
 
     def add_matching():
         selected_rows = [row for row, var in checkbox_vars.items() if var.get()]
@@ -613,13 +609,7 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
         customer_id = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']
         email_sent_date = scrollable_frame.grid_slaves(row=row, column=6)[0]['text']
         
-        print("\n=== Starting Add Matching Process ===")
-        print(f"Selected Order Info:")
-        print(f"Customer ID: {customer_id}")
-        print(f"Email Sent Date: {email_sent_date}")
-        print(f"Raw Email Preview: {raw_email[:100]}...")
-        
-        # Check entered status first
+        # Perform entered status check...
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute('''
@@ -634,8 +624,6 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
         result = cursor.fetchone()
         conn.close()
         
-        print(f"Entered Status Check Result: {result}")
-        
         if result and result[0] == 1:
             messagebox.showwarning(
                 "Cannot Add Match", 
@@ -643,31 +631,49 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
             )
             return
 
-        # Look up the customer info
+        # Look up customer info...
         customer_info = None
         for key, info in email_name_to_customer_ids.items():
             if info['id'] == customer_id:
                 customer_info = info
                 break
 
-        print(f"Found Customer Info: {customer_info}")
-
         if not customer_info:
             messagebox.showerror("Error", "Could not find customer information for this order.")
             return
 
-        # Create Quick Add window...
-        popup = tk.Toplevel(root)
+        # Create Quick Add window independently
+        popup = tk.Toplevel()
         popup.title("Quick Add Matching")
         popup.geometry("400x200")
 
-        # Define success popup function BEFORE submit_matching
+        # Configurations for stacking and focus
+        popup.transient(None)
+        popup.group()
+        popup.lift()             # Brings to the top initially
+        popup.attributes('-topmost', True)
+        
+        # Position the window
+        x = root.winfo_x() + 300
+        y = root.winfo_y() + 300
+        popup.geometry(f"+{x}+{y}")
+        
+        # Configure window behavior
+        popup.attributes('-topmost', False)
+        
+        # Bind window close button ('X')
+        popup.protocol("WM_DELETE_WINDOW", popup.destroy)
+        
+        # Define success popup function
         def show_success():
             success_popup = tk.Toplevel(popup)
             success_popup.title("Success")
             success_popup.geometry("300x100")
+            success_popup.transient(None)
+            success_popup.group()
+            success_popup.lift()
             
-            # Position success popup relative to matching popup
+            # Position success popup
             x = popup.winfo_x() + (popup.winfo_width() - 300) // 2
             y = popup.winfo_y() + (popup.winfo_height() - 100) // 2
             success_popup.geometry(f"+{x}+{y}")
@@ -679,9 +685,11 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
                 matching_phrase_entry.delete(0, tk.END)
                 matched_product_entry.delete(0, tk.END)
                 matching_phrase_entry.focus_set()
+                popup.lift()  # Bring the quick add window back to top
 
             success_popup.bind('<Return>', close_success)
             success_popup.bind('<Escape>', close_success)
+            success_popup.protocol("WM_DELETE_WINDOW", close_success)
             
             success_popup.focus_set()
             tk.Button(success_popup, text="OK", command=close_success).pack()
@@ -876,6 +884,8 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
 
 
     def auto_enter_all():
+        time.sleep(5)
+
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
