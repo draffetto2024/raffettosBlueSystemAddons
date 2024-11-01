@@ -19,77 +19,86 @@ import pyautogui
 import keyboard
 import traceback
 
-def read_grid_excel(file_path):
-    df = pd.read_excel(file_path, header=0, index_col=0)
+# def read_grid_excel(file_path):
+#     # Read the Excel file without setting any headers initially
+#     df = pd.read_excel(file_path, header=None)
     
-    # Initialize a dictionary to store customer-specific product codes
-    customer_product_codes = {}
+#     # Find the row index for the first empty row which separates the header from the raw text/product info
+#     separator_index = df[df.isnull().all(axis=1)].index[0]
     
-    for customer_email, row in df.iterrows():
-        customer_codes = {}
-        for product_type, value in row.items():
-            if pd.notna(value):  # Check if the value is not NaN
-                amount, product_code, unit = value.split(maxsplit=2)
-                customer_codes[product_type.lower()] = (int(amount), product_code, unit.lower())
-        customer_product_codes[customer_email.lower()] = customer_codes
+#     # Extract customer information at the top and product info below the empty row
+#     customer_info_df = df.iloc[:separator_index]
+#     product_info_df = df.iloc[separator_index + 1:]
     
-    return customer_product_codes
+#     # Set appropriate column names for customer information
+#     customer_info_df.columns = ['customer_id', 'display_name', 'email']
+#     customer_info = {
+#         'customer_id': customer_info_df.iloc[0, 0],
+#         'display_name': customer_info_df.iloc[0, 1],
+#         'email': customer_info_df.iloc[0, 2]
+#     }
+    
+#     # Debug statements
+#     print("\n=== Customer Information ===")
+#     print(customer_info)
+
+#     # Process product info (raw text and match) and store in dictionary
+#     customer_product_codes = {}
+#     for _, row in product_info_df.iterrows():
+#         if pd.notna(row[0]) and pd.notna(row[1]):
+#             raw_text, match = row[0], row[1]
+#             customer_product_codes[raw_text.strip().lower()] = match.strip().lower()
+    
+#     # Debug statements for product info extraction
+#     print("\n=== Product Information ===")
+#     for raw_text, match in customer_product_codes.items():
+#         print(f"Raw Text: '{raw_text}' -> Match: '{match}'")
+    
+#     # Combine both into a single dictionary
+#     return {
+#         'customer_info': customer_info,
+#         'product_codes': customer_product_codes
+#     }
 
 def extract_orders(email_text, customer_codes):
     orders = []
     email_lines = email_text.strip().split('\n')
-    print("\n============= NEW EMAIL PROCESSING =============")
-    print("Email Content:")
-    print("----------------------------------------")
-    print(email_text)
-    print("----------------------------------------")
 
+    print("\nDEBUG: Beginning matching process...")
+    print(customer_codes.items())
     for raw_text, (product_info, product_code, enters) in customer_codes.items():
-        # Extract quantity from product_info
-        product_quantity = int(product_info.split()[0])  # Get first word and convert to int
-        
-        # For each possible starting position in email
+        product_quantity = int(product_info.split()[0])
+
+        print(f"\nDEBUG: Attempting to match raw_text '{raw_text}' for product code '{product_code}'")
+
+        matched = False
         for i in range(len(email_lines) - len(raw_text.split('\n')) + 1):
             chunk = email_lines[i:i+len(raw_text.split('\n'))]
-            
-            # Check if pattern matches this chunk
-            matches = True
-            for pattern_line, chunk_line in zip(raw_text.split('\n'), chunk):
-                cleaned_pattern = clean_line(pattern_line)
-                cleaned_chunk = clean_line(chunk_line)
-                if cleaned_pattern not in cleaned_chunk:
-                    matches = False
-                    break
-                    
+
+            matches = all(
+                clean_line(pattern_line) in clean_line(chunk_line)
+                for pattern_line, chunk_line in zip(raw_text.split('\n'), chunk)
+            )
+
+            # Logging the comparison details
             if matches:
+                matched = True
                 chunk_text = '\n'.join(chunk)
-                
-                print("\n!!! MATCH FOUND !!!")
-                print("----------------------------------------")
-                print(f"Matched Text:\n{chunk_text}")
-                print("----------------------------------------")
-                print(f"Pattern that matched: '{raw_text}'")
-                print(f"Product Info: {product_info}")
-                print(f"Extracted Quantity from Product Info: {product_quantity}")
-                print(f"Product Code: {product_code}")
-                print(f"Enters Value: {enters}")
-                print("----------------------------------------")
-                
+                print(f"DEBUG: Match found!\n\tMatched Text: '{chunk_text}'\n\tProduct Info: {product_info}\n\tProduct Code: {product_code}")
                 orders.append((product_quantity, enters, chunk_text, product_code, product_quantity, 0))
                 break
+            else:
+                print(f"DEBUG: No match for '{raw_text}' in email chunk: '{chunk}'")
 
-    print("\n============= FINAL ORDERS SUMMARY =============")
-    if orders:
-        for i, (quantity, enters, text, code, _, _) in enumerate(orders, 1):
-            print(f"\nOrder {i}:")
-            print(f"Product Code: {code}")
-            print(f"Quantity: {quantity}")
-            print(f"Enters: {enters}")
-            print(f"Matched Text: {text}")
-            print("----------------------------------------")
+        if not matched:
+            print(f"DEBUG: No matches found for '{raw_text}' in the email content.")
+
+    if not orders:
+        print("DEBUG: No orders were extracted from this email.")
     else:
-        print("NO MATCHES FOUND IN THIS EMAIL")
-    print("==============================================\n")
+        print("DEBUG: Final extracted orders summary:")
+        for i, (quantity, enters, text, code, _, _) in enumerate(orders, 1):
+            print(f"\nOrder {i}:\n\tProduct Code: {code}\n\tQuantity: {quantity}\n\tEnters: {enters}\n\tMatched Text: '{text}'")
 
     return orders
 
@@ -236,6 +245,10 @@ def process_email(from_email, body, customer_codes, customer_info, db_path, mail
     Process email with customer information.
     customer_info must be a dictionary containing id, name, email, and display_string
     """
+
+    print(f"DEBUG: Processing email for customer {customer_info['id']} ({customer_info['display_string']})")
+    print(f"DEBUG: Loaded customer codes for matching: {customer_codes}")
+
     BODY = body if not isinstance(body, dict) else body.get('content', '')
     
     if not isinstance(customer_info, dict) or 'display_string' not in customer_info:
@@ -607,73 +620,74 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
         raw_email = email_text_widget.get("1.0", tk.END).strip()
         
         customer_id = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']
+        customer_display = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']  # This will be the full display string
         email_sent_date = scrollable_frame.grid_slaves(row=row, column=6)[0]['text']
         
-        # Perform entered status check...
+        print("\n=== Starting Add Matching Process ===")
+        print(f"Selected Order Info:")
+        print(f"Customer ID: {customer_id}")
+        print(f"Customer Display: {customer_display}")
+        print(f"Email Sent Date: {email_sent_date}")
+        
+        # Check entered status first
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute('''
-        SELECT entered_status
+        SELECT customer, entered_status
         FROM orders 
         WHERE customer_id = ? 
-        AND raw_email = ? 
         AND email_sent_date = ?
         LIMIT 1
-        ''', (customer_id, raw_email, email_sent_date))
+        ''', (customer_id, email_sent_date))
         
         result = cursor.fetchone()
         conn.close()
         
-        if result and result[0] == 1:
+        if not result:
+            messagebox.showerror("Error", "Could not find order in database.")
+            return
+            
+        customer_display_str, entered_status = result
+        
+        print(f"Found order - Customer Display: {customer_display_str}, Entered Status: {entered_status}")
+        
+        if entered_status == 1:
             messagebox.showwarning(
                 "Cannot Add Match", 
                 "This order has already been entered into the system. Cannot add new matches to entered orders."
             )
             return
 
-        # Look up customer info...
+        # Look up customer info from global dictionary using customer_id
         customer_info = None
-        for key, info in email_name_to_customer_ids.items():
+        for info in email_name_to_customer_ids.values():
             if info['id'] == customer_id:
                 customer_info = info
                 break
+
+        print(f"Found Customer Info: {customer_info}")
 
         if not customer_info:
             messagebox.showerror("Error", "Could not find customer information for this order.")
             return
 
-        # Create Quick Add window independently
-        popup = tk.Toplevel()
+        # Create Quick Add window
+        popup = tk.Toplevel(root)
         popup.title("Quick Add Matching")
         popup.geometry("400x200")
+        
+        # Position window
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        x = screen_width - 420
+        y = (screen_height - 200) // 2
+        popup.geometry(f"400x200+{x}+{y}")
 
-        # Configurations for stacking and focus
-        popup.transient(None)
-        popup.group()
-        popup.lift()             # Brings to the top initially
-        popup.attributes('-topmost', True)
-        
-        # Position the window
-        x = root.winfo_x() + 300
-        y = root.winfo_y() + 300
-        popup.geometry(f"+{x}+{y}")
-        
-        # Configure window behavior
-        popup.attributes('-topmost', False)
-        
-        # Bind window close button ('X')
-        popup.protocol("WM_DELETE_WINDOW", popup.destroy)
-        
-        # Define success popup function
         def show_success():
             success_popup = tk.Toplevel(popup)
             success_popup.title("Success")
             success_popup.geometry("300x100")
-            success_popup.transient(None)
-            success_popup.group()
-            success_popup.lift()
             
-            # Position success popup
             x = popup.winfo_x() + (popup.winfo_width() - 300) // 2
             y = popup.winfo_y() + (popup.winfo_height() - 100) // 2
             success_popup.geometry(f"+{x}+{y}")
@@ -685,15 +699,13 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
                 matching_phrase_entry.delete(0, tk.END)
                 matched_product_entry.delete(0, tk.END)
                 matching_phrase_entry.focus_set()
-                popup.lift()  # Bring the quick add window back to top
 
             success_popup.bind('<Return>', close_success)
             success_popup.bind('<Escape>', close_success)
-            success_popup.protocol("WM_DELETE_WINDOW", close_success)
             
             success_popup.focus_set()
             tk.Button(success_popup, text="OK", command=close_success).pack()
-        
+
         def submit_matching(event=None):
             matching_phrase = matching_phrase_entry.get().strip().lower()
             matched_product = matched_product_entry.get().strip()
@@ -706,7 +718,6 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
                 messagebox.showwarning("Warning", "Both fields must be filled.")
                 return
 
-            print("\nUpdating Excel file...")
             if update_customer_excel_file(customer_info['id'], matching_phrase, matched_product):
                 print("Excel file updated successfully")
                 
@@ -721,12 +732,9 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
                 
                 if customer_codes:
                     print("\nAttempting to update existing order...")
-                    # Update the existing order with new matches
                     if update_existing_order(db_path, customer_info, raw_email, email_sent_date, customer_codes):
                         print("Order updated successfully")
-                        # Show success message and clear fields
                         show_success()
-                        # Refresh the grid
                         populate_grid(date_entry.get_date())
                     else:
                         print("Failed to update order")
@@ -738,7 +746,7 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
                 print("Failed to update Excel file")
                 messagebox.showerror("Error", "Failed to add match to Excel file.")
 
-        # Create and pack widgets...
+        # Create and pack widgets
         frame = ttk.Frame(popup)
         frame.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
 
@@ -758,7 +766,11 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
         matched_product_entry.bind('<Return>', submit_matching)
         popup.bind('<Escape>', lambda e: popup.destroy())
 
+        # Set initial focus
         matching_phrase_entry.focus_set()
+
+        # Override the window close button
+        popup.protocol("WM_DELETE_WINDOW", lambda: None)
 
     def update_excel_with_new_matching(customer_id, matching_phrase, matched_product):
         directory_path = 'customer_product_codes'
@@ -1323,99 +1335,150 @@ def read_product_enters_mapping(file_path):
         return {}
 
 def read_customer_excel_files(directory_path, product_enters_mapping):
-    print("Starting to read customer Excel files...")  # Debug logging
+    """
+    Reads all customer Excel files in the specified directory, extracts metadata and match pairings.
+    """
+    print("DEBUG: Starting to read customer Excel files from directory:", directory_path)
     customer_product_codes = {}
-    email_name_to_customer_ids = {}  # This will store the complete customer info
-    
+    email_name_to_customer_ids = {}
+
+    # Iterate over each Excel file in the directory
     for filename in os.listdir(directory_path):
         if filename.endswith('.xlsx'):
+            file_path = os.path.join(directory_path, filename)
+            print(f"DEBUG: Processing file: {filename}")
             try:
-                # Parse filename that contains name and email: john_doe_(johndoe@gmail.com)-johndo.xlsx
-                match = re.match(r'(.+?)\((.+?)\)-(.+?)\.xlsx$', filename)
-                if not match:
-                    print(f"Warning: Invalid filename format for {filename}")
+                # Read metadata and customer codes from each customer file
+                customer_codes, metadata = read_single_customer_file(file_path, product_enters_mapping)
+
+                # Retrieve the customer_id and other metadata
+                customer_id = metadata.get('customer_id', 'Unknown').upper()
+                customer_name = metadata.get('display_name', 'Unknown')
+                customer_email = metadata.get('email', 'unknown@example.com')
+                
+                if customer_id == 'Unknown':
+                    print(f"DEBUG: ERROR - {file_path} missing 'customer_id' metadata. Skipping file.")
                     continue
-                
-                name = match.group(1).strip('_').replace('_', ' ')  # Convert john_doe to john doe
-                email = match.group(2).lower()
-                customer_id = match.group(3)
-                
-                print(f"Processing customer - Name: {name}, Email: {email}, ID: {customer_id}")  # Debug logging
-                
-                file_path = os.path.join(directory_path, filename)
-                customer_codes = read_single_customer_file(file_path, customer_id, product_enters_mapping)
-                
+
+                # Store customer codes by customer_id
                 customer_product_codes[customer_id] = customer_codes
-                
-                # Create the customer info dictionary
+
+                # Build customer info dictionary for lookup by name and email
                 customer_info = {
                     'id': customer_id,
-                    'name': name,
-                    'email': email,
-                    'display_string': f"{name} <{email}>"
+                    'name': customer_name,
+                    'email': customer_email,
+                    'display_string': f"{customer_name} <{customer_email}>"
                 }
-                
-                # Store using both name and email as key
-                key = (name.lower(), email.lower())
+
+                # Store using (name, email) as the key for lookup
+                key = (customer_info['name'].lower(), customer_info['email'].lower())
                 email_name_to_customer_ids[key] = customer_info
                 
-                print(f"Added customer info: {customer_info}")  # Debug logging
-                
+                print(f"DEBUG: Loaded customer info for ID {customer_id}: {customer_info}")
+
             except Exception as e:
-                print(f"Error processing {filename}: {str(e)}")
+                print(f"DEBUG: ERROR - Failed to process {filename}: {e}")
                 continue
     
-    # Debug logging
-    print(f"Processed {len(email_name_to_customer_ids)} customers")
-    print("Sample of customer info:", next(iter(email_name_to_customer_ids.values())) if email_name_to_customer_ids else "No customers found")
-    
+    print(f"DEBUG: Finished loading customer product codes. Total customers loaded: {len(customer_product_codes)}")
+    print(f"DEBUG: Sample customer entries: {list(email_name_to_customer_ids.keys())[:5]}")
     return customer_product_codes, email_name_to_customer_ids
 
 
-def read_single_customer_file(file_path, customer_id, product_enters_mapping):
-    print(f"Reading file: {file_path}")
-    df = pd.read_excel(file_path, header=None, names=['raw_text', 'product_info'])
+
+def read_single_customer_file(file_path, product_enters_mapping):
+    """
+    Reads a single customer file, extracts metadata and pairings, and returns a dictionary.
+    """
+    print(f"DEBUG: Reading customer file: {file_path}")
+
+    df = pd.read_excel(file_path, header=None)
+
+    # Check if there are at least 4 rows (2 for metadata, 1 blank, and then pairings start)
+    if len(df) < 4:
+        print(f"DEBUG: Error - {file_path} does not have enough rows to contain metadata and match pairings.")
+        return {}
+
+    # Extract metadata from the first two rows
+    metadata_labels = df.iloc[0].tolist()  # Row 1 (labels)
+    metadata_values = df.iloc[1].tolist()  # Row 2 (values)
+
+    # Create a metadata dictionary for easy access
+    metadata = {label.lower(): value for label, value in zip(metadata_labels, metadata_values) if pd.notna(label) and pd.notna(value)}
     
+    print(f"DEBUG: Extracted metadata for {file_path}: {metadata}")
+
+    # Extract pairings starting from row 4
     customer_codes = {}
-    for _, row in df.iterrows():
-        raw_text = row['raw_text'].strip()
-        product_info = str(row['product_info'])
-        
-        parts = product_info.split()
-        if len(parts) >= 2:
-            product_code = parts[1].upper()
-            enters = product_enters_mapping.get(product_code)
-            if enters is None:
-                print(f"  Warning: No matching enters found for product code {product_code}. Defaulting to 4E.")
-                enters = '4E'
+    for _, row in df.iloc[3:].iterrows():  # Starting from the 4th row
+        if pd.notna(row[0]) and pd.notna(row[1]):
+            raw_text = row[0].strip()
+            product_info = str(row[1])
+
+            # Parse product_info for product code and enters value
+            parts = product_info.split()
+            if len(parts) >= 2:
+                product_code = parts[1].upper()
+                enters = product_enters_mapping.get(product_code, "4E")  # Default to '4E' if not found
             else:
-                print(f"  Matched: {product_code} -> {enters}")
-        else:
-            print(f"  Warning: Unexpected format in '{product_info}' for customer {customer_id}")
-            product_code = "000000"
-            enters = "4E"
-        
-        customer_codes[raw_text] = (product_info, product_code, enters)
-    
-    print(f"Processed {len(customer_codes)} entries for customer {customer_id}")
-    return customer_codes
+                print(f"DEBUG: Unexpected format in '{product_info}' for {file_path}")
+                product_code = "000000"
+                enters = "4E"
+
+            # Store the raw_text and associated product details in customer codes
+            customer_codes[raw_text] = (product_info, product_code, enters)
+
+    print(f"DEBUG: Loaded {len(customer_codes)} match pairs for customer {metadata.get('customer_id', 'Unknown')}")
+    return customer_codes, metadata
 
 def update_customer_excel_file(customer_id, matching_phrase, matched_product):
+    """Update Excel file with new match"""
     directory_path = 'customer_product_codes'
+    
+    print(f"\n=== Adding new match for customer {customer_id} ===")
+    print(f"Matching phrase: '{matching_phrase}'")
+    print(f"Matched product: '{matched_product}'")
     
     for filename in os.listdir(directory_path):
         if filename.endswith('.xlsx'):
-            # Check if any part of the customer_id is in the filename
             if any(part.lower() in filename.lower() for part in customer_id.split()):
                 file_path = os.path.join(directory_path, filename)
-                df = pd.read_excel(file_path, header=None, names=['raw_text', 'product_info'])
-                new_row = pd.DataFrame({'raw_text': [matching_phrase], 'product_info': [matched_product]})
-                df = pd.concat([df, new_row], ignore_index=True)
-                df.to_excel(file_path, index=False, header=False)
-                print(f"Updated Excel file {filename} for customer {customer_id} with new matching: {matching_phrase} -> {matched_product}")
-                return True
+                print(f"\nFound customer file: {file_path}")
+                
+                try:
+                    # Read existing content
+                    df = pd.read_excel(file_path, header=None)
+                    print(f"File currently has {len(df)} rows")
+                    
+                    # Check for existing match
+                    existing_match = df[df[0].astype(str).str.lower() == matching_phrase.lower()]
+                    if not existing_match.empty:
+                        print(f"Match already exists: '{matching_phrase}' -> '{existing_match.iloc[0, 1]}'")
+                        return True
+                    
+                    # Add new match at the end
+                    new_row = pd.DataFrame([[matching_phrase, matched_product]])
+                    df = pd.concat([df, new_row], ignore_index=True)
+                    
+                    # Save updated file
+                    df.to_excel(file_path, index=False, header=False)
+                    print(f"Added new match: '{matching_phrase}' -> '{matched_product}'")
+                    print(f"File now has {len(df)} rows")
+                    
+                    # Verify save
+                    verification_df = pd.read_excel(file_path, header=None)
+                    print("\nVerification of save:")
+                    print(f"Last row: {verification_df.iloc[-1].tolist()}")
+                    
+                    return True
+                    
+                except Exception as e:
+                    print(f"Error updating file: {str(e)}")
+                    traceback.print_exc()
+                    return False
     
-    print(f"Warning: Excel file for customer {customer_id} not found. New matching not added.")
+    print(f"No matching file found for customer {customer_id}")
     return False
 
 
@@ -1467,12 +1530,19 @@ def extract_email_and_name(email_data):
     # First check the From header if available
     if email_data.get('from_header'):
         print(f"Using From header: {email_data['from_header']}")
-        print("Here")
-        name, email = parseaddr(email_data['from_header'])
-        print("NAME", name)
-        print("EMAIL", email)
+        # Decode the header
+        decoded_pairs = decode_header(email_data['from_header'])
+        decoded_name = ''
+        for decoded_string, charset in decoded_pairs:
+            if isinstance(decoded_string, bytes):
+                decoded_name += decoded_string.decode(charset or 'utf-8')
+            else:
+                decoded_name += decoded_string
+                
+        name, email = parseaddr(decoded_name)
+        print(f"Decoded NAME: {name}")
+        print(f"EMAIL: {email}")
         if email:
-            print(f"Found in header - Name: {name}, Email: {email}")
             return name, email
     
     # If no header or header parsing failed, check content
@@ -1583,6 +1653,26 @@ def get_attachment_content(msg):
                         
     return attachment_data
 
+def create_customer_excel_file(directory_path, customer_id, display_name, email):
+    """Create a new Excel file with customer info header and product mapping template"""
+    file_path = os.path.join(directory_path, f"{customer_id}.xlsx")
+    
+    # Create DataFrame with two sections
+    customer_info = pd.DataFrame({
+        'customer_id': [customer_id],
+        'display_name': [display_name],
+        'email': [email.lower()]
+    })
+    
+    # Product mappings section (initially empty)
+    product_mappings = pd.DataFrame(columns=['raw_text', 'product_info'])
+    
+    # Save both sections to Excel
+    with pd.ExcelWriter(file_path) as writer:
+        customer_info.to_excel(writer, sheet_name='Sheet1', index=False)
+        product_mappings.to_excel(writer, sheet_name='Sheet1', startrow=2, index=False)
+        
+    return file_path
 
 import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
