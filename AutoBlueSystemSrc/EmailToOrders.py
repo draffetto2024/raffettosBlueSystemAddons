@@ -1337,33 +1337,29 @@ def read_product_enters_mapping(file_path):
 def read_customer_excel_files(directory_path, product_enters_mapping):
     """
     Reads all customer Excel files in the specified directory, extracts metadata and match pairings.
+    Only includes customers with valid metadata.
     """
     print("DEBUG: Starting to read customer Excel files from directory:", directory_path)
     customer_product_codes = {}
     email_name_to_customer_ids = {}
 
-    # Iterate over each Excel file in the directory
     for filename in os.listdir(directory_path):
         if filename.endswith('.xlsx'):
             file_path = os.path.join(directory_path, filename)
             print(f"DEBUG: Processing file: {filename}")
-            try:
-                # Read metadata and customer codes from each customer file
-                customer_codes, metadata = read_single_customer_file(file_path, product_enters_mapping)
-
-                # Retrieve the customer_id and other metadata
-                customer_id = metadata.get('customer_id', 'Unknown').upper()
-                customer_name = metadata.get('display_name', 'Unknown')
-                customer_email = metadata.get('email', 'unknown@example.com')
+            
+            customer_codes, metadata = read_single_customer_file(file_path, product_enters_mapping)
+            
+            # Only process if we got valid metadata
+            if metadata is not None:
+                customer_id = metadata.get('customer_id', '').upper()
+                customer_name = metadata.get('display_name', '')
+                customer_email = metadata.get('email', '').lower()
                 
-                if customer_id == 'Unknown':
-                    print(f"DEBUG: ERROR - {file_path} missing 'customer_id' metadata. Skipping file.")
-                    continue
-
-                # Store customer codes by customer_id
+                # Store customer codes (even if empty)
                 customer_product_codes[customer_id] = customer_codes
 
-                # Build customer info dictionary for lookup by name and email
+                # Build customer info dictionary
                 customer_info = {
                     'id': customer_id,
                     'name': customer_name,
@@ -1372,17 +1368,14 @@ def read_customer_excel_files(directory_path, product_enters_mapping):
                 }
 
                 # Store using (name, email) as the key for lookup
-                key = (customer_info['name'].lower(), customer_info['email'].lower())
+                key = (customer_name.lower(), customer_email.lower())
                 email_name_to_customer_ids[key] = customer_info
                 
-                print(f"DEBUG: Loaded customer info for ID {customer_id}: {customer_info}")
+                print(f"DEBUG: Loaded valid customer info for ID {customer_id}: {customer_info}")
+            else:
+                print(f"DEBUG: Skipping invalid customer file: {filename}")
 
-            except Exception as e:
-                print(f"DEBUG: ERROR - Failed to process {filename}: {e}")
-                continue
-    
-    print(f"DEBUG: Finished loading customer product codes. Total customers loaded: {len(customer_product_codes)}")
-    print(f"DEBUG: Sample customer entries: {list(email_name_to_customer_ids.keys())[:5]}")
+    print(f"DEBUG: Finished loading customer product codes. Valid customers loaded: {len(customer_product_codes)}")
     return customer_product_codes, email_name_to_customer_ids
 
 
@@ -1390,50 +1383,66 @@ def read_customer_excel_files(directory_path, product_enters_mapping):
 def read_single_customer_file(file_path, product_enters_mapping):
     """
     Reads a single customer file, extracts metadata and pairings, and returns a dictionary.
+    Returns (None, None) if metadata is invalid/incomplete.
     """
     print(f"DEBUG: Reading customer file: {file_path}")
 
-    df = pd.read_excel(file_path, header=None)
+    try:
+        df = pd.read_excel(file_path, header=None)
 
-    # Check if there are at least 4 rows (2 for metadata, 1 blank, and then pairings start)
-    if len(df) < 4:
-        print(f"DEBUG: Error - {file_path} does not have enough rows to contain metadata and match pairings.")
-        return {}
+        # Check if there are at least 2 rows for metadata
+        if len(df) < 2:
+            print(f"DEBUG: Error - {file_path} does not have enough rows for metadata.")
+            return None, None
 
-    # Extract metadata from the first two rows
-    metadata_labels = df.iloc[0].tolist()  # Row 1 (labels)
-    metadata_values = df.iloc[1].tolist()  # Row 2 (values)
+        # Extract metadata from the first two rows
+        metadata_labels = df.iloc[0].tolist()  # Row 1 (labels)
+        metadata_values = df.iloc[1].tolist()  # Row 2 (values)
 
-    # Create a metadata dictionary for easy access
-    metadata = {label.lower(): value for label, value in zip(metadata_labels, metadata_values) if pd.notna(label) and pd.notna(value)}
-    
-    print(f"DEBUG: Extracted metadata for {file_path}: {metadata}")
+        # Create a metadata dictionary for easy access
+        metadata = {label.lower(): value for label, value in zip(metadata_labels, metadata_values) 
+                   if pd.notna(label) and pd.notna(value)}
+        
+        # Validate required metadata fields
+        required_fields = {'customer_id', 'display_name', 'email'}
+        if not all(field in metadata for field in required_fields):
+            print(f"DEBUG: Missing required metadata fields in {file_path}")
+            print(f"Found fields: {list(metadata.keys())}")
+            print(f"Required fields: {required_fields}")
+            return None, None
+        
+        print(f"DEBUG: Extracted valid metadata for {file_path}: {metadata}")
 
-    # Extract pairings starting from row 4
-    customer_codes = {}
-    for _, row in df.iloc[3:].iterrows():  # Starting from the 4th row
-        if pd.notna(row[0]) and pd.notna(row[1]):
-            raw_text = row[0].strip()
-            product_info = str(row[1])
+        # Initialize empty customer_codes dictionary
+        customer_codes = {}
 
-            # Parse product_info for product code and enters value
-            parts = product_info.split()
-            if len(parts) >= 2:
-                product_code = parts[1].upper()
-                enters = product_enters_mapping.get(product_code, "4E")  # Default to '4E' if not found
-            else:
-                print(f"DEBUG: Unexpected format in '{product_info}' for {file_path}")
-                product_code = "000000"
-                enters = "4E"
+        # Only process pairings if there are more than 3 rows
+        if len(df) > 3:
+            for _, row in df.iloc[3:].iterrows():
+                if pd.notna(row[0]) and pd.notna(row[1]):
+                    raw_text = row[0].strip()
+                    product_info = str(row[1])
 
-            # Store the raw_text and associated product details in customer codes
-            customer_codes[raw_text] = (product_info, product_code, enters)
+                    parts = product_info.split()
+                    if len(parts) >= 2:
+                        product_code = parts[1].upper()
+                        enters = product_enters_mapping.get(product_code, "4E")
+                    else:
+                        print(f"DEBUG: Unexpected format in '{product_info}' for {file_path}")
+                        product_code = "000000"
+                        enters = "4E"
 
-    print(f"DEBUG: Loaded {len(customer_codes)} match pairs for customer {metadata.get('customer_id', 'Unknown')}")
-    return customer_codes, metadata
+                    customer_codes[raw_text] = (product_info, product_code, enters)
+
+        print(f"DEBUG: Loaded {len(customer_codes)} match pairs for customer {metadata.get('customer_id', 'Unknown')}")
+        return customer_codes, metadata
+
+    except Exception as e:
+        print(f"DEBUG: Error reading file {file_path}: {str(e)}")
+        return None, None
 
 def update_customer_excel_file(customer_id, matching_phrase, matched_product):
-    """Update Excel file with new match"""
+    """Update Excel file with new match, maintaining the blank row 3"""
     directory_path = 'customer_product_codes'
     
     print(f"\n=== Adding new match for customer {customer_id} ===")
@@ -1441,42 +1450,68 @@ def update_customer_excel_file(customer_id, matching_phrase, matched_product):
     print(f"Matched product: '{matched_product}'")
     
     for filename in os.listdir(directory_path):
-        if filename.endswith('.xlsx'):
-            if any(part.lower() in filename.lower() for part in customer_id.split()):
-                file_path = os.path.join(directory_path, filename)
-                print(f"\nFound customer file: {file_path}")
+        if filename.endswith('.xlsx') and customer_id.lower() in filename.lower():
+            file_path = os.path.join(directory_path, filename)
+            print(f"\nFound customer file: {file_path}")
+            
+            try:
+                # Read existing content
+                df = pd.read_excel(file_path, header=None)
+                print(f"File currently has {len(df)} rows")
                 
-                try:
-                    # Read existing content
-                    df = pd.read_excel(file_path, header=None)
-                    print(f"File currently has {len(df)} rows")
-                    
-                    # Check for existing match
-                    existing_match = df[df[0].astype(str).str.lower() == matching_phrase.lower()]
+                # Keep metadata (first 2 rows)
+                metadata = df.iloc[:2]
+                
+                # Always maintain blank row 3
+                blank_row = pd.DataFrame([[None, None]])
+                
+                # Get existing matches (starting from row 4)
+                matches = df.iloc[3:] if len(df) > 3 else pd.DataFrame(columns=df.columns)
+                
+                # Check for existing match
+                if not matches.empty:
+                    existing_match = matches[matches[0].astype(str).str.lower() == matching_phrase.lower()]
                     if not existing_match.empty:
                         print(f"Match already exists: '{matching_phrase}' -> '{existing_match.iloc[0, 1]}'")
                         return True
-                    
-                    # Add new match at the end
-                    new_row = pd.DataFrame([[matching_phrase, matched_product]])
-                    df = pd.concat([df, new_row], ignore_index=True)
-                    
-                    # Save updated file
-                    df.to_excel(file_path, index=False, header=False)
-                    print(f"Added new match: '{matching_phrase}' -> '{matched_product}'")
-                    print(f"File now has {len(df)} rows")
-                    
-                    # Verify save
-                    verification_df = pd.read_excel(file_path, header=None)
-                    print("\nVerification of save:")
-                    print(f"Last row: {verification_df.iloc[-1].tolist()}")
-                    
-                    return True
-                    
-                except Exception as e:
-                    print(f"Error updating file: {str(e)}")
-                    traceback.print_exc()
-                    return False
+                
+                # Create new match row
+                new_row = pd.DataFrame([[matching_phrase, matched_product]])
+                
+                # Combine everything, ensuring blank row 3
+                if matches.empty:
+                    # If no existing matches, add just the new one after the blank row
+                    final_df = pd.concat([
+                        metadata,          # Rows 1-2: Metadata
+                        blank_row,         # Row 3: Always blank
+                        new_row            # Row 4: First match
+                    ], ignore_index=True)
+                else:
+                    # If existing matches, append the new one at the end
+                    final_df = pd.concat([
+                        metadata,          # Rows 1-2: Metadata
+                        blank_row,         # Row 3: Always blank
+                        matches,           # Rows 4+: Existing matches
+                        new_row            # Last row: New match
+                    ], ignore_index=True)
+                
+                # Save updated file
+                final_df.to_excel(file_path, index=False, header=False)
+                print(f"Added new match: '{matching_phrase}' -> '{matched_product}'")
+                print(f"File now has {len(final_df)} rows")
+                
+                # Debug: Verify the structure
+                print("\nVerifying file structure:")
+                print(f"Row 1-2: Metadata")
+                print(f"Row 3: Blank - {final_df.iloc[2].isna().all()}")
+                print(f"Row 4+: Matches - Starting with '{final_df.iloc[3, 0]}'")
+                
+                return True
+                
+            except Exception as e:
+                print(f"Error updating file: {str(e)}")
+                traceback.print_exc()
+                return False
     
     print(f"No matching file found for customer {customer_id}")
     return False
@@ -1530,7 +1565,6 @@ def extract_email_and_name(email_data):
     # First check the From header if available
     if email_data.get('from_header'):
         print(f"Using From header: {email_data['from_header']}")
-        # Decode the header
         decoded_pairs = decode_header(email_data['from_header'])
         decoded_name = ''
         for decoded_string, charset in decoded_pairs:
@@ -1543,12 +1577,10 @@ def extract_email_and_name(email_data):
         print(f"Decoded NAME: {name}")
         print(f"EMAIL: {email}")
         if email:
-            return name, email
+            return name.strip() if name else '', email.strip()
     
     # If no header or header parsing failed, check content
     email_content = email_data.get('content', '')
-    print("Checking content first few lines:")
-    print('\n'.join(email_content.split('\n')[:6]))
     
     # Try original format
     original_pattern = r'^([^<]+)\s*<([^>]+)>'
@@ -1573,12 +1605,12 @@ def extract_email_and_name(email_data):
     email_pattern = r'<([^>]+@[^>]+)>'
     email_match = re.search(email_pattern, email_content)
     if email_match:
-        email = email_match.group(1)
+        email = email_match.group(1).strip()
         print(f"Found email only: {email}")
-        return None, email
+        return '', email
     
     print("No name/email found")
-    return None, None
+    return '', ''
 
 def get_attachment_content(msg):
     """Extract content and metadata from email attachments (.eml files)"""
