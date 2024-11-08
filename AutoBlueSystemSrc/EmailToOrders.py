@@ -87,11 +87,11 @@ def extract_orders(email_text, customer_codes):
                 print(f"DEBUG: Match found!\n\tMatched Text: '{chunk_text}'\n\tProduct Info: {product_info}\n\tProduct Code: {product_code}")
                 orders.append((product_quantity, enters, chunk_text, product_code, product_quantity, 0))
                 break
-            else:
-                print(f"DEBUG: No match for '{raw_text}' in email chunk: '{chunk}'")
+            # else:
+            #     print(f"DEBUG: No match for '{raw_text}' in email chunk: '{chunk}'")
 
-        if not matched:
-            print(f"DEBUG: No matches found for '{raw_text}' in the email content.")
+        # if not matched:
+        #     print(f"DEBUG: No matches found for '{raw_text}' in the email content.")
 
     if not orders:
         print("DEBUG: No orders were extracted from this email.")
@@ -1635,7 +1635,28 @@ def get_attachment_content(msg):
                         html_content = subpart.get_payload(decode=True).decode()
                         soup = BeautifulSoup(html_content, 'html.parser')
                         
-                        # Extract data from table rows
+                        # First attempt: Try to find a clean 4-column table
+                        tables = soup.find_all('table')
+                        print(f"Found {len(tables)} tables")
+                        
+                        for table in tables:
+                            rows = table.find_all('tr')
+                            if rows:
+                                formatted_lines = []
+                                for row in rows:
+                                    cells = row.find_all(['td', 'th'])
+                                    if cells and len(cells) == 4:  # Looking for 4-column structure
+                                        row_text = [cell.get_text(strip=True) for cell in cells]
+                                        if any(row_text):  # Only add non-empty rows
+                                            formatted_lines.append('\t'.join(row_text))
+                                
+                                if formatted_lines:
+                                    print("Found 4-column table structure")
+                                    attachment_data['content'] = '\n'.join(formatted_lines)
+                                    return attachment_data
+                        
+                        # Second attempt: Try original table row extraction
+                        print("Trying original table extraction method")
                         rows = soup.find_all('tr')
                         if rows:  # If we found table rows
                             order_text = []
