@@ -60,6 +60,160 @@ import traceback
 #         'product_codes': customer_product_codes
 #     }
 
+# Add at the top of your file with other globals
+EMAIL_CREDENTIALS = {
+    'username': "gingoso2@gmail.com",
+    'password': "soiz avjw bdtu hmtn"
+}
+
+def connect_to_email():
+    """Helper function to establish email connection"""
+    mail = imaplib.IMAP4_SSL("imap.gmail.com")
+    mail.login(EMAIL_CREDENTIALS['username'], EMAIL_CREDENTIALS['password'])
+    return mail
+
+class LoadingScreen:
+    def __init__(self, parent=None):
+        if parent:
+            self.root = tk.Toplevel(parent)
+        else:
+            self.root = tk.Tk()
+            
+        self.root.title("Loading...")
+        
+        # Get screen width and height
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        
+        # Calculate position for center of screen
+        width = 400
+        height = 150
+        x = (screen_width/2) - (width/2)
+        y = (screen_height/2) - (height/2)
+        
+        self.root.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
+        self.root.configure(bg='white')
+        
+        # Remove window decorations
+        self.root.overrideredirect(True)
+        
+        # Create main frame with padding
+        main_frame = ttk.Frame(self.root, padding="20")
+        main_frame.pack(fill='both', expand=True)
+        
+        # Add a label
+        self.status_label = ttk.Label(
+            main_frame, 
+            text="Initializing...", 
+            font=('Helvetica', 12)
+        )
+        self.status_label.pack(pady=(0, 20))
+        
+        # Add progress bar
+        self.progress = ttk.Progressbar(
+            main_frame, 
+            length=300, 
+            mode='determinate',
+            maximum=100
+        )
+        self.progress.pack()
+        
+        # Percentage label
+        self.percentage_label = ttk.Label(
+            main_frame, 
+            text="0%", 
+            font=('Helvetica', 10)
+        )
+        self.percentage_label.pack(pady=(5, 0))
+        
+        # Center the window and bring it to front
+        self.root.update_idletasks()
+        self.root.lift()
+        self.root.update()
+        
+    def update_progress(self, value, status_text=None):
+        if status_text:
+            self.status_label.config(text=status_text)
+        self.progress['value'] = value
+        self.percentage_label.config(text=f"{int(value)}%")
+        self.root.update()
+        
+    def finish(self):
+        self.root.destroy()
+
+def initialize_application():
+    """Initialize all components of the application with progress updates"""
+    # Create the hidden main window first
+    root = tk.Tk()
+    root.withdraw()
+    
+    # Now create loading screen as child of main window
+    loading_screen = LoadingScreen(root)
+    
+    try:
+        
+        # Initialize product mapping
+        loading_screen.update_progress(10, "Loading product mappings...")
+        global product_enters_mapping
+        product_enters_mapping = read_product_enters_mapping('ProductSheetWithEnters.xlsx')
+        
+        # Read customer files
+        loading_screen.update_progress(30, "Loading customer data...")
+        global customer_product_codes
+        global email_name_to_customer_ids
+        customer_product_codes, email_name_to_customer_ids = read_customer_excel_files(
+            'customer_product_codes', 
+            product_enters_mapping
+        )
+        
+        # Initialize database
+        loading_screen.update_progress(50, "Initializing database...")
+        db_path = 'orders.db'
+        initialize_database(db_path)
+        
+        # Connect to email
+        loading_screen.update_progress(70, "Connecting to email server...")
+        mail = connect_to_email()  # Use the new helper function
+
+        
+        # Process emails
+        loading_screen.update_progress(80, "Processing emails...")
+        process_email_folder(mail, db_path, customer_product_codes, email_name_to_customer_ids)
+        
+        # Create GUI
+        loading_screen.update_progress(90, "Creating user interface...")
+        create_gui(root, db_path, email_name_to_customer_ids, product_enters_mapping)
+        
+        # Finish loading
+        loading_screen.update_progress(100, "Complete!")
+        time.sleep(0.5)
+        
+        # Clean up
+        loading_screen.finish()
+        
+        # Show main window
+        root.deiconify()
+        root.lift()
+        root.focus_force()
+        
+        return root
+
+    except Exception as e:
+        logging.error(f"Initialization error: {str(e)}")
+        traceback.print_exc()
+        loading_screen.status_label.config(text=f"Error: {str(e)}", foreground='red')
+        loading_screen.root.update()
+        time.sleep(3)
+        loading_screen.finish()
+        return None
+    finally:
+        try:
+            if 'mail' in locals():
+                mail.close()
+                mail.logout()
+        except:
+            pass
+
 def extract_orders(email_text, customer_codes):
     orders = []
     email_lines = email_text.strip().split('\n')
@@ -365,15 +519,27 @@ def initialize_database(db_path):
     conn.close()
 
 
-def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
-    root = tk.Tk()
+def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
     root.title("Email Order Processor")
-    root.geometry("1800x750")  # Slightly increased height to accommodate the new button layout
+    
+    # Set size and center the window
+    width = 1600  # Slightly smaller than 1800 to ensure it fits on most screens
+    height = 750
+    center_window(root, width, height)
 
-    # Create main frame
+    # Add global escape handler
+    def close_all_child_windows(event):
+        for widget in root.winfo_children():
+            if isinstance(widget, tk.Toplevel):
+                widget.destroy()
+    
+    # Bind Escape key to root window
+    root.bind_all('<Escape>', close_all_child_windows)
+
+    # Rest of your existing create_gui code remains the same...
     main_frame = ttk.Frame(root)
     main_frame.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
-
+    
     # Create a frame for date selection
     date_frame = ttk.Frame(main_frame)
     date_frame.pack(pady=10, fill=tk.X)
@@ -382,7 +548,7 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
     ttk.Label(date_frame, text="Select Date:").pack(side=tk.LEFT, padx=(0, 10))
     date_entry = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2, date_pattern='yyyy-mm-dd')
     date_entry.pack(side=tk.LEFT)
-    date_entry.set_date(datetime.now().date())  # Set default date to today
+    date_entry.set_date(datetime.now().date())
 
     # Add a button to refresh the grid based on the selected date
     refresh_button = ttk.Button(date_frame, text="Refresh", command=lambda: populate_grid(date_entry.get_date()))
@@ -426,51 +592,15 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        # Get all orders for the date range
+        # Get all orders for the date range with consistent ordering
         if filter_date:
             next_date = filter_date + timedelta(days=1)
             cursor.execute(''' 
-            SELECT DISTINCT customer_id, email_sent_date 
-            FROM orders 
-            WHERE date_to_be_entered >= ? AND date_to_be_entered < ?
-            ''', (filter_date.strftime('%Y-%m-%d'), next_date.strftime('%Y-%m-%d')))
-        else:
-            cursor.execute('''
-            SELECT DISTINCT customer_id, email_sent_date 
-            FROM orders 
-            WHERE date_to_be_entered IS NOT NULL
-            ''')
-
-        # Process NOMATCH entries after getting the initial data
-        cursor.execute('''
-        SELECT raw_email, customer_id, email_sent_date
-        FROM orders 
-        WHERE item_id = 'NOMATCH'
-        ''')
-        nomatch_entries = cursor.fetchall()
-        
-        for raw_email, customer_id, email_sent_date in nomatch_entries:
-            customer_codes = customer_product_codes.get(customer_id, {})
-            orders = extract_orders(raw_email, customer_codes)
-            
-            if orders:
-                write_orders_to_db(db_path, customer_id, customer_id, orders, raw_email, email_sent_date)
-                cursor.execute('''
-                DELETE FROM orders 
-                WHERE customer_id = ? 
-                AND email_sent_date = ? 
-                AND item_id = 'NOMATCH'
-                ''', (customer_id, email_sent_date))
-                conn.commit()
-
-        # Now get the cleaned up orders for display
-        if filter_date:
-            cursor.execute(''' 
             SELECT raw_email, customer, item_id, quantity, enters, item, email_sent_date, 
                 date_to_be_entered, entered_status, customer_id
             FROM orders
             WHERE date_to_be_entered >= ? AND date_to_be_entered < ?
-            ORDER BY entered_status ASC, date_to_be_entered ASC
+            ORDER BY entered_status ASC, DATETIME(email_sent_date) ASC, raw_email ASC
             ''', (filter_date.strftime('%Y-%m-%d'), next_date.strftime('%Y-%m-%d')))
         else:
             cursor.execute('''
@@ -478,30 +608,38 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
                 date_to_be_entered, entered_status, customer_id
             FROM orders
             WHERE date_to_be_entered IS NOT NULL
-            ORDER BY entered_status ASC, date_to_be_entered ASC
+            ORDER BY entered_status ASC, DATETIME(email_sent_date) ASC, raw_email ASC
             ''')
 
         orders = cursor.fetchall()
         conn.close()
 
-        # Group orders by a unique identifier (raw_email + customer + email_sent_date)
+        # Group orders by a unique identifier while maintaining order
         unique_orders = {}
+        order_sequence = []  # To maintain the original order
+        
         for order in orders:
             unique_key = (order[0], order[1], order[6])  # raw_email, customer, email_sent_date
             if unique_key not in unique_orders:
                 unique_orders[unique_key] = []
+                order_sequence.append(unique_key)  # Keep track of order
             unique_orders[unique_key].append(order)
 
-        for row, ((raw_email, customer, email_sent_date), order_list) in enumerate(unique_orders.items(), start=1):
+        # Use order_sequence to maintain original order
+        for row, unique_key in enumerate(order_sequence, start=1):
+            order_list = unique_orders[unique_key]
+            raw_email, customer, email_sent_date = unique_key
+            
             matched_products = []
             quantities = []
             enters_list = []
             product_codes = []
             customer_ids = set()
             date_to_be_entered = "N/A"
-            entered_status = order_list[0][8]  # Last item is always entered_status
+            entered_status = order_list[0][8]  # entered_status is at index 8
 
             for order in order_list:
+                # Unpack only the columns we need
                 _, _, item_id, quantity, enters, item, _, date_to_be_entered, _, customer_id = order
                 matched_products.append(item)
                 quantities.append(str(quantity))
@@ -509,7 +647,7 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
                 product_codes.append(item_id)
                 customer_ids.add(customer_id)
 
-            # Create other UI elements as before
+            # Rest of your grid population code remains the same...
             products_text = tk.Text(scrollable_frame, wrap=tk.WORD, width=30, height=5)
             products_text.insert(tk.END, "\n".join(matched_products))
             products_text.config(state=tk.DISABLED)
@@ -848,7 +986,9 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
         no_match_orders = []
         time.sleep(5)
 
-        for row, var in checkbox_vars.items():
+        # Get selected orders in the order they appear in the GUI
+        selected_rows = []
+        for row, var in sorted(checkbox_vars.items()):  # Sort by row number to maintain top-down order
             if var.get():
                 email_frame = scrollable_frame.grid_slaves(row=row, column=0)[0]
                 email_text_widget = email_frame.winfo_children()[0]
@@ -874,10 +1014,9 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
         if no_match_orders:
             messagebox.showwarning("Cannot Process", "Selected orders contain unmatched items that cannot be auto-entered.")
             return
-            
+                
         if selected_orders:
             perform_auto_entry(selected_orders)
-            print("Stuff", [(order[0], order[1], order[2]) for order in selected_orders])
             update_entered_status(db_path, [(order[0], order[1], order[2]) for order in selected_orders])
             
             for order in selected_orders:
@@ -894,7 +1033,6 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
         else:
             messagebox.showwarning("Warning", "No rows selected.")
 
-
     def auto_enter_all():
         time.sleep(5)
 
@@ -904,11 +1042,13 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
         filter_date = date_entry.get_date()
         next_date = filter_date + timedelta(days=1)
         
+        # Modified query to match the GUI's ordering
         cursor.execute('''
-        SELECT raw_email, customer, customer_id, item_id, quantity, enters, item, entered_status, email_sent_date, date_to_be_entered
+        SELECT raw_email, customer, customer_id, item_id, quantity, enters, item, 
+            entered_status, email_sent_date, date_to_be_entered
         FROM orders
         WHERE date_to_be_entered >= ? AND date_to_be_entered < ?
-        ORDER BY entered_status ASC, email_sent_date ASC
+        ORDER BY entered_status ASC, DATETIME(email_sent_date) ASC, raw_email ASC
         ''', (filter_date.strftime('%Y-%m-%d'), next_date.strftime('%Y-%m-%d')))
         
         orders = cursor.fetchall()
@@ -917,6 +1057,7 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
         unentered_orders = {}
         already_entered_orders = {}
         has_no_match = False
+        order_sequence = []  # To maintain the order
 
         for order in orders:
             raw_email, customer, customer_id, item_id, quantity, enters, item, entered_status, email_sent_date, date_to_be_entered = order
@@ -926,30 +1067,29 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
             if "NOMATCH" in item_id:
                 has_no_match = True
                 continue
-                
+                    
             if entered_status == 0:
                 if order_key not in unentered_orders:
                     unentered_orders[order_key] = [[], [], [], []]
+                    order_sequence.append(order_key)  # Keep track of original order
                 unentered_orders[order_key][0].append(item_id)
                 unentered_orders[order_key][1].append(str(quantity) if quantity is not None else 'N/A')
                 unentered_orders[order_key][2].append(enters if enters is not None else '4E')
                 unentered_orders[order_key][3].append(item)
             else:
                 if order_key not in already_entered_orders:
-                    already_entered_orders[order_key] = [[], [], [], []]
-                already_entered_orders[order_key][0].append(item_id)
-                already_entered_orders[order_key][1].append(str(quantity) if quantity is not None else 'N/A')
-                already_entered_orders[order_key][2].append(enters if enters is not None else '4E')
-                already_entered_orders[order_key][3].append(item)
+                    already_entered_orders[order_key] = True
 
         if has_no_match:
             messagebox.showwarning("Cannot Process", "Some orders contain unmatched items that cannot be auto-entered. Please review and match these items first.")
             return
 
+        # Create the list of orders in the correct sequence
         unentered_orders_list = [
-            (raw_email, customer_id, email_sent_date, '\n'.join(order_data[0]), '\n'.join(order_data[1]),
-            '\n'.join(order_data[2]), '\n'.join(order_data[3]))
-            for (raw_email, customer_id, email_sent_date), order_data in unentered_orders.items()
+            (raw_email, customer_id, email_sent_date, '\n'.join(unentered_orders[key][0]),
+            '\n'.join(unentered_orders[key][1]), '\n'.join(unentered_orders[key][2]),
+            '\n'.join(unentered_orders[key][3]))
+            for key in order_sequence if key in unentered_orders
         ]
 
         if unentered_orders_list:
@@ -1029,7 +1169,20 @@ def create_gui(db_path, email_to_customer_ids, product_enters_mapping):
     # Populate the grid with today's date
     populate_grid(datetime.now().date())
 
-    root.mainloop()
+    return root
+
+def center_window(window, width, height):
+    """Center a window on the screen with given dimensions"""
+    # Get screen dimensions
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+    
+    # Calculate position
+    x = (screen_width - width) // 2
+    y = (screen_height - height) // 2
+    
+    # Position window
+    window.geometry(f'{width}x{height}+{x}+{y}')
 
 def update_existing_order(db_path, customer_info, raw_email, email_sent_date, customer_codes):
     """
@@ -1115,9 +1268,9 @@ def update_existing_order(db_path, customer_info, raw_email, email_sent_date, cu
     return False
 
 def move_email_by_content(raw_email_content, customer_id, email_sent_date, source_folder, destination_folder):
-    mail = imaplib.IMAP4_SSL("imap.gmail.com")
+    mail = None
     try:
-        mail.login(username, password)
+        mail = connect_to_email()
         mail.select(source_folder)
         
         status, messages = mail.search(None, "ALL")
@@ -1144,9 +1297,16 @@ def move_email_by_content(raw_email_content, customer_id, email_sent_date, sourc
                         email_date == email_sent_date):
                         move_email(mail, msg_id, destination_folder)
                         break
+    except Exception as e:
+        logging.error(f"Error moving email: {str(e)}")
+        traceback.print_exc()
     finally:
-        mail.close()
-        mail.logout()
+        if mail:
+            try:
+                mail.close()
+                mail.logout()
+            except Exception as e:
+                logging.error(f"Error closing email connection: {str(e)}")
 
 
 def check_entered_status(db_path, raw_email_content, customer_id, email_sent_date):
@@ -1730,124 +1890,103 @@ def create_customer_excel_file(directory_path, customer_id, display_name, email)
 import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-if __name__ == "__main__":
-    global product_enters_mapping
-    product_enters_mapping = read_product_enters_mapping('ProductSheetWithEnters.xlsx')
+def process_email_folder(mail, db_path, customer_product_codes, email_name_to_customer_ids):
+    """Main email processing function separated from __main__"""
+    mail.select("Orders")
+    status, messages = mail.uid('search', None, "ALL")
 
-    # Read customer-specific product codes from individual Excel files
-    customer_product_codes, email_name_to_customer_ids = read_customer_excel_files('customer_product_codes', product_enters_mapping)
+    if status == 'OK':
+        email_uids = messages[0].split()
+        logging.info(f"Number of messages found: {len(email_uids)}")
 
-    # Email details
-    username = "gingoso2@gmail.com"
-    password = "soiz avjw bdtu hmtn"  # utilizing an app password
+        for email_uid in email_uids:
+            try:
+                if not check_imap_connection(mail):
+                    logging.warning("IMAP connection lost. Attempting to reconnect...")
+                    mail.logout()
+                    mail = imaplib.IMAP4_SSL("imap.gmail.com")
+                    mail.login(username, password)
+                    mail.select("Orders")
 
-    # Database path
-    db_path = 'orders.db'
+                status, msg_data = mail.uid('fetch', email_uid, "(RFC822)")
 
-    # Initialize the database
-    initialize_database(db_path)
+                if status == 'OK' and msg_data and msg_data[0] is not None:
+                    if isinstance(msg_data[0], tuple):
+                        msg = email.message_from_bytes(msg_data[0][1])
+                        
+                        body = get_email_content(msg)
 
-    # Connect to the server
-    mail = imaplib.IMAP4_SSL("imap.gmail.com")
+                        if body:
+                            email_dict = get_attachment_content(msg)
+                            name, email_address = extract_email_and_name(email_dict)
+                            logging.info(f"Extracted email: {email_address}, name: {name}")
 
-    try:
-        mail.login(username, password)
-        mail.select("Orders")
-        status, messages = mail.uid('search', None, "ALL")
+                            date_tuple = email.utils.parsedate_tz(msg.get('Date'))
+                            if date_tuple:
+                                email_sent_date = datetime.fromtimestamp(email.utils.mktime_tz(date_tuple)).strftime('%Y-%m-%d %H:%M:%S')
+                            else:
+                                email_sent_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        # In your main processing loop, change this section:
-        if status == 'OK':
-            email_uids = messages[0].split()
-            logging.info(f"Number of messages found: {len(email_uids)}")
-
-            for email_uid in email_uids:
-                try:
-                    if not check_imap_connection(mail):
-                        logging.warning("IMAP connection lost. Attempting to reconnect...")
-                        mail.logout()
-                        mail = imaplib.IMAP4_SSL("imap.gmail.com")
-                        mail.login(username, password)
-                        mail.select("Orders")
-
-                    status, msg_data = mail.uid('fetch', email_uid, "(RFC822)")
-
-                    if status == 'OK' and msg_data and msg_data[0] is not None:
-                        if isinstance(msg_data[0], tuple):
-                            msg = email.message_from_bytes(msg_data[0][1])
+                            lookup_key = (name.lower() if name else None, email_address.lower())
+                            customer_info = email_name_to_customer_ids.get(lookup_key)
                             
-                            body = get_email_content(msg)
-
-                            if body:
-                                email_dict = get_attachment_content(msg)
-                                name, email_address = extract_email_and_name(email_dict)
-                                logging.info(f"Extracted email: {email_address}, name: {name}")
-
-                                date_tuple = email.utils.parsedate_tz(msg.get('Date'))
-                                if date_tuple:
-                                    email_sent_date = datetime.fromtimestamp(email.utils.mktime_tz(date_tuple)).strftime('%Y-%m-%d %H:%M:%S')
-                                else:
-                                    email_sent_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-                                # Look up customer info using both name and email
-                                lookup_key = (name.lower() if name else None, email_address.lower())
-                                customer_info = email_name_to_customer_ids.get(lookup_key)
+                            if customer_info:
+                                customer_codes = customer_product_codes.get(customer_info['id'], {})
+                                process_result = process_email(email_address, body, customer_codes, 
+                                                            customer_info,
+                                                            db_path, mail, email_uid, email_sent_date)
+                                logging.info(f"Email processed for customer {customer_info['id']}: {process_result}")
                                 
-                                if customer_info:  # customer_info is now the full dictionary
-                                    customer_codes = customer_product_codes.get(customer_info['id'], {})
-                                    process_result = process_email(email_address, body, customer_codes, 
-                                                                customer_info,  # Pass the full customer_info dict
-                                                                db_path, mail, email_uid, email_sent_date)
-                                    logging.info(f"Email processed for customer {customer_info['id']}: {process_result}")
-                                    
-                                    if move_email_to_folder(mail, email_uid, "EnteredIntoABS"):
-                                        logging.info(f"Email from {email_address} moved to EnteredIntoABS folder")
-                                    else:
-                                        logging.error(f"Failed to move email from {email_address} to EnteredIntoABS folder")
+                                if move_email_to_folder(mail, email_uid, "EnteredIntoABS"):
+                                    logging.info(f"Email from {email_address} moved to EnteredIntoABS folder")
                                 else:
-                                    logging.warning(f"No matching customer found for {name} <{email_address}>")
-                                    if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
-                                        logging.info(f"Email moved to CustomerNotFound folder")
-                                    else:
-                                        logging.error(f"Failed to move email to CustomerNotFound folder")
+                                    logging.error(f"Failed to move email from {email_address} to EnteredIntoABS folder")
                             else:
-                                logging.warning(f"No body content for email UID: {email_uid.decode()}")
+                                logging.warning(f"No matching customer found for {name} <{email_address}>")
                                 if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
-                                    logging.info(f"Email with no body content moved to CustomerNotFound folder")
+                                    logging.info(f"Email moved to CustomerNotFound folder")
                                 else:
-                                    logging.error(f"Failed to move email with no body content to CustomerNotFound folder")
+                                    logging.error(f"Failed to move email to CustomerNotFound folder")
                         else:
-                            logging.warning(f"Unexpected data structure for email UID: {email_uid.decode()}")
+                            logging.warning(f"No body content for email UID: {email_uid.decode()}")
                             if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
-                                logging.info(f"Email with unexpected data structure moved to CustomerNotFound folder")
+                                logging.info(f"Email with no body content moved to CustomerNotFound folder")
                             else:
-                                logging.error(f"Failed to move email with unexpected data structure to CustomerNotFound folder")
+                                logging.error(f"Failed to move email with no body content to CustomerNotFound folder")
                     else:
-                        logging.error(f"Failed to fetch email UID: {email_uid.decode()} or email data is None")
+                        logging.warning(f"Unexpected data structure for email UID: {email_uid.decode()}")
                         if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
-                            logging.info(f"Email that failed to fetch moved to CustomerNotFound folder")
+                            logging.info(f"Email with unexpected data structure moved to CustomerNotFound folder")
                         else:
-                            logging.error(f"Failed to move email that failed to fetch to CustomerNotFound folder")
-
-                except Exception as e:
-                    logging.error(f"Error processing email UID {email_uid.decode()}: {str(e)} {e}")
-                    traceback.print_exc()  # This will print the stack trace to the console for debugging
-
+                            logging.error(f"Failed to move email with unexpected data structure to CustomerNotFound folder")
+                else:
+                    logging.error(f"Failed to fetch email UID: {email_uid.decode()} or email data is None")
                     if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
-                        logging.info(f"Email that caused an error moved to CustomerNotFound folder")
+                        logging.info(f"Email that failed to fetch moved to CustomerNotFound folder")
                     else:
-                        logging.error(f"Failed to move email that caused an error to CustomerNotFound folder")
-                    continue
+                        logging.error(f"Failed to move email that failed to fetch to CustomerNotFound folder")
 
-        else:
-            logging.error("Failed to search for emails.")
-    except Exception as e:
-        logging.error(f"An error occurred: {str(e)}")
-    finally:
-        try:
-            mail.close()
-            mail.logout()
-        except:
-            pass
+            except Exception as e:
+                logging.error(f"Error processing email UID {email_uid.decode()}: {str(e)}")
+                traceback.print_exc()
 
-    # Create and run the GUI
-    create_gui(db_path, email_name_to_customer_ids, product_enters_mapping)
+                if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
+                    logging.info(f"Email that caused an error moved to CustomerNotFound folder")
+                else:
+                    logging.error(f"Failed to move email that caused an error to CustomerNotFound folder")
+                continue
+
+    else:
+        logging.error("Failed to search for emails.")
+
+if __name__ == "__main__":
+    # Configure logging
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+    
+    # Initialize application (creates both loading screen and main window)
+    root = initialize_application()
+    
+    if root:
+        root.mainloop()
+    else:
+        messagebox.showerror("Initialization Error", "Failed to start application. Check the logs for details.")
