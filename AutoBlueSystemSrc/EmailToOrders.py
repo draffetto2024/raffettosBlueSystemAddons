@@ -18,6 +18,7 @@ from tkinter import scrolledtext
 import pyautogui
 import keyboard
 import traceback
+import sys
 
 # def read_grid_excel(file_path):
 #     # Read the Excel file without setting any headers initially
@@ -71,6 +72,81 @@ def connect_to_email():
     mail = imaplib.IMAP4_SSL("imap.gmail.com")
     mail.login(EMAIL_CREDENTIALS['username'], EMAIL_CREDENTIALS['password'])
     return mail
+
+class CountdownOverlay:
+    def __init__(self, parent):
+        self.overlay = tk.Toplevel(parent)
+        self.overlay.title("")
+        
+        # Set a reasonable size and position it in the top-right corner
+        width = 400
+        height = 200
+        screen_width = self.overlay.winfo_screenwidth()
+        screen_height = self.overlay.winfo_screenheight()
+        x = screen_width - width - 20  # 20px padding from right
+        y = 20  # 20px padding from top
+        self.overlay.geometry(f"{width}x{height}+{x}+{y}")
+        
+        # Remove window decorations but keep a border
+        self.overlay.overrideredirect(True)
+        
+        # Make it semi-transparent
+        self.overlay.attributes('-alpha', 0.9)
+        
+        # Keep it on top but allow interaction with other windows
+        self.overlay.attributes('-topmost', True)
+        
+        # Main frame with a border
+        self.frame = ttk.Frame(self.overlay, style='Countdown.TFrame')
+        self.frame.pack(fill='both', expand=True, padx=2, pady=2)
+        
+        # Style configuration
+        style = ttk.Style()
+        style.configure("Countdown.TLabel", font=('Helvetica', 36, 'bold'))
+        style.configure("Instruction.TLabel", font=('Helvetica', 14))
+        
+        # Background frame (for border effect)
+        bg_frame = ttk.Frame(self.frame, padding=10)
+        bg_frame.pack(fill='both', expand=True)
+        
+        # Add instruction text
+        self.instruction = ttk.Label(
+            bg_frame, 
+            text="Switching to ordering system in",
+            style="Instruction.TLabel",
+            wraplength=350
+        )
+        self.instruction.pack(pady=(10, 5))
+        
+        # Add countdown label
+        self.countdown_label = ttk.Label(
+            bg_frame, 
+            text="5",
+            style="Countdown.TLabel"
+        )
+        self.countdown_label.pack(pady=5)
+        
+        # Add second instruction
+        self.sub_instruction = ttk.Label(
+            bg_frame, 
+            text="Please switch to your ordering tab",
+            style="Instruction.TLabel",
+            wraplength=350
+        )
+        self.sub_instruction.pack(pady=(5, 10))
+        
+        # Start countdown
+        self.remaining = 5
+        self.countdown()
+        
+    def countdown(self):
+        if self.remaining <= 0:
+            self.overlay.destroy()
+            return
+            
+        self.countdown_label.config(text=str(self.remaining))
+        self.remaining -= 1
+        self.overlay.after(1000, self.countdown)
 
 class LoadingScreen:
     def __init__(self, parent=None):
@@ -1022,7 +1098,10 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
         selected_orders = []
         already_entered_orders = []
         no_match_orders = []
-        time.sleep(5)
+
+        root.update()  # Ensure root is updated before creating overlay
+        countdown = CountdownOverlay(root)
+        root.wait_window(countdown.overlay)  # Wait for countdown to finish
 
         # Get selected orders in the order they appear in the GUI
         selected_rows = []
@@ -1072,7 +1151,9 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
             messagebox.showwarning("Warning", "No rows selected.")
 
     def auto_enter_all():
-        time.sleep(5)
+        root.update()  # Ensure root is updated before creating overlay
+        countdown = CountdownOverlay(root)
+        root.wait_window(countdown.overlay)  # Wait for countdown to finish
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
