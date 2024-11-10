@@ -523,7 +523,7 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
     root.title("Email Order Processor")
     
     # Set size and center the window
-    width = 1600  # Slightly smaller than 1800 to ensure it fits on most screens
+    width = 1800  # Slightly smaller than 1800 to ensure it fits on most screens
     height = 750
     center_window(root, width, height)
 
@@ -712,62 +712,98 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
             checkbox.grid(row=row, column=9, padx=5, pady=5, sticky="nsew")
             checkbox_vars[row] = var
 
-    def show_email_content(email_text):
+    def show_email_content(email_text, position=None):
+        """
+        Creates a popup window to display full email content with specified position
+        """
         email_window = tk.Toplevel()
         email_window.title("Full Email Content")
-        email_window.geometry("800x600")
         
-        # Configurations to manage focus and stacking
-        email_window.transient(None)  # Independent of the root window
-        email_window.group()          # Groups the window with no specified parent
-        email_window.lift()           # Brings it to the front
-        email_window.attributes('-topmost', False)
+        # Set size and position
+        width = 800
+        height = 600
+        if position:
+            x, y = position
+            email_window.geometry(f"{width}x{height}+{x}+{y}")
+        else:
+            # Default center positioning if no position specified
+            screen_width = email_window.winfo_screenwidth()
+            screen_height = email_window.winfo_screenheight()
+            x = (screen_width - width) // 2
+            y = (screen_height - height) // 2
+            email_window.geometry(f"{width}x{height}+{x}+{y}")
         
-        # Position the window
-        x = root.winfo_x() + 50
-        y = root.winfo_y() + 50
-        email_window.geometry(f"+{x}+{y}")
+        # Main frame with padding
+        main_frame = ttk.Frame(email_window, padding="10")
+        main_frame.pack(fill='both', expand=True)
         
-        # Make sure it stays on top of main window but not other popups
-        email_window.attributes('-topmost', False)
+        # Create scrolled text widget
+        email_content = scrolledtext.ScrolledText(
+            main_frame,
+            wrap=tk.WORD,
+            width=80,
+            height=30,
+            font=('Courier', 10)
+        )
+        email_content.pack(expand=True, fill='both', padx=5, pady=5)
         
-        # Rest of the email window setup...
-        email_content = scrolledtext.ScrolledText(email_window, wrap=tk.WORD, width=80, height=30)
-        email_content.pack(expand=True, fill='both', padx=10, pady=10)
+        # Insert the email content
         email_content.insert(tk.INSERT, email_text)
         email_content.config(state='disabled')
-
-        close_button = ttk.Button(email_window, text="Close", command=email_window.destroy)
-        close_button.pack(pady=10)
         
-        # Bind both Escape and window close button ('X')
+        # Add close button
+        close_button = ttk.Button(
+            main_frame,
+            text="Close (Esc)",
+            command=email_window.destroy
+        )
+        close_button.pack(pady=5)
+        
+        # Bind Escape key
         email_window.bind('<Escape>', lambda e: email_window.destroy())
-        email_window.protocol("WM_DELETE_WINDOW", email_window.destroy)
+        
+        return email_window
 
     def add_matching():
         selected_rows = [row for row, var in checkbox_vars.items() if var.get()]
         if not selected_rows:
             messagebox.showwarning("Warning", "Please select a row to add matching.")
             return
+            
+        if len(selected_rows) > 1:
+            messagebox.showwarning(
+                "Too Many Selections", 
+                "Please select only one order to add matching. You cannot create matches for multiple orders simultaneously."
+            )
+            return
 
         row = selected_rows[0]
         
-        # Get values from the grid
+        # Get the widget's location on screen
         email_frame = scrollable_frame.grid_slaves(row=row, column=0)[0]
+        window_y = email_frame.winfo_rooty() + email_frame.winfo_height()  # Position below the row
+        
+        # Calculate positions
+        screen_width = root.winfo_screenwidth()
+        email_width = 800  # Width of email window
+        matching_width = 400  # Width of matching window
+        padding = 20  # Padding between windows
+        
+        # Position email window on the left side
+        email_x = max(0, (screen_width // 2) - email_width - padding)
+        
+        # Position matching window on the right side
+        matching_x = (screen_width // 2) + padding
+        
+        # Get values from the grid
         email_text_widget = email_frame.winfo_children()[0]
         raw_email = email_text_widget.get("1.0", tk.END).strip()
         
         customer_id = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']
-        customer_display = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']  # This will be the full display string
+        customer_display = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']
         email_sent_date = scrollable_frame.grid_slaves(row=row, column=6)[0]['text']
         
-        print("\n=== Starting Add Matching Process ===")
-        print(f"Selected Order Info:")
-        print(f"Customer ID: {customer_id}")
-        print(f"Customer Display: {customer_display}")
-        print(f"Email Sent Date: {email_sent_date}")
-        
-        # Check entered status first
+        # Database checks...
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute('''
@@ -784,10 +820,8 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
         if not result:
             messagebox.showerror("Error", "Could not find order in database.")
             return
-            
+                
         customer_display_str, entered_status = result
-        
-        print(f"Found order - Customer Display: {customer_display_str}, Entered Status: {entered_status}")
         
         if entered_status == 1:
             messagebox.showwarning(
@@ -796,39 +830,43 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
             )
             return
 
-        # Look up customer info from global dictionary using customer_id
+        # Look up customer info
         customer_info = None
         for info in email_name_to_customer_ids.values():
             if info['id'] == customer_id:
                 customer_info = info
                 break
 
-        print(f"Found Customer Info: {customer_info}")
-
         if not customer_info:
             messagebox.showerror("Error", "Could not find customer information for this order.")
             return
 
-        # Create Quick Add window
+        # Create and position both windows
+        email_window = show_email_content(raw_email, position=(email_x, window_y))
+        email_window.lift()  # Bring email window to front initially
+        
+        # Create Quick Add window with specific position
         popup = tk.Toplevel(root)
         popup.title("Quick Add Matching")
-        popup.geometry("400x200")
+        popup.geometry(f"{matching_width}x200+{matching_x}+{window_y}")
         
-        # Position window
-        screen_width = root.winfo_screenwidth()
-        screen_height = root.winfo_screenheight()
-        x = screen_width - 420
-        y = (screen_height - 200) // 2
-        popup.geometry(f"400x200+{x}+{y}")
+        # Ensure matching window stays on its side
+        popup.maxsize(matching_width, 1000)  # Limit width but allow height adjustment
+        popup.minsize(matching_width, 200)   # Set minimum size
+        
+        # Prevent windows from overlapping
+        email_window.attributes('-topmost', True)  # Make email window stay on top
+        popup.attributes('-topmost', False)       # Keep matching window behind email window
+        email_window.after(100, lambda: email_window.attributes('-topmost', False))  # After windows are positioned, allow normal stacking
 
         def show_success():
             success_popup = tk.Toplevel(popup)
             success_popup.title("Success")
             success_popup.geometry("300x100")
             
-            x = popup.winfo_x() + (popup.winfo_width() - 300) // 2
-            y = popup.winfo_y() + (popup.winfo_height() - 100) // 2
-            success_popup.geometry(f"+{x}+{y}")
+            # Center success popup between email and matching windows
+            success_x = email_x + email_width + ((matching_x - (email_x + email_width) - 300) // 2)
+            success_popup.geometry(f"+{success_x}+{window_y + 100}")  # Position below other windows
             
             tk.Label(success_popup, text="Match added successfully and order updated.").pack(pady=20)
             
@@ -841,7 +879,8 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
             success_popup.bind('<Return>', close_success)
             success_popup.bind('<Escape>', close_success)
             
-            success_popup.focus_set()
+            # Center this popup between the other windows
+            success_popup.lift()  # Make sure it's visible
             tk.Button(success_popup, text="OK", command=close_success).pack()
 
         def submit_matching(event=None):
@@ -884,9 +923,9 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
                 print("Failed to update Excel file")
                 messagebox.showerror("Error", "Failed to add match to Excel file.")
 
-        # Create and pack widgets
-        frame = ttk.Frame(popup)
-        frame.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
+        # Create frames and widgets for the matching window
+        frame = ttk.Frame(popup, padding="10")
+        frame.pack(fill=tk.BOTH, expand=True)
 
         ttk.Label(frame, text="Matching Phrase:").pack(anchor='w')
         matching_phrase_entry = ttk.Entry(frame, width=50)
@@ -896,7 +935,7 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
         matched_product_entry = ttk.Entry(frame, width=50)
         matched_product_entry.pack(fill=tk.X)
 
-        submit_button = ttk.Button(frame, text="Submit (Enter)", command=submit_matching)
+        submit_button = ttk.Button(frame, text="Submit (Enter)", command=lambda: submit_matching(None))
         submit_button.pack(pady=20)
 
         # Bind keys
@@ -909,6 +948,8 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
 
         # Override the window close button
         popup.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        return popup  # Return the popup window in case we need to reference it later
 
     def update_excel_with_new_matching(customer_id, matching_phrase, matched_product):
         directory_path = 'customer_product_codes'
@@ -938,46 +979,43 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
         populate_grid(date_entry.get_date())
 
     def perform_auto_entry(orders):
-        #print(f"Performing auto entry for {len(orders)} orders")
+        print(f"\n=== Starting Auto Entry for {len(orders)} orders ===")
+        
         # Sequence to enter the order entry screen
         into_order_sequence = [
             'KEY:1',
             'KEY:enter',
         ]
-        # Execute the sequence to enter the order entry screen
         auto_order_entry(into_order_sequence)
 
         for i, order in enumerate(orders, 1):
-            #print(f"Processing order {i} of {len(orders)}: {order}")
-
-            # Extract customer ID and other details from the order
+            print(f"\nProcessing order {i} of {len(orders)}")
             raw_email, customer_id, email_sent_date, item_ids, quantities, enters, items = order
-
-            #print(f"Customer ID: {customer_id}")
-            #print(f"Email Sent Date: {email_sent_date}")
-            #print(f"Item IDs: {item_ids}")
-            #print(f"Quantities: {quantities}")
-            #print(f"Enters: {enters}")
+            
+            print(f"Customer ID: {customer_id}")
+            print(f"Items to enter: {item_ids.split('\n')}")
+            print(f"Quantities: {quantities.split('\n')}")
+            print(f"Enters: {enters.split('\n')}")
 
             pre_order_entry = [
                 'KEY:enter',
                 f'INPUT:{customer_id}',
                 'KEY:enter',
-                'KEY:enter', #no PO number
-                'KEY:enter', #our van. It will auto fill
-                'INPUT:N', #No to standard order
+                'KEY:enter',  # no PO number
+                'KEY:enter',  # our van. It will auto fill
+                'INPUT:N',    # No to standard order
                 'KEY:enter',
             ]
-            # Execute the pre-order entry sequence
+            
+            print("Executing pre-order entry sequence...")
             auto_order_entry(pre_order_entry)
 
             # Generate the sequence for this specific order
             order_sequence = generate_order_sequence((customer_id, item_ids, quantities, enters, items))
             
-            # Execute the sequence for this order
+            print("Executing order sequence...")
             auto_order_entry(order_sequence)
-
-        #print("Auto entry completed")
+            print(f"Completed order {i}")
 
 
     def auto_enter_selected():
@@ -1042,73 +1080,100 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
         filter_date = date_entry.get_date()
         next_date = filter_date + timedelta(days=1)
         
-        # Modified query to match the GUI's ordering
+        # Debug print
+        print("\n=== Starting Auto Enter All ===")
+        print(f"Processing orders for date: {filter_date}")
+        
         cursor.execute('''
-        SELECT raw_email, customer, customer_id, item_id, quantity, enters, item, 
-            entered_status, email_sent_date, date_to_be_entered
+        SELECT DISTINCT raw_email, customer, customer_id, email_sent_date
         FROM orders
-        WHERE date_to_be_entered >= ? AND date_to_be_entered < ?
-        ORDER BY entered_status ASC, DATETIME(email_sent_date) ASC, raw_email ASC
+        WHERE date_to_be_entered >= ? 
+        AND date_to_be_entered < ?
+        AND entered_status = 0
+        ORDER BY DATETIME(email_sent_date) ASC
         ''', (filter_date.strftime('%Y-%m-%d'), next_date.strftime('%Y-%m-%d')))
         
-        orders = cursor.fetchall()
-        conn.close()
-
-        unentered_orders = {}
-        already_entered_orders = {}
+        order_headers = cursor.fetchall()
+        
+        print(f"\nFound {len(order_headers)} unique orders to process")
+        
+        unentered_orders_list = []
         has_no_match = False
-        order_sequence = []  # To maintain the order
 
-        for order in orders:
-            raw_email, customer, customer_id, item_id, quantity, enters, item, entered_status, email_sent_date, date_to_be_entered = order
-            order_key = (raw_email, customer_id, email_sent_date)
+        for header in order_headers:
+            raw_email, customer, customer_id, email_sent_date = header
             
-            # Check for NOMATCH entries
-            if "NOMATCH" in item_id:
+            print(f"\nProcessing order for customer {customer_id}")
+            print(f"Email sent date: {email_sent_date}")
+            
+            # Get all items for this specific order
+            cursor.execute('''
+            SELECT item_id, quantity, enters, item
+            FROM orders
+            WHERE raw_email = ?
+            AND customer_id = ?
+            AND email_sent_date = ?
+            ''', (raw_email, customer_id, email_sent_date))
+            
+            items = cursor.fetchall()
+            print(f"Found {len(items)} items for this order")
+            
+            if any("NOMATCH" in item[0] for item in items):
                 has_no_match = True
+                print("NOMATCH found in items - skipping order")
                 continue
-                    
-            if entered_status == 0:
-                if order_key not in unentered_orders:
-                    unentered_orders[order_key] = [[], [], [], []]
-                    order_sequence.append(order_key)  # Keep track of original order
-                unentered_orders[order_key][0].append(item_id)
-                unentered_orders[order_key][1].append(str(quantity) if quantity is not None else 'N/A')
-                unentered_orders[order_key][2].append(enters if enters is not None else '4E')
-                unentered_orders[order_key][3].append(item)
-            else:
-                if order_key not in already_entered_orders:
-                    already_entered_orders[order_key] = True
+            
+            # Organize items for this order
+            item_ids = []
+            quantities = []
+            enters_list = []
+            items_list = []
+            
+            for item in items:
+                item_id, quantity, enters, item_text = item
+                print(f"Item: {item_id}, Quantity: {quantity}, Enters: {enters}")
+                item_ids.append(item_id)
+                quantities.append(str(quantity) if quantity is not None else 'N/A')
+                enters_list.append(enters if enters is not None else '4E')
+                items_list.append(item_text)
+            
+            if item_ids:  # Only add if we have items
+                order_data = (
+                    raw_email,
+                    customer_id,
+                    email_sent_date,
+                    '\n'.join(item_ids),
+                    '\n'.join(quantities),
+                    '\n'.join(enters_list),
+                    '\n'.join(items_list)
+                )
+                unentered_orders_list.append(order_data)
+                print(f"Added order to processing list with {len(item_ids)} items")
 
+        conn.close()
+        
+        print(f"\nTotal orders to process: {len(unentered_orders_list)}")
+        
         if has_no_match:
             messagebox.showwarning("Cannot Process", "Some orders contain unmatched items that cannot be auto-entered. Please review and match these items first.")
             return
 
-        # Create the list of orders in the correct sequence
-        unentered_orders_list = [
-            (raw_email, customer_id, email_sent_date, '\n'.join(unentered_orders[key][0]),
-            '\n'.join(unentered_orders[key][1]), '\n'.join(unentered_orders[key][2]),
-            '\n'.join(unentered_orders[key][3]))
-            for key in order_sequence if key in unentered_orders
-        ]
-
         if unentered_orders_list:
+            print("\nStarting auto entry process...")
             perform_auto_entry(unentered_orders_list)
+            
+            print("Updating entered status...")
             update_entered_status(db_path, [(order[0], order[1], order[2]) for order in unentered_orders_list])
             
+            print("Moving emails...")
             for order in unentered_orders_list:
                 move_email_by_content(order[0], order[1], order[2], "EnteredIntoABS", "ProcessedEmails")
             
             message = f"{len(unentered_orders_list)} orders have been entered and marked as processed."
-            if already_entered_orders:
-                message += f"\n{len(already_entered_orders)} orders were already entered and skipped."
-            
             messagebox.showinfo("Info", message)
             populate_grid(date_entry.get_date())
-        elif already_entered_orders:
-            messagebox.showinfo("Info", f"All orders for the selected date ({len(already_entered_orders)}) have already been entered.")
         else:
-            messagebox.showwarning("Warning", "No orders found for the selected date.")
+            messagebox.showinfo("Info", "No orders to process for the selected date.")
 
 
     def delete_order(raw_email, customer_id, email_sent_date):
