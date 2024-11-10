@@ -866,12 +866,13 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
             
             # Center success popup between email and matching windows
             success_x = email_x + email_width + ((matching_x - (email_x + email_width) - 300) // 2)
-            success_popup.geometry(f"+{success_x}+{window_y + 100}")  # Position below other windows
+            success_popup.geometry(f"+{success_x}+{window_y + 100}")
             
             tk.Label(success_popup, text="Match added successfully and order updated.").pack(pady=20)
             
             def close_success(event=None):
                 success_popup.destroy()
+                # Clear entries for next match
                 matching_phrase_entry.delete(0, tk.END)
                 matched_product_entry.delete(0, tk.END)
                 matching_phrase_entry.focus_set()
@@ -879,8 +880,7 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
             success_popup.bind('<Return>', close_success)
             success_popup.bind('<Escape>', close_success)
             
-            # Center this popup between the other windows
-            success_popup.lift()  # Make sure it's visible
+            success_popup.focus_set()
             tk.Button(success_popup, text="OK", command=close_success).pack()
 
         def submit_matching(event=None):
