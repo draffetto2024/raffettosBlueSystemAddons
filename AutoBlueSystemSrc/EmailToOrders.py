@@ -19,6 +19,7 @@ import pyautogui
 import keyboard
 import traceback
 import sys
+import logging
 
 # def read_grid_excel(file_path):
 #     # Read the Excel file without setting any headers initially
@@ -66,6 +67,205 @@ EMAIL_CREDENTIALS = {
     'username': "gingoso2@gmail.com",
     'password': "soiz avjw bdtu hmtn"
 }
+
+def prompt_for_customer_id(root, name, email):
+    """Create a modal dialog to get customer ID from user"""
+    dialog = tk.Toplevel(root)
+    dialog.title("New Customer Detected")
+    dialog.transient(root)
+    dialog.grab_set()  # Make the dialog modal
+    
+    # Center the dialog
+    window_width = 400
+    window_height = 200
+    screen_width = dialog.winfo_screenwidth()
+    screen_height = dialog.winfo_screenheight()
+    x = (screen_width - window_width) // 2
+    y = (screen_height - window_height) // 2
+    dialog.geometry(f'{window_width}x{window_height}+{x}+{y}')
+    
+    # Create and pack widgets
+    frame = ttk.Frame(dialog, padding="20")
+    frame.pack(fill=tk.BOTH, expand=True)
+    
+    ttk.Label(frame, text=f"Name: {name}").pack(anchor='w')
+    ttk.Label(frame, text=f"Email: {email}").pack(anchor='w')
+    
+    ttk.Label(frame, text="Enter Customer ID:").pack(anchor='w', pady=(10, 0))
+    id_entry = ttk.Entry(frame, width=30)
+    id_entry.pack(fill=tk.X)
+    
+    result = {'customer_id': None}
+    
+    def submit():
+        if id_entry.get().strip():
+            result['customer_id'] = id_entry.get().strip().upper()
+            dialog.destroy()
+            
+    def skip():
+        dialog.destroy()
+    
+    # Button frame
+    button_frame = ttk.Frame(frame)
+    button_frame.pack(pady=(20, 0), fill=tk.X)
+    
+    ttk.Button(button_frame, text="Submit", command=submit).pack(side=tk.LEFT, padx=5)
+    ttk.Button(button_frame, text="Skip", command=skip).pack(side=tk.LEFT)
+    
+    # Focus entry and bind Enter key
+    id_entry.focus_set()
+    id_entry.bind('<Return>', lambda e: submit())
+    dialog.bind('<Escape>', lambda e: skip())
+    
+    # Wait for dialog to close
+    dialog.wait_window()
+    return result['customer_id']
+
+def process_new_customers(mail, root):
+    """Check for and process new customers before main application starts"""
+    mail.select("CustomerNotFound")
+    status, messages = mail.uid('search', None, "ALL")
+    
+    if status != 'OK' or not messages[0]:
+        return
+        
+    email_uids = messages[0].split()
+    if not email_uids:
+        return
+        
+    # Show initial message
+    messagebox.showinfo("New Customers Found", 
+        f"Found {len(email_uids)} new customer(s) that need to be processed.\n\n"
+        "Please assign customer IDs for each new customer.")
+    
+    processed_count = 0
+    skipped_count = 0
+    emails_to_reprocess = []
+    
+    for email_uid in email_uids:
+        status, msg_data = mail.uid('fetch', email_uid, "(RFC822)")
+        if status != 'OK' or not msg_data[0]:
+            continue
+            
+        msg = email.message_from_bytes(msg_data[0][1])
+        
+        # Get customer info from email headers
+        name = msg.get('X-Customer-Name', "Unknown")
+        email_address = msg.get('X-Customer-Email', "")
+        
+        if not email_address:  # Fallback to extracting from content if headers not found
+            email_dict = get_attachment_content(msg)
+            name, email_address = extract_email_and_name(email_dict)
+        
+        # Prompt user for customer ID
+        customer_id = prompt_for_customer_id(root, name, email_address)
+        
+        if customer_id:
+            # Create Excel file
+            if create_customer_excel_file('customer_product_codes', 
+                                       customer_id,
+                                       name,
+                                       email_address):
+                emails_to_reprocess.append(email_uid)
+                processed_count += 1
+            else:
+                messagebox.showerror("Error", 
+                    f"Failed to create Excel file for {name} <{email_address}>")
+        else:
+            skipped_count += 1
+    
+    # Move all processed emails back to Orders folder
+    if emails_to_reprocess:
+        mail.select("CustomerNotFound")
+        for email_uid in emails_to_reprocess:
+            move_email_to_folder(mail, email_uid, "Orders")
+            
+    if processed_count > 0 or skipped_count > 0:
+        message = f"Processed {processed_count} new customers\n"
+        message += f"Skipped {skipped_count} emails\n"
+        
+        if processed_count > 0:
+            # Reload customer mappings
+            global customer_product_codes
+            global email_name_to_customer_ids
+            customer_product_codes, email_name_to_customer_ids = read_customer_excel_files(
+                'customer_product_codes', 
+                product_enters_mapping
+            )
+            
+            messagebox.showinfo("Processing Complete", 
+                "New customer processing complete.\n"
+                "The application will now process all orders.")
+
+def handle_new_customers(root, mail):
+    """Process all emails in CustomerNotFound folder"""
+    mail.select("CustomerNotFound")
+    status, messages = mail.uid('search', None, "ALL")
+    
+    if status != 'OK' or not messages[0]:
+        messagebox.showinfo("No New Customers", "No unknown customer emails to process.")
+        return
+        
+    email_uids = messages[0].split()
+    processed_count = 0
+    skipped_count = 0
+    emails_to_reprocess = []  # Keep track of emails to move back
+    
+    for email_uid in email_uids:
+        status, msg_data = mail.uid('fetch', email_uid, "(RFC822)")
+        if status != 'OK' or not msg_data[0]:
+            continue
+            
+        msg = email.message_from_bytes(msg_data[0][1])
+        
+        # Get customer info from email headers
+        name = msg.get('X-Customer-Name', "Unknown")
+        email_address = msg.get('X-Customer-Email', "")
+        
+        if not email_address:  # Fallback to extracting from content if headers not found
+            email_dict = get_attachment_content(msg)
+            name, email_address = extract_email_and_name(email_dict)
+        
+        # Prompt user for customer ID
+        customer_id = prompt_for_customer_id(root, name, email_address)
+        
+        if customer_id:
+            # Create Excel file
+            if create_customer_excel_file('customer_product_codes', 
+                                       customer_id,
+                                       name,
+                                       email_address):
+                emails_to_reprocess.append(email_uid)
+                processed_count += 1
+            else:
+                messagebox.showerror("Error", 
+                    f"Failed to create Excel file for {name} <{email_address}>")
+        else:
+            skipped_count += 1
+    
+    # Move all processed emails back to Orders folder
+    if emails_to_reprocess:
+        mail.select("CustomerNotFound")
+        for email_uid in emails_to_reprocess:
+            if move_email_to_folder(mail, email_uid, "Orders"):
+                print(f"Moved email {email_uid} back to Orders for reprocessing")
+            else:
+                print(f"Failed to move email {email_uid} back to Orders")
+    
+    if processed_count > 0 or skipped_count > 0:
+        message = f"Processed {processed_count} new customers\n"
+        message += f"Skipped {skipped_count} emails\n"
+        message += f"Moving {len(emails_to_reprocess)} emails back to Orders folder"
+        
+        if processed_count > 0:
+            message += "\n\nWould you like to refresh the application to include the new customers?"
+            if messagebox.askyesno("Processing Complete", message):
+                # Refresh the application
+                print("Restarting application to include new customers...")
+                root.destroy()
+                root = initialize_application()
+        else:
+            messagebox.showinfo("Processing Complete", message)
 
 def connect_to_email():
     """Helper function to establish email connection"""
@@ -227,7 +427,6 @@ def initialize_application():
     loading_screen = LoadingScreen(root)
     
     try:
-        
         # Initialize product mapping
         loading_screen.update_progress(10, "Loading product mappings...")
         global product_enters_mapping
@@ -249,8 +448,7 @@ def initialize_application():
         
         # Connect to email
         loading_screen.update_progress(70, "Connecting to email server...")
-        mail = connect_to_email()  # Use the new helper function
-
+        mail = connect_to_email()
         
         # Process emails
         loading_screen.update_progress(80, "Processing emails...")
@@ -271,6 +469,9 @@ def initialize_application():
         root.deiconify()
         root.lift()
         root.focus_force()
+
+        # After main window is shown, force the new customer handling
+        root.after(1000, lambda: handle_new_customers(root, connect_to_email()))
         
         return root
 
@@ -914,8 +1115,9 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
                 break
 
         if not customer_info:
-            messagebox.showerror("Error", "Could not find customer information for this order.")
-            return
+            # Move to CustomerNotFound instead of creating Excel immediately
+            if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
+                logging.info(f"New customer email moved to CustomerNotFound folder")
 
         # Create and position both windows
         email_window = show_email_content(raw_email, position=(email_x, window_y))
@@ -1099,13 +1301,37 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
         already_entered_orders = []
         no_match_orders = []
 
+        # First pass: check for already entered orders
+        for row, var in sorted(checkbox_vars.items()):
+            if var.get():
+                email_frame = scrollable_frame.grid_slaves(row=row, column=0)[0]
+                email_text_widget = email_frame.winfo_children()[0]
+                raw_email_content = email_text_widget.get("1.0", tk.END).strip()
+                customer_id = scrollable_frame.grid_slaves(row=row, column=5)[0]['text']
+                email_sent_date = scrollable_frame.grid_slaves(row=row, column=6)[0]['text']
+                item_ids = scrollable_frame.grid_slaves(row=row, column=4)[0].get("1.0", tk.END).strip()
+                
+                entered_status = check_entered_status(db_path, raw_email_content, customer_id, email_sent_date)
+                print("ENTERED_STATUS", entered_status)
+                if entered_status == 1:
+                    already_entered_orders.append(customer_id)
+
+        # If any orders are already entered, show warning and return
+        if already_entered_orders:
+            already_entered_text = "\n".join([f"Customer: {cust_id}" for cust_id in already_entered_orders])
+            messagebox.showwarning(
+                "Already Entered Orders",
+                f"The following orders have already been entered and cannot be processed:\n\n{already_entered_text}\n\nPlease unselect these orders to continue."
+            )
+            return
+
+        # If we get here, none are entered, proceed with countdown and processing
         root.update()  # Ensure root is updated before creating overlay
         countdown = CountdownOverlay(root)
         root.wait_window(countdown.overlay)  # Wait for countdown to finish
 
-        # Get selected orders in the order they appear in the GUI
-        selected_rows = []
-        for row, var in sorted(checkbox_vars.items()):  # Sort by row number to maintain top-down order
+        # Now process the orders
+        for row, var in sorted(checkbox_vars.items()):
             if var.get():
                 email_frame = scrollable_frame.grid_slaves(row=row, column=0)[0]
                 email_text_widget = email_frame.winfo_children()[0]
@@ -1122,11 +1348,7 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
                 enters = scrollable_frame.grid_slaves(row=row, column=3)[0].get("1.0", tk.END).strip()
                 items = scrollable_frame.grid_slaves(row=row, column=1)[0].get("1.0", tk.END).strip()
                 
-                entered_status = check_entered_status(db_path, raw_email_content, customer_id, email_sent_date)
-                if entered_status == 1:
-                    already_entered_orders.append((raw_email_content, customer_id, email_sent_date, item_ids, quantities, enters, items))
-                else:
-                    selected_orders.append((raw_email_content, customer_id, email_sent_date, item_ids, quantities, enters, items))
+                selected_orders.append((raw_email_content, customer_id, email_sent_date, item_ids, quantities, enters, items))
 
         if no_match_orders:
             messagebox.showwarning("Cannot Process", "Selected orders contain unmatched items that cannot be auto-entered.")
@@ -1140,13 +1362,8 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
                 move_email_by_content(order[0], order[1], order[2], "EnteredIntoABS", "ProcessedEmails")
             
             message = f"{len(selected_orders)} orders have been entered and marked as processed."
-            if already_entered_orders:
-                message += f"\n{len(already_entered_orders)} orders were already entered and skipped."
-            
             messagebox.showinfo("Info", message)
             populate_grid(date_entry.get_date())
-        elif already_entered_orders:
-            messagebox.showwarning("Warning", f"All selected orders ({len(already_entered_orders)}) have already been entered.")
         else:
             messagebox.showwarning("Warning", "No rows selected.")
 
@@ -1312,6 +1529,14 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
     add_matching_button = ttk.Button(button_frame, text="Add Matching for Selected Order", command=add_matching)
     add_matching_button.pack(side=tk.TOP, pady=(0, 5), fill=tk.X)
 
+    # # Add new button to button frame
+    # process_new_customers_button = ttk.Button(
+    #     button_frame, 
+    #     text="Process New Customers", 
+    #     command=lambda: handle_new_customers(root, connect_to_email())
+    # )
+    # process_new_customers_button.pack(side=tk.TOP, pady=(0, 5), fill=tk.X)
+
     # Populate the grid with today's date
     populate_grid(datetime.now().date())
 
@@ -1421,7 +1646,7 @@ def move_email_by_content(raw_email_content, customer_id, email_sent_date, sourc
         
         status, messages = mail.search(None, "ALL")
         
-        print("MESSAGES", messages)
+        # print("MESSAGES", messages)
         if status == 'OK' and messages[0]:
             for msg_id in messages[0].split():
                 status, msg_data = mail.fetch(msg_id, "(RFC822)")
@@ -1430,8 +1655,8 @@ def move_email_by_content(raw_email_content, customer_id, email_sent_date, sourc
                     email_body = get_email_content(email_msg)
                     email_date = email.utils.parsedate_to_datetime(email_msg['Date']).strftime('%Y-%m-%d %H:%M:%S')
 
-                    print("EMAIL MSG", email_msg)
-                    print("EMAIL_BODY", email_body)
+                    # print("EMAIL MSG", email_msg)
+                    # print("EMAIL_BODY", email_body)
                     
                     # Handle email_body being either dict or string
                     if isinstance(email_body, dict):
@@ -1641,47 +1866,71 @@ def read_product_enters_mapping(file_path):
         return {}
 
 def read_customer_excel_files(directory_path, product_enters_mapping):
-    """
-    Reads all customer Excel files in the specified directory, extracts metadata and match pairings.
-    Only includes customers with valid metadata.
-    """
-    print("DEBUG: Starting to read customer Excel files from directory:", directory_path)
+    """Reads all customer Excel files with detailed debug logging"""
+    print("\n=== DETAILED CUSTOMER EXCEL LOADING DEBUG ===")
     customer_product_codes = {}
     email_name_to_customer_ids = {}
 
     for filename in os.listdir(directory_path):
         if filename.endswith('.xlsx'):
             file_path = os.path.join(directory_path, filename)
-            print(f"DEBUG: Processing file: {filename}")
+            print(f"\nProcessing Excel file: {filename}")
             
-            customer_codes, metadata = read_single_customer_file(file_path, product_enters_mapping)
-            
-            # Only process if we got valid metadata
-            if metadata is not None:
-                customer_id = metadata.get('customer_id', '').upper()
-                customer_name = metadata.get('display_name', '')
-                customer_email = metadata.get('email', '').lower()
+            try:
+                df = pd.read_excel(file_path, header=None)
                 
-                # Store customer codes (even if empty)
-                customer_product_codes[customer_id] = customer_codes
-
-                # Build customer info dictionary
+                # Extract and log customer info from first two rows
+                cust_id = str(df.iloc[1, 0]).strip().upper()
+                name = str(df.iloc[1, 1]).strip()
+                email = str(df.iloc[1, 2]).strip().lower()
+                
+                print(f"Excel Customer Info:")
+                print(f"  Customer ID: '{cust_id}'")
+                print(f"  Name: '{name}'")
+                print(f"  Email: '{email}'")
+                
+                # Store customer info
                 customer_info = {
-                    'id': customer_id,
-                    'name': customer_name,
-                    'email': customer_email,
-                    'display_string': f"{customer_name} <{customer_email}>"
+                    'id': cust_id,
+                    'name': name,
+                    'email': email,
+                    'display_string': f"{name} <{email}>"
                 }
 
-                # Store using (name, email) as the key for lookup
-                key = (customer_name.lower(), customer_email.lower())
-                email_name_to_customer_ids[key] = customer_info
+                # Only use name+email combination key
+                name_email_key = (name.lower(), email.lower())
                 
-                print(f"DEBUG: Loaded valid customer info for ID {customer_id}: {customer_info}")
-            else:
-                print(f"DEBUG: Skipping invalid customer file: {filename}")
+                print(f"Creating lookup key:")
+                print(f"  Name+Email key: {name_email_key}")
+                
+                email_name_to_customer_ids[name_email_key] = customer_info
+                customer_product_codes[cust_id] = {}
 
-    print(f"DEBUG: Finished loading customer product codes. Valid customers loaded: {len(customer_product_codes)}")
+                # Process product matches if they exist
+                if len(df) > 3:
+                    print(f"\nProcessing product matches for {cust_id}:")
+                    for idx in range(3, len(df)):
+                        if pd.notna(df.iloc[idx, 0]) and pd.notna(df.iloc[idx, 1]):
+                            raw_text = str(df.iloc[idx, 0]).strip()
+                            product_info = str(df.iloc[idx, 1]).strip()
+                            
+                            parts = product_info.split()
+                            if len(parts) >= 2:
+                                product_code = parts[1].upper()
+                                enters = product_enters_mapping.get(product_code, "4E")
+                                customer_product_codes[cust_id][raw_text] = (product_info, product_code, enters)
+                                print(f"  Added match: '{raw_text}' -> {product_code} ({enters})")
+
+            except Exception as e:
+                print(f"ERROR processing file {filename}: {str(e)}")
+                traceback.print_exc()
+                continue
+
+    print("\n=== LOADED CUSTOMER LOOKUP KEYS ===")
+    for key, info in email_name_to_customer_ids.items():
+        print(f"Key: {key}")
+        print(f"  -> Customer: {info['id']} ({info['display_string']})")
+    
     return customer_product_codes, email_name_to_customer_ids
 
 
@@ -2013,117 +2262,97 @@ def get_attachment_content(msg):
     return attachment_data
 
 def create_customer_excel_file(directory_path, customer_id, display_name, email):
-    """Create a new Excel file with customer info header and product mapping template"""
-    file_path = os.path.join(directory_path, f"{customer_id}.xlsx")
+    """Create a basic Excel file for new customer with correct format"""
+    print(f"\n=== Creating new customer Excel file ===")
+    print(f"Customer ID: {customer_id}")
+    print(f"Display Name: {display_name}")
+    print(f"Email: {email}")
     
-    # Create DataFrame with two sections
-    customer_info = pd.DataFrame({
-        'customer_id': [customer_id],
-        'display_name': [display_name],
-        'email': [email.lower()]
-    })
-    
-    # Product mappings section (initially empty)
-    product_mappings = pd.DataFrame(columns=['raw_text', 'product_info'])
-    
-    # Save both sections to Excel
-    with pd.ExcelWriter(file_path) as writer:
-        customer_info.to_excel(writer, sheet_name='Sheet1', index=False)
-        product_mappings.to_excel(writer, sheet_name='Sheet1', startrow=2, index=False)
+    try:
+        # Create file path
+        file_path = os.path.join(directory_path, f"{customer_id}.xlsx")
         
-    return file_path
-
-import logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+        # Create DataFrame with exact column layout wanted
+        # First row contains the column identifiers as data
+        df = pd.DataFrame([
+            ['cust_id', 'name', 'email'],           # First row: column identifiers
+            [customer_id, display_name, email],      # Second row: actual data
+            [None, None, None],                      # Third row: blank row
+        ])
+        
+        # Save to Excel without headers (since our headers are actual data)
+        df.to_excel(file_path, index=False, header=False)
+        print(f"Successfully created file: {file_path}")
+        return True
+        
+    except Exception as e:
+        print(f"Error creating Excel file: {str(e)}")
+        traceback.print_exc()
+        return False
 
 def process_email_folder(mail, db_path, customer_product_codes, email_name_to_customer_ids):
-    """Main email processing function separated from __main__"""
+    """Main email processing function with detailed debug logging"""
     mail.select("Orders")
     status, messages = mail.uid('search', None, "ALL")
 
     if status == 'OK':
         email_uids = messages[0].split()
-        logging.info(f"Number of messages found: {len(email_uids)}")
+        print(f"\nProcessing {len(email_uids)} emails")
 
         for email_uid in email_uids:
             try:
-                if not check_imap_connection(mail):
-                    logging.warning("IMAP connection lost. Attempting to reconnect...")
-                    mail.logout()
-                    mail = imaplib.IMAP4_SSL("imap.gmail.com")
-                    mail.login(username, password)
-                    mail.select("Orders")
-
                 status, msg_data = mail.uid('fetch', email_uid, "(RFC822)")
-
                 if status == 'OK' and msg_data and msg_data[0] is not None:
                     if isinstance(msg_data[0], tuple):
                         msg = email.message_from_bytes(msg_data[0][1])
                         
+                        # Get email sent date
+                        date_tuple = email.utils.parsedate_tz(msg.get('Date'))
+                        if date_tuple:
+                            email_sent_date = datetime.fromtimestamp(email.utils.mktime_tz(date_tuple)).strftime('%Y-%m-%d %H:%M:%S')
+                        else:
+                            email_sent_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        
                         body = get_email_content(msg)
-
                         if body:
                             email_dict = get_attachment_content(msg)
                             name, email_address = extract_email_and_name(email_dict)
-                            logging.info(f"Extracted email: {email_address}, name: {name}")
-
-                            date_tuple = email.utils.parsedate_tz(msg.get('Date'))
-                            if date_tuple:
-                                email_sent_date = datetime.fromtimestamp(email.utils.mktime_tz(date_tuple)).strftime('%Y-%m-%d %H:%M:%S')
-                            else:
-                                email_sent_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-                            lookup_key = (name.lower() if name else None, email_address.lower())
+                            
+                            print("\n=== CUSTOMER MATCHING DEBUG ===")
+                            print(f"Email Details:")
+                            print(f"  Name: '{name}'")
+                            print(f"  Email: '{email_address}'")
+                            
+                            # Only try exact name+email match
+                            lookup_key = (name.lower() if name else "", 
+                                        email_address.lower() if email_address else "")
+                            
+                            print(f"\nTrying lookup key: {lookup_key}")
                             customer_info = email_name_to_customer_ids.get(lookup_key)
                             
                             if customer_info:
+                                print(f"  -> MATCH FOUND: {customer_info['id']} ({customer_info['display_string']})")
+                                print(f"\nProcessing for customer: {customer_info['id']}")
                                 customer_codes = customer_product_codes.get(customer_info['id'], {})
                                 process_result = process_email(email_address, body, customer_codes, 
                                                             customer_info,
                                                             db_path, mail, email_uid, email_sent_date)
-                                logging.info(f"Email processed for customer {customer_info['id']}: {process_result}")
                                 
                                 if move_email_to_folder(mail, email_uid, "EnteredIntoABS"):
-                                    logging.info(f"Email from {email_address} moved to EnteredIntoABS folder")
-                                else:
-                                    logging.error(f"Failed to move email from {email_address} to EnteredIntoABS folder")
+                                    print(f"Email moved to EnteredIntoABS")
                             else:
-                                logging.warning(f"No matching customer found for {name} <{email_address}>")
+                                print("  -> NO MATCH FOUND")
+                                print("\nMoving to CustomerNotFound folder")
+                                msg.add_header('X-Customer-Name', name or "Unknown")
+                                msg.add_header('X-Customer-Email', email_address)
+                                
                                 if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
-                                    logging.info(f"Email moved to CustomerNotFound folder")
-                                else:
-                                    logging.error(f"Failed to move email to CustomerNotFound folder")
-                        else:
-                            logging.warning(f"No body content for email UID: {email_uid.decode()}")
-                            if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
-                                logging.info(f"Email with no body content moved to CustomerNotFound folder")
-                            else:
-                                logging.error(f"Failed to move email with no body content to CustomerNotFound folder")
-                    else:
-                        logging.warning(f"Unexpected data structure for email UID: {email_uid.decode()}")
-                        if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
-                            logging.info(f"Email with unexpected data structure moved to CustomerNotFound folder")
-                        else:
-                            logging.error(f"Failed to move email with unexpected data structure to CustomerNotFound folder")
-                else:
-                    logging.error(f"Failed to fetch email UID: {email_uid.decode()} or email data is None")
-                    if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
-                        logging.info(f"Email that failed to fetch moved to CustomerNotFound folder")
-                    else:
-                        logging.error(f"Failed to move email that failed to fetch to CustomerNotFound folder")
+                                    print(f"Email moved to CustomerNotFound")
 
             except Exception as e:
-                logging.error(f"Error processing email UID {email_uid.decode()}: {str(e)}")
+                print(f"Error processing email: {str(e)}")
                 traceback.print_exc()
-
-                if move_email_to_folder(mail, email_uid, "CustomerNotFound"):
-                    logging.info(f"Email that caused an error moved to CustomerNotFound folder")
-                else:
-                    logging.error(f"Failed to move email that caused an error to CustomerNotFound folder")
                 continue
-
-    else:
-        logging.error("Failed to search for emails.")
 
 if __name__ == "__main__":
     # Configure logging
