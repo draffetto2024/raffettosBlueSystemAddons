@@ -496,42 +496,56 @@ def extract_orders(email_text, customer_codes):
     email_lines = email_text.strip().split('\n')
 
     print("\nDEBUG: Beginning matching process...")
-    print(customer_codes.items())
-    for raw_text, (product_info, product_code, enters) in customer_codes.items():
+    
+    for raw_text, (product_info, product_code, enters, quantity_pattern) in customer_codes.items():
+        # Default to product info quantity
         product_quantity = int(product_info.split()[0])
-
-        print(f"\nDEBUG: Attempting to match raw_text '{raw_text}' for product code '{product_code}'")
+        
+        print(f"\nDEBUG: Processing match:")
+        print(f"  Raw text: '{raw_text}'")
+        print(f"  Product info: '{product_info}'")
+        print(f"  Product code: '{product_code}'")
+        print(f"  Quantity pattern: '{quantity_pattern}'")
 
         matched = False
         for i in range(len(email_lines) - len(raw_text.split('\n')) + 1):
             chunk = email_lines[i:i+len(raw_text.split('\n'))]
+            chunk_text = '\n'.join(chunk)
 
-            matches = all(
-                clean_line(pattern_line) in clean_line(chunk_line)
-                for pattern_line, chunk_line in zip(raw_text.split('\n'), chunk)
-            )
+            # If we have a quantity pattern, match against that instead of raw_text
+            if quantity_pattern and '[]' in quantity_pattern:
+                # Create regex pattern by escaping special chars and converting [] to \d+
+                regex_pattern = re.escape(quantity_pattern).replace('\\[\\]', '(\\d+)')
+                print(f"DEBUG: Using quantity pattern matching with regex: '{regex_pattern}'")
+                
+                match = re.search(regex_pattern, chunk_text)
+                if match:
+                    matched = True
+                    product_quantity = int(match.group(1))
+                    print(f"DEBUG: Found match using pattern! Quantity: {product_quantity}")
+                    print(f"DEBUG: Matched text: '{chunk_text}'")
+            else:
+                # Traditional matching for entries without quantity pattern
+                matches = all(
+                    clean_line(pattern_line) in clean_line(chunk_line)
+                    for pattern_line, chunk_line in zip(raw_text.split('\n'), chunk)
+                )
+                if matches:
+                    matched = True
+                    print(f"DEBUG: Found match using traditional matching")
+                    print(f"DEBUG: Matched text: '{chunk_text}'")
 
-            # Logging the comparison details
-            if matches:
-                matched = True
-                chunk_text = '\n'.join(chunk)
-                print(f"DEBUG: Match found!\n\tMatched Text: '{chunk_text}'\n\tProduct Info: {product_info}\n\tProduct Code: {product_code}")
+            if matched:
+                print(f"DEBUG: Final values for order:")
+                print(f"  Quantity: {product_quantity}")
+                print(f"  Product Code: {product_code}")
+                print(f"  Enters: {enters}")
+                
                 orders.append((product_quantity, enters, chunk_text, product_code, product_quantity, 0))
                 break
-            # else:
-            #     print(f"DEBUG: No match for '{raw_text}' in email chunk: '{chunk}'")
-
-        # if not matched:
-        #     print(f"DEBUG: No matches found for '{raw_text}' in the email content.")
-
-    if not orders:
-        print("DEBUG: No orders were extracted from this email.")
-    else:
-        print("DEBUG: Final extracted orders summary:")
-        for i, (quantity, enters, text, code, _, _) in enumerate(orders, 1):
-            print(f"\nOrder {i}:\n\tProduct Code: {code}\n\tQuantity: {quantity}\n\tEnters: {enters}\n\tMatched Text: '{text}'")
 
     return orders
+
 
 def extract_quantity(text):
     quantity = re.search(r'\d+', text)
@@ -1161,19 +1175,116 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
             success_popup.focus_set()
             tk.Button(success_popup, text="OK", command=close_success).pack()
 
-        def submit_matching(event=None):
-            matching_phrase = matching_phrase_entry.get().strip().lower()
-            matched_product = matched_product_entry.get().strip()
+        def analyze_matching_phrase(phrase):
+            """Analyze a matching phrase to detect potential quantities"""
+            import re
+            
+            # Look for numbers in the phrase
+            number_matches = list(re.finditer(r'\d+', phrase))
+            
+            if number_matches:
+                # Take the first number found
+                match = number_matches[0]
+                number = int(match.group())
+                start_pos = match.start()
+                end_pos = match.end()
+                
+                # Create pattern by replacing the number with []
+                pattern = phrase[:start_pos] + "[]" + phrase[end_pos:]
+                
+                return number, pattern, match.group()
+            
+            return None, None, None
 
-            print(f"\n=== Submitting New Match ===")
-            print(f"Matching Phrase: {matching_phrase}")
-            print(f"Matched Product: {matched_product}")
+        def show_quantity_confirmation(phrase, pattern, number):
+            """Show dialog to confirm quantity pattern"""
+            confirm = tk.Toplevel()
+            confirm.title("Quantity Detection")
+            confirm.geometry("500x300")  # Made window bigger
+            
+            # Center the dialog
+            screen_width = confirm.winfo_screenwidth()
+            screen_height = confirm.winfo_screenheight()
+            x = (screen_width - 500) // 2  # Updated for new width
+            y = (screen_height - 300) // 2  # Updated for new height
+            confirm.geometry(f"+{x}+{y}")
+            
+            frame = ttk.Frame(confirm, padding="20")
+            frame.pack(fill=tk.BOTH, expand=True)
+            
+            ttk.Label(frame, text="Number detected in phrase:", 
+                    wraplength=450,  # Increased wraplength
+                    font=('Arial', 11)).pack(pady=5)
+            
+            # Show original phrase with number highlighted
+            highlighted_phrase = phrase.replace(str(number), f"[{number}]")
+            ttk.Label(frame, 
+                    text=highlighted_phrase, 
+                    font=('Courier', 12, 'bold'),  # Made font bigger
+                    wraplength=450).pack(pady=10)
+            
+            ttk.Label(frame, 
+                    text="\nProposed pattern for future matching:", 
+                    wraplength=450,
+                    font=('Arial', 11)).pack(pady=5)
+            
+            ttk.Label(frame, 
+                    text=pattern, 
+                    font=('Courier', 12, 'bold'),  # Made font bigger
+                    wraplength=450).pack(pady=10)
+            
+            ttk.Label(frame, 
+                    text="\nUse this pattern for quantity detection?", 
+                    wraplength=450,
+                    font=('Arial', 11)).pack(pady=10)
+            
+            result = {'value': False}
+            
+            def on_response(use_pattern):
+                result['value'] = use_pattern
+                confirm.destroy()
+            
+            def on_enter(event):
+                on_response(True)  # Enter key will trigger "Yes"
+                
+            button_frame = ttk.Frame(frame)
+            button_frame.pack(pady=10)
+            
+            yes_button = ttk.Button(button_frame, text="Yes", command=lambda: on_response(True))
+            yes_button.pack(side=tk.LEFT, padx=5)
+            
+            no_button = ttk.Button(button_frame, text="No", command=lambda: on_response(False))
+            no_button.pack(side=tk.LEFT, padx=5)
+            
+            # Bind Enter key to Yes
+            confirm.bind('<Return>', on_enter)
+            
+            # Set focus to Yes button
+            yes_button.focus_set()
+            
+            confirm.transient()
+            confirm.grab_set()
+            confirm.wait_window()
+            
+            return result['value']
+        
+        def submit_matching(event=None):
+            matching_phrase = matching_phrase_entry.get().strip()
+            matched_product = matched_product_entry.get().strip()
 
             if not matching_phrase or not matched_product:
                 messagebox.showwarning("Warning", "Both fields must be filled.")
                 return
 
-            if update_customer_excel_file(customer_info['id'], matching_phrase, matched_product):
+            # Analyze the matching phrase for quantities
+            number, pattern, found_number = analyze_matching_phrase(matching_phrase)
+            quantity_pattern = None
+            
+            if number is not None:
+                if show_quantity_confirmation(matching_phrase, pattern, number):
+                    quantity_pattern = pattern
+
+            if update_customer_excel_file(customer_info['id'], matching_phrase, matched_product, quantity_pattern):
                 print("Excel file updated successfully")
                 
                 # Reload customer codes
@@ -1200,6 +1311,46 @@ def create_gui(root, db_path, email_to_customer_ids, product_enters_mapping):
             else:
                 print("Failed to update Excel file")
                 messagebox.showerror("Error", "Failed to add match to Excel file.")
+
+        # def submit_matching(event=None):
+        #     matching_phrase = matching_phrase_entry.get().strip().lower()
+        #     matched_product = matched_product_entry.get().strip()
+
+        #     print(f"\n=== Submitting New Match ===")
+        #     print(f"Matching Phrase: {matching_phrase}")
+        #     print(f"Matched Product: {matched_product}")
+
+        #     if not matching_phrase or not matched_product:
+        #         messagebox.showwarning("Warning", "Both fields must be filled.")
+        #         return
+
+        #     if update_customer_excel_file(customer_info['id'], matching_phrase, matched_product):
+        #         print("Excel file updated successfully")
+                
+        #         # Reload customer codes
+        #         print("\nReloading customer codes...")
+        #         global customer_product_codes
+        #         customer_product_codes, _ = read_customer_excel_files('customer_product_codes', product_enters_mapping)
+                
+        #         # Get updated codes for this customer
+        #         customer_codes = customer_product_codes.get(customer_info['id'], {})
+        #         print(f"Updated customer codes: {customer_codes}")
+                
+        #         if customer_codes:
+        #             print("\nAttempting to update existing order...")
+        #             if update_existing_order(db_path, customer_info, raw_email, email_sent_date, customer_codes):
+        #                 print("Order updated successfully")
+        #                 show_success()
+        #                 populate_grid(date_entry.get_date())
+        #             else:
+        #                 print("Failed to update order")
+        #                 messagebox.showerror("Error", "Failed to update order with new match.")
+        #         else:
+        #             print("No customer codes found after update")
+        #             messagebox.showerror("Error", "No customer codes found after update.")
+        #     else:
+        #         print("Failed to update Excel file")
+        #         messagebox.showerror("Error", "Failed to add match to Excel file.")
 
         # Create frames and widgets for the matching window
         frame = ttk.Frame(popup, padding="10")
@@ -1879,7 +2030,7 @@ def read_customer_excel_files(directory_path, product_enters_mapping):
             try:
                 df = pd.read_excel(file_path, header=None)
                 
-                # Extract and log customer info from first two rows
+                # Extract customer info from first two rows
                 cust_id = str(df.iloc[1, 0]).strip().upper()
                 name = str(df.iloc[1, 1]).strip()
                 email = str(df.iloc[1, 2]).strip().lower()
@@ -1889,7 +2040,6 @@ def read_customer_excel_files(directory_path, product_enters_mapping):
                 print(f"  Name: '{name}'")
                 print(f"  Email: '{email}'")
                 
-                # Store customer info
                 customer_info = {
                     'id': cust_id,
                     'name': name,
@@ -1897,16 +2047,10 @@ def read_customer_excel_files(directory_path, product_enters_mapping):
                     'display_string': f"{name} <{email}>"
                 }
 
-                # Only use name+email combination key
                 name_email_key = (name.lower(), email.lower())
-                
-                print(f"Creating lookup key:")
-                print(f"  Name+Email key: {name_email_key}")
-                
                 email_name_to_customer_ids[name_email_key] = customer_info
                 customer_product_codes[cust_id] = {}
 
-                # Process product matches if they exist
                 if len(df) > 3:
                     print(f"\nProcessing product matches for {cust_id}:")
                     for idx in range(3, len(df)):
@@ -1914,23 +2058,28 @@ def read_customer_excel_files(directory_path, product_enters_mapping):
                             raw_text = str(df.iloc[idx, 0]).strip()
                             product_info = str(df.iloc[idx, 1]).strip()
                             
+                            # Get quantity pattern if it exists
+                            quantity_pattern = None
+                            if len(df.columns) > 2 and pd.notna(df.iloc[idx, 2]):
+                                quantity_pattern = str(df.iloc[idx, 2]).strip()
+                            
                             parts = product_info.split()
                             if len(parts) >= 2:
                                 product_code = parts[1].upper()
                                 enters = product_enters_mapping.get(product_code, "4E")
-                                customer_product_codes[cust_id][raw_text] = (product_info, product_code, enters)
-                                print(f"  Added match: '{raw_text}' -> {product_code} ({enters})")
+                                customer_product_codes[cust_id][raw_text] = (
+                                    product_info, 
+                                    product_code, 
+                                    enters,
+                                    quantity_pattern
+                                )
+                                print(f"  Added match: '{raw_text}' -> {product_code} ({enters}) [Pattern: {quantity_pattern}]")
 
             except Exception as e:
                 print(f"ERROR processing file {filename}: {str(e)}")
                 traceback.print_exc()
                 continue
 
-    print("\n=== LOADED CUSTOMER LOOKUP KEYS ===")
-    for key, info in email_name_to_customer_ids.items():
-        print(f"Key: {key}")
-        print(f"  -> Customer: {info['id']} ({info['display_string']})")
-    
     return customer_product_codes, email_name_to_customer_ids
 
 
@@ -1996,13 +2145,14 @@ def read_single_customer_file(file_path, product_enters_mapping):
         print(f"DEBUG: Error reading file {file_path}: {str(e)}")
         return None, None
 
-def update_customer_excel_file(customer_id, matching_phrase, matched_product):
+def update_customer_excel_file(customer_id, matching_phrase, matched_product, quantity_pattern=None):
     """Update Excel file with new match, maintaining the blank row 3"""
     directory_path = 'customer_product_codes'
     
     print(f"\n=== Adding new match for customer {customer_id} ===")
     print(f"Matching phrase: '{matching_phrase}'")
     print(f"Matched product: '{matched_product}'")
+    print(f"Quantity pattern: {quantity_pattern}")
     
     for filename in os.listdir(directory_path):
         if filename.endswith('.xlsx') and customer_id.lower() in filename.lower():
@@ -2012,13 +2162,12 @@ def update_customer_excel_file(customer_id, matching_phrase, matched_product):
             try:
                 # Read existing content
                 df = pd.read_excel(file_path, header=None)
-                print(f"File currently has {len(df)} rows")
                 
                 # Keep metadata (first 2 rows)
                 metadata = df.iloc[:2]
                 
                 # Always maintain blank row 3
-                blank_row = pd.DataFrame([[None, None]])
+                blank_row = pd.DataFrame([[None, None, None]])
                 
                 # Get existing matches (starting from row 4)
                 matches = df.iloc[3:] if len(df) > 3 else pd.DataFrame(columns=df.columns)
@@ -2030,36 +2179,20 @@ def update_customer_excel_file(customer_id, matching_phrase, matched_product):
                         print(f"Match already exists: '{matching_phrase}' -> '{existing_match.iloc[0, 1]}'")
                         return True
                 
-                # Create new match row
-                new_row = pd.DataFrame([[matching_phrase, matched_product]])
+                # Create new match row with quantity pattern
+                new_row = pd.DataFrame([[matching_phrase, matched_product, quantity_pattern]])
                 
-                # Combine everything, ensuring blank row 3
-                if matches.empty:
-                    # If no existing matches, add just the new one after the blank row
-                    final_df = pd.concat([
-                        metadata,          # Rows 1-2: Metadata
-                        blank_row,         # Row 3: Always blank
-                        new_row            # Row 4: First match
-                    ], ignore_index=True)
-                else:
-                    # If existing matches, append the new one at the end
-                    final_df = pd.concat([
-                        metadata,          # Rows 1-2: Metadata
-                        blank_row,         # Row 3: Always blank
-                        matches,           # Rows 4+: Existing matches
-                        new_row            # Last row: New match
-                    ], ignore_index=True)
+                # Combine everything
+                final_df = pd.concat([
+                    metadata,          # Rows 1-2: Metadata
+                    blank_row,         # Row 3: Always blank
+                    matches if not matches.empty else pd.DataFrame(columns=df.columns),  # Existing matches
+                    new_row            # New match
+                ], ignore_index=True)
                 
                 # Save updated file
                 final_df.to_excel(file_path, index=False, header=False)
-                print(f"Added new match: '{matching_phrase}' -> '{matched_product}'")
-                print(f"File now has {len(final_df)} rows")
-                
-                # Debug: Verify the structure
-                print("\nVerifying file structure:")
-                print(f"Row 1-2: Metadata")
-                print(f"Row 3: Blank - {final_df.iloc[2].isna().all()}")
-                print(f"Row 4+: Matches - Starting with '{final_df.iloc[3, 0]}'")
+                print(f"Added new match with quantity pattern: {quantity_pattern}")
                 
                 return True
                 
