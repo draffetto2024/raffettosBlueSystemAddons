@@ -12,6 +12,9 @@ from email import encoders
 from google.cloud import vision
 from google.cloud.vision_v1 import types
 from datetime import datetime
+import tkinter as tk
+from tkinter import ttk
+from PIL import Image, ImageTk
 
 
 
@@ -31,6 +34,138 @@ client = vision.ImageAnnotatorClient()
 # Email details
 sender_email = "gingoso2@gmail.com"
 app_password = "soiz avjw bdtu hmtn"
+
+def display_image_and_get_input(image_path):
+    """Display image preview and get user input for invoice details."""
+    root = tk.Tk()
+    root.title("Invoice Preview and Input")
+    
+    # Store user input in a mutable object that can be accessed by the validate_and_submit function
+    user_input = {'customer_id': None, 'invoice_num': None, 'date': None}
+    
+    try:
+        # Load and display image
+        img = Image.open(image_path)
+        # Resize image if too large while maintaining aspect ratio
+        max_size = (800, 800)
+        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+        photo = ImageTk.PhotoImage(img)
+        
+        # Create and pack widgets
+        image_label = ttk.Label(root, image=photo)
+        image_label.image = photo  # Keep a reference
+        image_label.pack(pady=10)
+    except Exception as e:
+        print(f"Error loading image: {e}")
+        image_label = ttk.Label(root, text="[Image preview unavailable]")
+        image_label.pack(pady=10)
+    
+    # Input frame
+    input_frame = ttk.Frame(root)
+    input_frame.pack(pady=10, padx=10)
+    
+    # Customer ID input
+    ttk.Label(input_frame, text="Customer ID (6 alphanumeric):").grid(row=0, column=0, sticky='e', pady=5)
+    customer_id_entry = ttk.Entry(input_frame)
+    customer_id_entry.grid(row=0, column=1, pady=5)
+    
+    # Invoice number input
+    ttk.Label(input_frame, text="Invoice Number (6 alphanumeric):").grid(row=1, column=0, sticky='e', pady=5)
+    invoice_num_entry = ttk.Entry(input_frame)
+    invoice_num_entry.grid(row=1, column=1, pady=5)
+    
+    # Date input
+    ttk.Label(input_frame, text="Date (MM/DD/YY or MMDDYY):").grid(row=2, column=0, sticky='e', pady=5)
+    date_entry = ttk.Entry(input_frame)
+    date_entry.grid(row=2, column=1, pady=5)
+    
+    # Error label
+    error_label = ttk.Label(input_frame, text="", foreground="red")
+    error_label.grid(row=4, column=0, columnspan=2)
+    
+    def focus_next_empty(event=None):
+        """Focus next empty field or submit if all are filled."""
+        current = root.focus_get()
+        entries = [customer_id_entry, invoice_num_entry, date_entry]
+        
+        if current in entries:
+            current_idx = entries.index(current)
+            # Check remaining fields
+            for idx in range(current_idx + 1, len(entries)):
+                if not entries[idx].get().strip():
+                    entries[idx].focus()
+                    return "break"
+            # If we get here and current field is not empty, try to submit
+            if current.get().strip():
+                submit_wrapper()
+        return "break"
+    
+    def submit_wrapper(event=None):
+        customer_id = customer_id_entry.get().strip()
+        invoice_num = invoice_num_entry.get().strip()
+        date = date_entry.get().strip()
+        
+        print(f"Validating input - Customer ID: {customer_id}, Invoice: {invoice_num}, Date: {date}")
+        
+        # Validate customer ID
+        if not is_six_alphanumeric(customer_id):
+            error_label.config(text="Invalid Customer ID format - must be 6 alphanumeric characters")
+            customer_id_entry.focus()
+            customer_id_entry.selection_range(0, tk.END)
+            return
+            
+        # Validate invoice number
+        if not is_six_alphanumeric(invoice_num):
+            error_label.config(text="Invalid Invoice Number format - must be 6 alphanumeric characters")
+            invoice_num_entry.focus()
+            invoice_num_entry.selection_range(0, tk.END)
+            return
+        
+        # Validate and possibly convert date format
+        date_result = is_date_format(date)
+        if isinstance(date_result, str):
+            # Date was in MMDDYY format and was converted
+            date = date_result
+        elif not date_result:
+            error_label.config(text="Invalid Date format - use MM/DD/YY or MMDDYY")
+            date_entry.focus()
+            date_entry.selection_range(0, tk.END)
+            return
+        
+        # If all validations pass, store the values and close window
+        user_input['customer_id'] = customer_id
+        user_input['invoice_num'] = invoice_num
+        user_input['date'] = date
+        print(f"DEBUG: All validations passed. Input values: {user_input}")
+        root.quit()
+        root.destroy()
+    
+    # Bind Enter key for each entry
+    customer_id_entry.bind('<Return>', focus_next_empty)
+    invoice_num_entry.bind('<Return>', focus_next_empty)
+    date_entry.bind('<Return>', focus_next_empty)
+    
+    # Center the window
+    root.update_idletasks()
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    x = (screen_width - root.winfo_width()) // 2
+    y = (screen_height - root.winfo_height()) // 2
+    root.geometry(f"+{x}+{y}")
+    
+    # Force focus to the first entry field immediately
+    root.lift()  # Bring window to front
+    root.focus_force()  # Force focus to window
+    customer_id_entry.focus_set()  # Force focus to first entry
+    root.update()  # Force update of window
+    
+    try:
+        root.mainloop()
+    except Exception as e:
+        print(f"Error in mainloop: {e}")
+    
+    print(f"Returning user input: {user_input}")
+    return user_input
 
 # Validate paths
 def validate_paths():
@@ -196,20 +331,88 @@ def is_in_position(box1, box2, position, threshold):
 
 import re
 
-def is_six_alphanumeric(s):
-    # Strip any leading or trailing whitespace
-    s = s.strip()
-    
-    # Debug output to check what is being passed
-    print(f"DEBUG: Checking if '{s}' is six alphanumeric characters")
+def validate_and_submit(event=None):  # Added event parameter for Enter key binding
+    try:
+        customer_id = customer_id_entry.get().strip()
+        invoice_num = invoice_num_entry.get().strip()
+        date = date_entry.get().strip()
+        
+        print(f"Validating input - Customer ID: {customer_id}, Invoice: {invoice_num}, Date: {date}")
+        
+        # Validate customer ID
+        if not is_six_alphanumeric(customer_id):
+            error_label.config(text="Invalid Customer ID format - must be 6 alphanumeric characters")
+            return
+            
+        # Validate invoice number
+        if not is_six_alphanumeric(invoice_num):
+            error_label.config(text="Invalid Invoice Number format - must be 6 alphanumeric characters")
+            return
+        
+        # Validate and possibly convert date format
+        date_result = is_date_format(date)
+        if isinstance(date_result, str):
+            # Date was in MMDDYY format and was converted
+            date = date_result
+            print(f"DEBUG: Converted date format to: {date}")
+        elif not date_result:
+            error_label.config(text="Invalid Date format - use MM/DD/YY or MMDDYY")
+            return
+        
+        # If all validations pass, store the values and close window
+        user_input['customer_id'] = customer_id
+        user_input['invoice_num'] = invoice_num
+        user_input['date'] = date
+        print(f"DEBUG: All validations passed. Input values: {user_input}")
+        root.quit()  # This will exit the mainloop
+        root.destroy()  # This will destroy the window
+        
+    except Exception as e:
+        print(f"Error in validate_and_submit: {e}")
+        error_label.config(text=f"An error occurred: {str(e)}")
 
-    # Check if it matches exactly 6 alphanumeric characters
-    return bool(re.match(r'^[A-Za-z0-9]{6}$', s))
+def is_six_alphanumeric(s):
+    """Check if string is exactly 6 alphanumeric characters."""
+    if not s:
+        return False
+    s = s.strip()
+    print(f"DEBUG: Checking if '{s}' is six alphanumeric characters")
+    result = bool(re.match(r'^[A-Za-z0-9]{6}$', s))
+    print(f"DEBUG: Result of alphanumeric check: {result}")
+    return result
 
 
 def is_date_format(s):
-    pattern = re.compile(r'^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/([0-9]{2})$')
-    return bool(pattern.match(s))
+    """Check if string matches MM/DD/YY format."""
+    if not s:
+        return False
+    s = s.strip()
+    
+    # First try MM/DD/YY format
+    pattern1 = re.compile(r'^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/\d{2}$')
+    # Also allow MMDDYY format and convert it
+    pattern2 = re.compile(r'^(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])(\d{2})$')
+    
+    print(f"DEBUG: Checking date format for '{s}'")
+    
+    if pattern1.match(s):
+        print(f"DEBUG: Date matches MM/DD/YY format")
+        return True
+    elif pattern2.match(s):
+        # Convert MMDDYY to MM/DD/YY format
+        matches = pattern2.match(s)
+        month, day, year = matches.groups()
+        return f"{month}/{day}/{year}"
+    
+    print(f"DEBUG: Date format check failed")
+    return False
+
+def format_date(date_str):
+    """Convert date string to MM/DD/YY format if needed."""
+    if '/' in date_str:
+        return date_str
+    # Convert MMDDYY to MM/DD/YY
+    return f"{date_str[:2]}/{date_str[2:4]}/{date_str[4:]}"
 
 def extract_year(date_str):
     return date_str.split('/')[2]
@@ -310,64 +513,133 @@ os.makedirs(log_folder, exist_ok=True)
 log_file = os.path.join(log_folder, f"ocr_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
 logging.basicConfig(filename=log_file, level=logging.DEBUG, format='%(asctime)s - %(message)s')
 
-def process_invoice_image(image_path):
+def process_invoice_image(image_path, manual_mode=False):
+    """Process a single invoice image."""
     logging.info(f"DEBUG: Processing image: {image_path}")
-    image = cv2.imread(image_path)
-    texts = extract_text_and_positions(image)
+    processed_successfully = False
     
-    # Log the full texts output
-    logging.info("Full OCR Results:")
-    for i, text in enumerate(texts):
-        logging.info(f"Text {i}: '{text.description}'")
-        box = text.bounding_poly.vertices
-        logging.info(f"  Bounding box: Top-left ({box[0].x}, {box[0].y}), Bottom-right ({box[2].x}, {box[2].y})")
-    logging.info("End of OCR Results")
-
-    invoice_num = find_text_near_keyphrase(texts, "INVOICE NO", "below", 50)
-    logging.info(f"DEBUG: Text found below INVOICE NO: {invoice_num}")
-
-    # Use expanding threshold for ACCOUNT NO
-    customer_num = None
-    for threshold in range(5, 101, 5):  # Start from 5, increment by 5, up to 100
-        customer_num = find_text_near_keyphrase(texts, "ACCOUNT NO", "below", threshold)
-        if customer_num:
-            logging.info(f"DEBUG: Text found below ACCOUNT NO with threshold {threshold}: {customer_num}")
-            break
-    if not customer_num:
-        logging.info("DEBUG: No alphanumeric text found below ACCOUNT NO even with increased threshold")
-
-    date_num = find_text_near_keyphrase(texts, "INVOICE DATE", "below", 50)
-    logging.info(f"DEBUG: Text found below INVOICE DATE: {date_num}")
-
-    logging.info(f"DEBUG: Found invoice_num: {invoice_num}, customer_num: {customer_num}, date_num: {date_num}")
-
-    if (invoice_num and is_six_alphanumeric(invoice_num) and
-        customer_num and is_six_alphanumeric(customer_num) and
-        date_num and is_date_format(date_num)):
-        logging.info(f"DEBUG: All conditions met, copying image to sorted folder")
-        copy_image_to_sorted_folder(image_path, invoice_num, customer_num, date_num)
-        return True
+    # If in manual mode, skip automatic detection
+    if manual_mode:
+        print(f"\nProcessing failed invoice: {os.path.basename(image_path)}")
+        user_input = display_image_and_get_input(image_path)
+        
+        if all(user_input.values()):
+            logging.info(f"DEBUG: Manual input successful, copying image to sorted folder")
+            print(f"Processing manual input: {user_input}")
+            copy_image_to_sorted_folder(
+                image_path,
+                user_input['invoice_num'],
+                user_input['customer_id'],
+                user_input['date']
+            )
+            processed_successfully = True
+        else:
+            logging.info(f"DEBUG: Manual input cancelled or invalid, copying to unsorted folder")
+            print("Manual input failed or cancelled, moving to unsorted folder")
+            copy_image_to_unsorted_folder(image_path)
     else:
-        logging.info(f"DEBUG: Conditions not met for sorting, copying to unsorted folder")
-        copy_image_to_unsorted_folder(image_path)
-        return False
+        # Automatic detection mode
+        image = cv2.imread(image_path)
+        texts = extract_text_and_positions(image)
+        
+        invoice_num = find_text_near_keyphrase(texts, "INVOICE NO", "below", 50)
+        customer_num = None
+        for threshold in range(5, 101, 5):
+            customer_num = find_text_near_keyphrase(texts, "ACCOUNT NO", "below", threshold)
+            if customer_num:
+                break
+        date_num = find_text_near_keyphrase(texts, "INVOICE DATE", "below", 50)
+        
+        if (invoice_num and is_six_alphanumeric(invoice_num) and
+            customer_num and is_six_alphanumeric(customer_num) and
+            date_num and is_date_format(date_num)):
+            logging.info(f"DEBUG: Automatic detection successful, copying image to sorted folder")
+            copy_image_to_sorted_folder(image_path, invoice_num, customer_num, date_num)
+            processed_successfully = True
+        else:
+            logging.info(f"DEBUG: Automatic detection failed")
+    
+    # Delete original file if processed successfully
+    if processed_successfully:
+        try:
+            os.remove(image_path)
+            print(f"Deleted original file: {image_path}")
+        except Exception as e:
+            print(f"Error deleting original file {image_path}: {e}")
+    
+    return processed_successfully
 
-def process_invoice(invoice_path):
-    print(f"DEBUG: Processing invoice: {invoice_path}")
-    if invoice_path.lower().endswith('.pdf'):
-        image_paths = convert_pdf_to_images(invoice_path)
-        print(f"DEBUG: Converted PDF to images: {image_paths}")
+def process_invoices(invoice_folder):
+    """Process all invoices in the folder."""
+    print(f"DEBUG: Processing invoices in folder: {invoice_folder}")
+    if not os.path.exists(invoice_folder):
+        print(f"ERROR: Invoice folder does not exist: {invoice_folder}")
+        return
 
-        processed_invoices = 0
-        for image_path in image_paths:
-            if process_invoice_image(image_path):
-                processed_invoices += 1
-            os.remove(image_path)  # Remove temporary image file
-            print(f"DEBUG: Removed temporary image: {image_path}")
+    # Store failed invoices for manual processing
+    failed_invoices = []
 
-        print(f"DEBUG: Processed {processed_invoices} invoices from PDF: {invoice_path}")
+    # First pass: Automatic processing
+    print("\nStarting automatic processing of invoices...")
+    for filename in os.listdir(invoice_folder):
+        file_path = os.path.join(invoice_folder, filename)
+        
+        if filename.lower().endswith('.pdf'):
+            print(f"Processing PDF file: {filename}")
+            try:
+                # Convert PDF to images and process each page
+                doc = fitz.open(file_path)
+                for page_num in range(len(doc)):
+                    pix = doc[page_num].get_pixmap(matrix=fitz.Matrix(2, 2))
+                    temp_image_path = save_pixmap_with_retry(pix)
+                    try:
+                        if not process_invoice_image(temp_image_path):
+                            # Store the failed page for manual processing
+                            failed_invoices.append(temp_image_path)
+                    except Exception as e:
+                        print(f"Error processing PDF page {page_num + 1}: {str(e)}")
+                doc.close()
+                # Delete original PDF after processing all pages
+                os.remove(file_path)
+                print(f"Deleted original PDF: {file_path}")
+            except Exception as e:
+                print(f"Error processing PDF {filename}: {str(e)}")
+        
+        elif filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+            print(f"Processing image file: {filename}")
+            try:
+                if not process_invoice_image(file_path):
+                    failed_invoices.append(file_path)
+            except Exception as e:
+                print(f"Error processing image {filename}: {str(e)}")
+        
+        else:
+            print(f"Skipped non-invoice file: {filename}")
+
+    # Second pass: Manual processing of failed invoices
+    if failed_invoices:
+        print(f"\nFound {len(failed_invoices)} invoices that need manual processing.")
+        print("Starting manual processing...\n")
+        
+        for failed_invoice in failed_invoices:
+            try:
+                process_invoice_image(failed_invoice, manual_mode=True)
+            except Exception as e:
+                print(f"Error during manual processing of {os.path.basename(failed_invoice)}: {str(e)}")
+            
+            # Clean up temporary files (PDF pages)
+            if failed_invoice.startswith(tempfile.gettempdir()):
+                try:
+                    if os.path.exists(failed_invoice):  # Check if file still exists
+                        os.remove(failed_invoice)
+                        print(f"Removed temporary file: {failed_invoice}")
+                except Exception as e:
+                    print(f"Error removing temporary file: {str(e)}")
+    
     else:
-        process_invoice_image(invoice_path)
+        print("\nAll invoices were processed automatically. No manual input needed.")
+
+    print("\nInvoice processing completed.")
 
     # Do not delete the original invoice after processing
     # os.remove(invoice_path)
@@ -400,36 +672,75 @@ def save_pixmap_with_retry(pix, max_retries=5):
             time.sleep(0.5)  # Wait for half a second before retrying
 
 def process_invoices(invoice_folder):
+    """Process all invoices in the folder."""
     print(f"DEBUG: Processing invoices in folder: {invoice_folder}")
     if not os.path.exists(invoice_folder):
         print(f"ERROR: Invoice folder does not exist: {invoice_folder}")
         return
 
-    for filename in os.listdir(invoice_folder):
-        print(f"DEBUG: Found file: {filename}")
-        file_path = os.path.join(invoice_folder, filename)
+    # Store failed invoices for manual processing
+    failed_invoices = []
 
+    # First pass: Automatic processing
+    print("\nStarting automatic processing of invoices...")
+    for filename in os.listdir(invoice_folder):
+        file_path = os.path.join(invoice_folder, filename)
+        
         if filename.lower().endswith('.pdf'):
-            print(f"DEBUG: Processing PDF file: {filename}")
+            print(f"Processing PDF file: {filename}")
             try:
-                process_pdf_invoice(file_path)
-                # Delete the original PDF file after successful processing
-                os.remove(file_path)
-                print(f"DEBUG: Deleted original PDF: {file_path}")
+                # Convert PDF to images and process each page
+                doc = fitz.open(file_path)
+                for page_num in range(len(doc)):
+                    pix = doc[page_num].get_pixmap(matrix=fitz.Matrix(2, 2))
+                    temp_image_path = save_pixmap_with_retry(pix)
+                    try:
+                        if not process_invoice_image(temp_image_path):
+                            # Store the failed page for manual processing
+                            failed_invoices.append(temp_image_path)
+                        else:
+                            # Remove temp file if successful
+                            os.remove(temp_image_path)
+                    except Exception as e:
+                        print(f"Error processing PDF page {page_num + 1}: {str(e)}")
+                doc.close()
             except Exception as e:
-                print(f"ERROR: Failed to process PDF {filename}: {str(e)}")
-                print(f"DEBUG: Original PDF not deleted due to processing error: {file_path}")
+                print(f"Error processing PDF {filename}: {str(e)}")
+        
         elif filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-            print(f"DEBUG: Processing image file: {filename}")
+            print(f"Processing image file: {filename}")
             try:
-                process_invoice_image(file_path)
-                # Optionally, you can delete the original image file here as well
-                os.remove(file_path)
-                print(f"DEBUG: Deleted original image: {file_path}")
+                if not process_invoice_image(file_path):
+                    failed_invoices.append(file_path)
             except Exception as e:
-                print(f"ERROR: Failed to process image {filename}: {str(e)}")
+                print(f"Error processing image {filename}: {str(e)}")
+        
         else:
-            print(f"DEBUG: Skipped non-invoice file: {filename}")
+            print(f"Skipped non-invoice file: {filename}")
+
+    # Second pass: Manual processing of failed invoices
+    if failed_invoices:
+        print(f"\nFound {len(failed_invoices)} invoices that need manual processing.")
+        print("Starting manual processing...\n")
+        
+        for failed_invoice in failed_invoices:
+            try:
+                process_invoice_image(failed_invoice, manual_mode=True)
+            except Exception as e:
+                print(f"Error during manual processing of {os.path.basename(failed_invoice)}: {str(e)}")
+            
+            # Clean up temporary files
+            if failed_invoice.startswith(tempfile.gettempdir()):
+                try:
+                    os.remove(failed_invoice)
+                    print(f"Removed temporary file: {failed_invoice}")
+                except Exception as e:
+                    print(f"Error removing temporary file: {str(e)}")
+    
+    else:
+        print("\nAll invoices were processed automatically. No manual input needed.")
+
+    print("\nInvoice processing completed.")
 
 def process_pdf_invoice(pdf_path):
     doc = fitz.open(pdf_path)
