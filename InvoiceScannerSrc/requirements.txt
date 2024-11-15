@@ -1,0 +1,5 @@
+fitz==0.0.1.dev2
+opencv_python==4.10.0.84
+pandas==2.2.3
+protobuf==5.28.3
+pyinstaller==6.10.0

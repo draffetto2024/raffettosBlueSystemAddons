@@ -14,6 +14,7 @@ from google.cloud.vision_v1 import types
 from datetime import datetime
 
 
+
 # Simplified path definitions using relative paths
 service_account_key = "./caramel-compass-429017-h3-c2d4e157e809.json"
 invoice_folder = "./Invoices/InvoicePictures"

@@ -3,8 +3,8 @@ import os
 import shutil
 
 # Define the paths
-script_path = "EmailToOrders.py"
-json_path = r"C:\Users\Derek\Desktop\InvoiceSortingDev\caramel-compass-429017-h3-c2d4e157e809.json"
+script_path = "InvoiceImageToText.py"
+json_path = r".\caramel-compass-429017-h3-c2d4e157e809.json"
 output_dir = "dist"
 
 # Create the output directory if it doesn't exist
@@ -15,7 +15,7 @@ PyInstaller.__main__.run([
     script_path,
     "--onefile",
     "--add-data", f"{json_path};.",
-    "--distpath", output_dir,
+    "--distpath", output_dir, 
     "--name", "InvoiceProcessor"
 ])
 
