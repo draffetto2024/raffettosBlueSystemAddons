@@ -35,6 +35,121 @@ client = vision.ImageAnnotatorClient()
 sender_email = "gingoso2@gmail.com"
 app_password = "soiz avjw bdtu hmtn"
 
+class CustomerTracker:
+    def __init__(self, base_folder, inactivity_threshold_days=21):
+        self.base_folder = base_folder
+        self.inactivity_threshold = inactivity_threshold_days
+        self.last_order_dates = {}
+        self.load_customer_history()
+    
+    def load_customer_history(self):
+        """Scan through sorted invoices to build customer order history."""
+        print("Loading customer order history...")
+        for year_dir in os.listdir(self.base_folder):
+            year_path = os.path.join(self.base_folder, year_dir)
+            if not os.path.isdir(year_path):
+                continue
+                
+            for month_dir in os.listdir(year_path):
+                month_path = os.path.join(year_path, month_dir)
+                if not os.path.isdir(month_path):
+                    continue
+                    
+                for day_dir in os.listdir(month_path):
+                    day_path = os.path.join(month_path, day_dir)
+                    if not os.path.isdir(day_path):
+                        continue
+                    
+                    # Process invoices in this day's folder
+                    for invoice in os.listdir(day_path):
+                        if not invoice.endswith(('.jpg', '.png', '.pdf')):
+                            continue
+                        
+                        # Extract customer ID from filename (assumed format: CUSTID_INVNUM.ext)
+                        customer_id = invoice.split('_')[0]
+                        
+                        # Create date object from folder structure
+                        try:
+                            order_date = datetime(
+                                int(f"20{year_dir}"),  # Assuming 20xx year format
+                                int(month_dir),
+                                int(day_dir)
+                            )
+                            
+                            # Update last order date if more recent
+                            if customer_id not in self.last_order_dates or \
+                               order_date > self.last_order_dates[customer_id]:
+                                self.last_order_dates[customer_id] = order_date
+                                
+                        except ValueError as e:
+                            print(f"Error parsing date for {invoice}: {e}")
+    
+    def update_customer_activity(self, customer_id, date_str):
+        """Update customer's last order date when processing new invoice."""
+        try:
+            # Convert date string (MM/DD/YY) to datetime
+            date_parts = date_str.split('/')
+            order_date = datetime(
+                2000 + int(date_parts[2]),  # Assuming 20xx year
+                int(date_parts[0]),
+                int(date_parts[1])
+            )
+            
+            # Update last order date if more recent
+            if customer_id not in self.last_order_dates or \
+               order_date > self.last_order_dates[customer_id]:
+                self.last_order_dates[customer_id] = order_date
+                
+        except (ValueError, IndexError) as e:
+            print(f"Error updating customer activity for {customer_id}: {e}")
+    
+    def get_inactive_customers(self):
+        """Return list of customers who haven't ordered in threshold days."""
+        current_date = datetime.now()
+        inactive_customers = []
+        
+        for customer_id, last_order in self.last_order_dates.items():
+            days_since_order = (current_date - last_order).days
+            if days_since_order >= self.inactivity_threshold:
+                inactive_customers.append({
+                    'customer_id': customer_id,
+                    'last_order_date': last_order.strftime('%m/%d/%y'),
+                    'days_inactive': days_since_order
+                })
+        
+        # Sort by days inactive (descending)
+        inactive_customers.sort(key=lambda x: x['days_inactive'], reverse=True)
+        return inactive_customers
+    
+    def generate_inactivity_report(self):
+        """Generate a detailed report of inactive customers."""
+        inactive = self.get_inactive_customers()
+        if not inactive:
+            return "No inactive customers found."
+        
+        report = "Customer Inactivity Report\n"
+        report += "=" * 50 + "\n"
+        report += f"Generated on: {datetime.now().strftime('%m/%d/%y %H:%M')}\n"
+        report += f"Inactivity threshold: {self.inactivity_threshold} days\n"
+        report += "=" * 50 + "\n\n"
+        
+        for customer in inactive:
+            report += f"Customer ID: {customer['customer_id']}\n"
+            report += f"Last Order: {customer['last_order_date']}\n"
+            report += f"Days Inactive: {customer['days_inactive']}\n"
+            report += "-" * 30 + "\n"
+        
+        return report
+
+# Add this function near your other utility functions
+def check_inactive_customers():
+    inactive = customer_tracker.get_inactive_customers()
+    if inactive:
+        print("\nInactive Customer Alert:")
+        for customer in inactive:
+            print(f"Customer {customer['customer_id']} hasn't ordered in {customer['days_inactive']} days "
+                  f"(Last order: {customer['last_order_date']})")
+
 def display_image_and_get_input(image_path):
     """Display image preview and get user input for invoice details."""
     root = tk.Tk()
@@ -187,13 +302,15 @@ if not validate_paths():
     print("Exiting due to invalid paths.")
     exit(1)
 
+# Add this line right after it
+customer_tracker = CustomerTracker(destination_base_folder)
+
 def load_customer_emails(excel_file):
     df = pd.read_excel(excel_file, header=None)  # No header row
     customer_emails = dict(zip(df.iloc[:, 0], df.iloc[:, 1]))  # First column as keys, second as values
     return customer_emails
 
 customer_emails = load_customer_emails(customer_emails_file)
-
 
 def extract_text_and_positions(image):
     _, encoded_image = cv2.imencode('.jpg', image)
@@ -432,6 +549,8 @@ def copy_image_to_sorted_folder(image_path, six_digit_number, customer_id, date)
     try:
         shutil.copy2(image_path, destination_path)
         print(f"Copied and renamed image to: {destination_path}")
+        # Add this line to update customer activity
+        customer_tracker.update_customer_activity(customer_id, date)
     except Exception as e:
         print(f"DEBUG: Error copying file: {e}")
     send_email_with_attachment(destination_path, customer_id, six_digit_number, date)
@@ -569,83 +688,83 @@ def process_invoice_image(image_path, manual_mode=False):
     
     return processed_successfully
 
-def process_invoices(invoice_folder):
-    """Process all invoices in the folder."""
-    print(f"DEBUG: Processing invoices in folder: {invoice_folder}")
-    if not os.path.exists(invoice_folder):
-        print(f"ERROR: Invoice folder does not exist: {invoice_folder}")
-        return
+# def process_invoices(invoice_folder):
+#     """Process all invoices in the folder."""
+#     print(f"DEBUG: Processing invoices in folder: {invoice_folder}")
+#     if not os.path.exists(invoice_folder):
+#         print(f"ERROR: Invoice folder does not exist: {invoice_folder}")
+#         return
 
-    # Store failed invoices for manual processing
-    failed_invoices = []
+#     # Store failed invoices for manual processing
+#     failed_invoices = []
 
-    # First pass: Automatic processing
-    print("\nStarting automatic processing of invoices...")
-    for filename in os.listdir(invoice_folder):
-        file_path = os.path.join(invoice_folder, filename)
+#     # First pass: Automatic processing
+#     print("\nStarting automatic processing of invoices...")
+#     for filename in os.listdir(invoice_folder):
+#         file_path = os.path.join(invoice_folder, filename)
         
-        if filename.lower().endswith('.pdf'):
-            print(f"Processing PDF file: {filename}")
-            try:
-                # Convert PDF to images and process each page
-                doc = fitz.open(file_path)
-                for page_num in range(len(doc)):
-                    pix = doc[page_num].get_pixmap(matrix=fitz.Matrix(2, 2))
-                    temp_image_path = save_pixmap_with_retry(pix)
-                    try:
-                        if not process_invoice_image(temp_image_path):
-                            # Store the failed page for manual processing
-                            failed_invoices.append(temp_image_path)
-                    except Exception as e:
-                        print(f"Error processing PDF page {page_num + 1}: {str(e)}")
-                doc.close()
-                # Delete original PDF after processing all pages
-                os.remove(file_path)
-                print(f"Deleted original PDF: {file_path}")
-            except Exception as e:
-                print(f"Error processing PDF {filename}: {str(e)}")
+#         if filename.lower().endswith('.pdf'):
+#             print(f"Processing PDF file: {filename}")
+#             try:
+#                 # Convert PDF to images and process each page
+#                 doc = fitz.open(file_path)
+#                 for page_num in range(len(doc)):
+#                     pix = doc[page_num].get_pixmap(matrix=fitz.Matrix(2, 2))
+#                     temp_image_path = save_pixmap_with_retry(pix)
+#                     try:
+#                         if not process_invoice_image(temp_image_path):
+#                             # Store the failed page for manual processing
+#                             failed_invoices.append(temp_image_path)
+#                     except Exception as e:
+#                         print(f"Error processing PDF page {page_num + 1}: {str(e)}")
+#                 doc.close()
+#                 # Delete original PDF after processing all pages
+#                 os.remove(file_path)
+#                 print(f"Deleted original PDF: {file_path}")
+#             except Exception as e:
+#                 print(f"Error processing PDF {filename}: {str(e)}")
         
-        elif filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-            print(f"Processing image file: {filename}")
-            try:
-                if not process_invoice_image(file_path):
-                    failed_invoices.append(file_path)
-            except Exception as e:
-                print(f"Error processing image {filename}: {str(e)}")
+#         elif filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+#             print(f"Processing image file: {filename}")
+#             try:
+#                 if not process_invoice_image(file_path):
+#                     failed_invoices.append(file_path)
+#             except Exception as e:
+#                 print(f"Error processing image {filename}: {str(e)}")
         
-        else:
-            print(f"Skipped non-invoice file: {filename}")
+#         else:
+#             print(f"Skipped non-invoice file: {filename}")
 
-    # Second pass: Manual processing of failed invoices
-    if failed_invoices:
-        print(f"\nFound {len(failed_invoices)} invoices that need manual processing.")
-        print("Starting manual processing...\n")
+#     # Second pass: Manual processing of failed invoices
+#     if failed_invoices:
+#         print(f"\nFound {len(failed_invoices)} invoices that need manual processing.")
+#         print("Starting manual processing...\n")
         
-        for failed_invoice in failed_invoices:
-            try:
-                process_invoice_image(failed_invoice, manual_mode=True)
-            except Exception as e:
-                print(f"Error during manual processing of {os.path.basename(failed_invoice)}: {str(e)}")
+#         for failed_invoice in failed_invoices:
+#             try:
+#                 process_invoice_image(failed_invoice, manual_mode=True)
+#             except Exception as e:
+#                 print(f"Error during manual processing of {os.path.basename(failed_invoice)}: {str(e)}")
             
-            # Clean up temporary files (PDF pages)
-            if failed_invoice.startswith(tempfile.gettempdir()):
-                try:
-                    if os.path.exists(failed_invoice):  # Check if file still exists
-                        os.remove(failed_invoice)
-                        print(f"Removed temporary file: {failed_invoice}")
-                except Exception as e:
-                    print(f"Error removing temporary file: {str(e)}")
+#             # Clean up temporary files (PDF pages)
+#             if failed_invoice.startswith(tempfile.gettempdir()):
+#                 try:
+#                     if os.path.exists(failed_invoice):  # Check if file still exists
+#                         os.remove(failed_invoice)
+#                         print(f"Removed temporary file: {failed_invoice}")
+#                 except Exception as e:
+#                     print(f"Error removing temporary file: {str(e)}")
     
-    else:
-        print("\nAll invoices were processed automatically. No manual input needed.")
+#     else:
+#         print("\nAll invoices were processed automatically. No manual input needed.")
 
-    print("\nInvoice processing completed.")
+#     print("\nInvoice processing completed.")
 
-    # Do not delete the original invoice after processing
-    # os.remove(invoice_path)
-    # print(f"DEBUG: Deleted original invoice: {invoice_path}")
+#     # Do not delete the original invoice after processing
+#     # os.remove(invoice_path)
+#     # print(f"DEBUG: Deleted original invoice: {invoice_path}")
 
-    print("="*40)  # Separator for readability
+#     print("="*40)  # Separator for readability
 
 import tempfile
 import time
@@ -787,6 +906,8 @@ def remove_customer_email(excel_file, customer_id):
 if __name__ == "__main__":
     print("DEBUG: Starting invoice processing")
     process_invoices(invoice_folder)
+    check_inactive_customers()  # Add this line
+
     print("Program execution completed.")
 
     input("Press Enter to exit...")
