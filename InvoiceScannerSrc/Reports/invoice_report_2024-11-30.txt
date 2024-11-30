@@ -1,0 +1,86 @@
+Invoice Report - Generated 2024-11-30
+==================================================
+
+
+Route Number: 2
+--------------------
+426447    2
+426460    2
+
+Route Number: 3
+--------------------
+426432    3
+
+Route Number: COLD
+--------------------
+426434    COLD
+Route Number:    COLD
+Route Number:    COLD
+Route Number:    COLD
+Route Number:    COLD
+Route Number:    COLD
+Route Number:    COLD
+Route Number:    COLD
+Route Number:    COLD
+
+Route Number: Fresh
+--------------------
+426460    Fresh
+426460    Fresh
+426460    Fresh
+426460    Fresh
+Route Number:    Fresh
+Route Number:    Fresh
+Route Number:    Fresh
+Route Number:    Fresh
+Route Number:    Fresh
+Route Number:    Fresh
+Route Number:    Fresh
+Route Number:    Fresh
+
+Route Number: Raffetto's
+--------------------
+426447    Raffetto's
+426447    Raffetto's
+426447    Raffetto's
+426447    Raffetto's
+Route Number:    Raffetto's
+Route Number:    Raffetto's
+Route Number:    Raffetto's
+Route Number:    Raffetto's
+Route Number:    Raffetto's
+Route Number:    Raffetto's
+Route Number:    Raffetto's
+Route Number:    Raffetto's
+
+Route Number: T
+--------------------
+426432    T
+426432    T
+426432    T
+Route Number:    T
+Route Number:    T
+Route Number:    T
+Route Number:    T
+Route Number:    T
+Route Number:    T
+Route Number:    T
+Route Number:    T
+
+Route Number: Unassigned
+--------------------
+426432    Unassigned
+426432    Unassigned
+426434    Unassigned
+426447    Unassigned
+426447    Unassigned
+426447    Unassigned
+426460    Unassigned
+426460    Unassigned
+Route Number:    Unassigned
+Route Number:    Unassigned
+Route Number:    Unassigned
+Route Number:    Unassigned
+Route Number:    Unassigned
+Route Number:    Unassigned
+Route Number:    Unassigned
