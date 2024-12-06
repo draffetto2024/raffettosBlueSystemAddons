@@ -57,10 +57,315 @@ path_to_db = os.path.join(application_path, 'CopyPastePack.db')
 path_to_xlsx = os.path.join(application_path, 'UPCCodes.xlsx')
 path_to_txt = os.path.join(application_path, 'input.txt')
 
+def initialize_database():
+    """Initialize orders table if it doesn't exist"""
+    conn = sqlite3.connect(path_to_db)
+    c = conn.cursor()
+    
+    # Create orders table if not exists with startpackingtimestamp
+    c.execute('''CREATE TABLE IF NOT EXISTS orders (
+        order_num INT,
+        item VARCHAR(100),
+        item_barcode INT,
+        count INT,
+        name VARCHAR(100),
+        address VARCHAR(100),
+        generatedtimestamp VARCHAR(100),
+        packedtimestamp VARCHAR(100),
+        startpackingtimestamp VARCHAR(100)
+    )''')
+    
+    # Create ordersandtimestampsonly table if not exists
+    c.execute('''CREATE TABLE IF NOT EXISTS ordersandtimestampsonly (
+        order_num INT,
+        generatedtimestamp VARCHAR(100),
+        packedtimestamp VARCHAR(100),
+        startpackingtimestamp VARCHAR(100)
+    )''')
+    
+    conn.commit()
+    conn.close()
+
+def initialize_program():
+    """Initialize the program by setting up database and loading today's orders"""
+    global order_dict
+    
+    # First initialize database tables if they don't exist
+    initialize_database()
+    
+    # Then load any existing orders for today
+    order_dict = load_todays_orders()
+    
+    # Start the option selection
+    choose_option()
+
+
+# For handling datetime properly in SQLite3 (add at top of file with other imports)
+def adapt_datetime(dt):
+    return dt.isoformat()
+
+def convert_datetime(s):
+    return datetime.datetime.fromisoformat(s)
+
+# Register the adapter and converter
+sqlite3.register_adapter(datetime.datetime, adapt_datetime)
+sqlite3.register_converter("timestamp", convert_datetime)
+
+
+
+
+class AddItemDialog:
+    def __init__(self, parent, app):
+        self.top = tk.Toplevel(parent)
+        self.app = app
+        
+        self.top.title("Add Item")
+        
+        # Create and pack widgets
+        tk.Label(self.top, text="Scan item barcode:").pack(pady=5)
+        
+        self.barcode_var = tk.StringVar()
+        self.barcode_entry = tk.Entry(self.top, textvariable=self.barcode_var)
+        self.barcode_entry.pack(pady=5)
+        
+        tk.Label(self.top, text="Quantity:").pack(pady=5)
+        
+        self.quantity_var = tk.StringVar(value="1")
+        self.quantity_entry = tk.Entry(self.top, textvariable=self.quantity_var)
+        self.quantity_entry.pack(pady=5)
+        
+        tk.Button(self.top, text="Add", command=self.add).pack(pady=10)
+        
+        # Focus barcode entry
+        self.barcode_entry.focus_set()
+        
+        # Make dialog modal
+        self.top.transient(parent)
+        self.top.grab_set()
+        
+    def add(self):
+        barcode = self.barcode_var.get().strip()
+        try:
+            quantity = int(self.quantity_var.get())
+            if quantity <= 0:
+                raise ValueError
+        except ValueError:
+            messagebox.showerror("Error", "Please enter a valid quantity")
+            return
+            
+        # Find item details from acceptable phrases
+        item_found = False
+        for phrase in read_acceptable_phrases():
+            words = phrase.split()
+            if words[-1] == barcode:
+                item_name = " ".join(words[:-1])
+                item_found = True
+                break
+                
+        if not item_found:
+            messagebox.showerror("Error", "Invalid barcode")
+            return
+            
+        try:
+            # Check if item already exists in order
+            item_exists = False
+            for i, (existing_item, existing_barcode, existing_count) in enumerate(self.app.current_order):
+                if existing_barcode == barcode:
+                    item_exists = True
+                    new_count = existing_count + quantity
+                    
+                    # Update database
+                    conn = sqlite3.connect(path_to_db)
+                    cursor = conn.cursor()
+                    
+                    # Update existing item count
+                    cursor.execute("""
+                        UPDATE orders 
+                        SET count = ?
+                        WHERE order_num = ? 
+                        AND item_barcode = ?
+                        AND count > 0
+                    """, (new_count, self.app.current_order_num, barcode))
+                    
+                    conn.commit()
+                    conn.close()
+                    
+                    # Update in-memory order
+                    self.app.current_order[i] = (existing_item, existing_barcode, new_count)
+                    break
+            
+            if not item_exists:
+                # Original add new item logic
+                conn = sqlite3.connect(path_to_db)
+                cursor = conn.cursor()
+                now = datetime.datetime.now()
+                
+                cursor.execute("""
+                    INSERT INTO orders 
+                    (order_num, item, item_barcode, count, generatedtimestamp, startpackingtimestamp)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (self.app.current_order_num, item_name, barcode, quantity, now, now))
+                
+                conn.commit()
+                conn.close()
+                
+                # Update current order in memory
+                self.app.current_order.append((item_name, barcode, quantity))
+            
+            # Refresh display
+            self.app.display_images(self.app.current_order)
+            
+        except sqlite3.Error as e:
+            print(f"Database error: {e}")
+            messagebox.showerror("Error", "Failed to add item")
+        finally:
+            self.top.destroy()
+
+class SwapItemDialog:
+    def __init__(self, parent, app):
+        self.top = tk.Toplevel(parent)
+        self.app = app
+        
+        self.top.title("Swap Item")
+        
+        # Create and pack widgets
+        tk.Label(self.top, text="Scan new item barcode:").pack(pady=5)
+        
+        self.barcode_var = tk.StringVar()
+        self.barcode_entry = tk.Entry(self.top, textvariable=self.barcode_var)
+        self.barcode_entry.pack(pady=5)
+
+        # Add quantity field
+        tk.Label(self.top, text="Quantity to swap:").pack(pady=5)
+        self.quantity_var = tk.StringVar(value="1")
+        self.quantity_entry = tk.Entry(self.top, textvariable=self.quantity_var)
+        self.quantity_entry.pack(pady=5)
+        
+        tk.Button(self.top, text="Swap", command=self.swap).pack(pady=10)
+        
+        # Focus barcode entry
+        self.barcode_entry.focus_set()
+        
+        # Make dialog modal
+        self.top.transient(parent)
+        self.top.grab_set()
+        
+    def swap(self):
+        new_barcode = self.barcode_var.get().strip()
+        old_item, old_barcode, old_count = self.app.selected_item
+
+        # Prevent swapping with same item
+        if new_barcode == old_barcode:
+            messagebox.showerror("Error", "Cannot swap item with itself")
+            return
+
+        # Get and validate quantity
+        try:
+            swap_quantity = int(self.quantity_var.get())
+            if swap_quantity <= 0 or swap_quantity > old_count:
+                raise ValueError
+        except ValueError:
+            messagebox.showerror("Error", "Please enter a valid quantity (not exceeding current item count)")
+            return
+        
+        # Find new item details from acceptable phrases
+        item_found = False
+        for phrase in read_acceptable_phrases():
+            words = phrase.split()
+            if words[-1] == new_barcode:
+                new_item_name = " ".join(words[:-1])
+                item_found = True
+                break
+                
+        if not item_found:
+            messagebox.showerror("Error", "Invalid barcode")
+            return
+            
+        try:
+            conn = sqlite3.connect(path_to_db)
+            cursor = conn.cursor()
+            now = datetime.datetime.now()
+            
+            # Check if new item already exists in order
+            existing_item_index = None
+            for i, (existing_item, existing_barcode, existing_count) in enumerate(self.app.current_order):
+                if existing_barcode == new_barcode:
+                    existing_item_index = i
+                    new_count = existing_count + swap_quantity
+                    
+                    # Update existing item count
+                    cursor.execute("""
+                        UPDATE orders 
+                        SET count = ?
+                        WHERE order_num = ? 
+                        AND item_barcode = ?
+                        AND count > 0
+                    """, (new_count, self.app.current_order_num, new_barcode))
+                    break
+
+            # Update old item quantity
+            remaining_count = old_count - swap_quantity
+            if remaining_count > 0:
+                cursor.execute("""
+                    UPDATE orders 
+                    SET count = ?
+                    WHERE order_num = ? 
+                    AND item_barcode = ?
+                """, (remaining_count, self.app.current_order_num, old_barcode))
+            else:
+                cursor.execute("""
+                    UPDATE orders 
+                    SET count = 0,
+                        packedtimestamp = ?
+                    WHERE order_num = ? 
+                    AND item_barcode = ?
+                """, (now, self.app.current_order_num, old_barcode))
+
+            # If new item doesn't exist, insert it
+            if existing_item_index is None:
+                cursor.execute("""
+                    INSERT INTO orders 
+                    (order_num, item, item_barcode, count, generatedtimestamp, startpackingtimestamp)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (self.app.current_order_num, new_item_name, new_barcode, swap_quantity, now, now))
+            
+            conn.commit()
+            
+            # Update in-memory order
+            # First update old item quantity or remove if zero
+            if remaining_count > 0:
+                for i, (item, barcode, count) in enumerate(self.app.current_order):
+                    if barcode == old_barcode:
+                        self.app.current_order[i] = (item, barcode, remaining_count)
+                        break
+            else:
+                self.app.current_order = [i for i in self.app.current_order if i[1] != old_barcode]
+
+            # Then update or add new item
+            if existing_item_index is not None:
+                self.app.current_order[existing_item_index] = (self.app.current_order[existing_item_index][0], 
+                                                             new_barcode, 
+                                                             self.app.current_order[existing_item_index][2] + swap_quantity)
+            else:
+                self.app.current_order.append((new_item_name, new_barcode, swap_quantity))
+        
+            # Clear selection and refresh display
+            self.app.selected_item = None
+            self.app.display_images(self.app.current_order)
+            
+        except sqlite3.Error as e:
+            print(f"Database error: {e}")
+            messagebox.showerror("Error", "Failed to swap item")
+        finally:
+            conn.close()
+            self.top.destroy()
+
 class App():
     def __init__(self, master, order_dict):
         self.master = master
         self.order_dict = order_dict
+
+        self.selected_item = None  # Add this line
         
         # Create main container frame
         self.main_container = tk.Frame(self.master)
@@ -88,6 +393,28 @@ class App():
         self.abort_btn = tk.Button(self.buttons_frame, text="Abort Order", command=self.abort_order,
                                  height=2, font=("Arial", 12))
         self.abort_btn.pack(side=tk.LEFT, padx=5)
+
+        # Add new buttons frame for order modification
+        self.mod_buttons_frame = tk.Frame(self.buttons_frame)
+        self.mod_buttons_frame.pack(side=tk.LEFT, padx=5)
+        
+        # Add Delete Item button
+        self.delete_btn = tk.Button(self.mod_buttons_frame, text="Delete Item", 
+                                command=self.delete_item,
+                                height=2, font=("Arial", 12))
+        self.delete_btn.pack(side=tk.LEFT, padx=5)
+        
+        # Add Add Item button
+        self.add_btn = tk.Button(self.mod_buttons_frame, text="Add Item", 
+                                command=self.add_item,
+                                height=2, font=("Arial", 12))
+        self.add_btn.pack(side=tk.LEFT, padx=5)
+        
+        # Add Swap Item button
+        self.swap_btn = tk.Button(self.mod_buttons_frame, text="Swap Item", 
+                                command=self.swap_item,
+                                height=2, font=("Arial", 12))
+        self.swap_btn.pack(side=tk.LEFT, padx=5)
         
         # Create remaining orders count button
         self.count_var = tk.StringVar()
@@ -121,6 +448,7 @@ class App():
         # Initialize variables for image handling
         self.image_frames = []  # List to store frame references
         self.photo_references = []  # Keep references to prevent garbage collection
+        self.item_frames = []  # Add this line to initialize item_frames list
         
         # Create default image
         self.default_photo = self.create_default_image((200, 200))
@@ -139,6 +467,65 @@ class App():
         
         self.update_count()
         
+    def delete_item(self):
+        """Handle item deletion"""
+        if not hasattr(self, 'selected_item') or not self.selected_item:
+            messagebox.showwarning("Warning", "Please select an item to delete")
+            return
+            
+        item, barcode, count = self.selected_item
+        
+        if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete {item}?"):
+            try:
+                conn = sqlite3.connect(path_to_db)
+                cursor = conn.cursor()
+                now = datetime.datetime.now()
+                
+                # Set count to 0 for the existing item
+                cursor.execute("""
+                    UPDATE orders 
+                    SET count = 0, 
+                        packedtimestamp = ? 
+                    WHERE order_num = ? 
+                    AND item = ? 
+                    AND item_barcode = ?
+                """, (now, self.current_order_num, item, barcode))
+                
+                conn.commit()
+                
+                # Update current order in memory
+                self.current_order = [i for i in self.current_order if i[1] != barcode]
+                
+                # Clear selection
+                self.selected_item = None
+                
+                # Refresh display
+                self.display_images(self.current_order)
+                
+                if not self.current_order:
+                    self.complete_order()
+                    
+            except sqlite3.Error as e:
+                print(f"Database error: {e}")
+                messagebox.showerror("Error", "Failed to delete item")
+            finally:
+                conn.close()
+
+    def add_item(self):
+        """Handle adding new item to order"""
+        AddItemDialog(self.master, self)
+
+
+    def swap_item(self):
+        """Handle item swapping"""
+        if not hasattr(self, 'selected_item') or not self.selected_item:
+            messagebox.showwarning("Warning", "Please select an item to swap")
+            return
+            
+        SwapItemDialog(self.master, self)
+
+    
+    
     def _on_mousewheel(self, event):
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
@@ -237,8 +624,9 @@ class App():
 
     def display_images(self, items):
         """Display images in a grid layout with selectable text information"""
-        # Clear existing images
-        for frame in self.image_frames:
+        # Clear existing images - modify this part
+        for frame_tuple in self.image_frames:
+            frame = frame_tuple[0]  # Get the frame widget from the tuple
             frame.destroy()
         self.image_frames.clear()
         self.photo_references.clear()
@@ -254,6 +642,9 @@ class App():
                 item_frame = tk.Frame(self.scrollable_frame, relief=tk.RAISED, borderwidth=1)
                 item_frame.grid(row=current_row, column=current_col, padx=10, pady=10, sticky="nsew")
                 
+                # Make the entire frame clickable
+                item_frame.bind('<Button-1>', lambda e, i=item, b=barcode, c=count: self.select_item(e, i, b, c))
+                
                 # Get image
                 image_path = self.upc_to_image.get(barcode, "")
                 photo = self.load_and_resize_image(image_path)
@@ -264,6 +655,9 @@ class App():
                 image_label = tk.Label(item_frame, image=photo if photo else self.default_photo)
                 image_label.image = photo if photo else self.default_photo
                 image_label.pack(side=tk.LEFT, padx=5, pady=5)
+                
+                # Make image label clickable too
+                image_label.bind('<Button-1>', lambda e, i=item, b=barcode, c=count: self.select_item(e, i, b, c))
                 
                 # Create frame for text information
                 text_frame = tk.Frame(item_frame)
@@ -285,35 +679,48 @@ class App():
                 # Make read-only but still selectable
                 text_widget.configure(state="disabled")
                 
-                # Allow copy with Ctrl+C
-                def copy_selection(event=None):
-                    try:
-                        selected_text = text_widget.get("sel.first", "sel.last")
-                        self.master.clipboard_clear()
-                        self.master.clipboard_append(selected_text)
-                    except tk.TclError:
-                        pass  # No selection
-                    return "break"
+                # Make text widget clickable too
+                text_widget.bind('<Button-1>', lambda e, i=item, b=barcode, c=count: self.select_item(e, i, b, c))
                 
-                text_widget.bind("<Control-c>", copy_selection)
+                self.image_frames.append((item_frame, item, barcode, count))
                 
-                # Enable selection but disable editing
-                def prevent_modification(event):
-                    return "break"
-                
-                text_widget.bind("<Key>", prevent_modification)
-                
-                self.image_frames.append(item_frame)
+                # Highlight if this is the selected item
+                if self.selected_item and self.selected_item == (item, barcode, count):
+                    item_frame.configure(bg='lightblue')
+                    text_widget.configure(bg='lightblue')
+                    image_label.configure(bg='lightblue')
+                    text_frame.configure(bg='lightblue')
                 
                 # Update grid position
                 current_col += 1
                 if current_col >= grid_columns:
                     current_col = 0
                     current_row += 1
-                    
+                        
         except Exception as e:
             print(f"Error displaying images: {e}")
             messagebox.showwarning("Warning", "Error displaying some images.")
+
+    def select_item(self, event, item, barcode, count):
+        """Handle item selection"""
+        # Update selected item
+        self.selected_item = (item, barcode, count)
+        
+        # Reset all frames to default color
+        for frame_tuple in self.image_frames:
+            frame = frame_tuple[0]  # Get the frame widget
+            frame.configure(bg='SystemButtonFace')
+            for widget in frame.winfo_children():
+                widget.configure(bg='SystemButtonFace')
+        
+        # Find and highlight the selected frame
+        for frame_tuple in self.image_frames:
+            frame, f_item, f_barcode, f_count = frame_tuple
+            if (f_item, f_barcode, f_count) == self.selected_item:
+                frame.configure(bg='lightblue')
+                for widget in frame.winfo_children():
+                    widget.configure(bg='lightblue')
+                break
         
     def abort_order(self):
         """Handle order abortion"""
@@ -500,6 +907,32 @@ class App():
             self.current_order = self.order_dict[order_num]
             self.current_order_num = order_num  # Store for later use
             
+            # Log start packing timestamp
+            try:
+                conn = sqlite3.connect(path_to_db)
+                cursor = conn.cursor()
+                now = datetime.datetime.now()
+                
+                # Update both tables with start packing timestamp
+                cursor.execute("""
+                    UPDATE orders 
+                    SET startpackingtimestamp = ? 
+                    WHERE order_num = ? AND startpackingtimestamp IS NULL
+                """, (now, order_num))
+                
+                cursor.execute("""
+                    UPDATE ordersandtimestampsonly 
+                    SET startpackingtimestamp = ? 
+                    WHERE order_num = ? AND startpackingtimestamp IS NULL
+                """, (now, order_num))
+                
+                conn.commit()
+                
+            except sqlite3.Error as e:
+                print(f"Database error when logging start time: {e}")
+            finally:
+                conn.close()
+                
             # Display the order items
             self.display_images(self.current_order)
             
@@ -587,6 +1020,16 @@ class App():
     def run(self):
         #self.exit_btn.pack(side=tk.BOTTOM)
         self.master.mainloop()
+
+# Add at start of program:
+def add_startpacking_column():
+    conn = sqlite3.connect(path_to_db)
+    c = conn.cursor()
+    try:
+        c.execute('ALTER TABLE orders ADD COLUMN startpackingtimestamp VARCHAR(100)')
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+    conn.close()
 
 def read_excel_file(file_path, return_mappings=False):
     """
@@ -1078,12 +1521,13 @@ def display_todays_products():
 def load_todays_orders():
     """Load any unpacked orders from today from the database in the format expected by start_packing_sequence"""
     try:
-        # Connect to database
+        print("Starting load_todays_orders()")
         conn = sqlite3.connect(path_to_db)
         cursor = conn.cursor()
         
         # Get today's date
         today = datetime.datetime.now().date()
+        print(f"Today's date: {today}")
         
         # Query to get all unpacked orders from today
         query = """
@@ -1097,17 +1541,25 @@ def load_todays_orders():
         AND o.packedtimestamp IS NULL
         ORDER BY o.order_num
         """
-        
+        print(f"Executing query with date: {today}")
         cursor.execute(query, (today,))
         results = cursor.fetchall()
+        print(f"Query returned {len(results)} rows")
+        
+        # Debug print some sample results
+        if results:
+            print("Sample of first result row:", results[0])
         
         # Create order dictionary in the original format
         order_dict = {}
         for order_num, item, barcode, count in results:
+            print(f"Processing order: {order_num}, item: {item}, barcode: {barcode}, count: {count}")
+            
             # Ensure order_num is a string
             order_num = str(order_num).strip()
             if order_num not in order_dict:
                 order_dict[order_num] = []
+                print(f"Created new order entry for order number: {order_num}")
                 
             # Add the item tuple in the format (item_name, barcode, count)
             item_tuple = (str(item).strip(), str(barcode).strip(), int(count))
@@ -1117,23 +1569,31 @@ def load_todays_orders():
             for i, (existing_item, existing_barcode, existing_count) in enumerate(order_dict[order_num]):
                 if existing_item == item_tuple[0] and existing_barcode == item_tuple[1]:
                     order_found = True
+                    print(f"Found existing item in order {order_num}")
                     break
                     
             if not order_found:
                 order_dict[order_num].append(item_tuple)
+                print(f"Added new item to order {order_num}")
             
-        print("Loaded orders:", list(order_dict.keys()))  # Debug print
+        print(f"Final order dictionary contains {len(order_dict)} orders")
+        print("Order numbers in dictionary:", list(order_dict.keys()))
         return order_dict
         
     except sqlite3.Error as e:
-        print(f"Database error: {e}")
+        print(f"SQLite error in load_todays_orders: {e}")
+        print(f"Error type: {type(e)}")
         return {}
     except Exception as e:
-        print(f"Error loading today's orders: {e}")
+        print(f"Unexpected error in load_todays_orders: {e}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        traceback.print_exc()
         return {}
     finally:
         if conn:
             conn.close()
+            print("Database connection closed")
 
 # Step 3: Define a function to prompt user to choose an option and perform that option
 def choose_option():
@@ -1142,10 +1602,7 @@ def choose_option():
     global packaged_order_dict
     acceptable_phrases = read_acceptable_phrases()
     while True:
-        # Load any existing orders from today
-        existing_orders = load_todays_orders()
-        if existing_orders:
-            order_dict = existing_orders
+        # Removed redundant order loading since it's done at program start
         option = input("""Choose an option:
 1. Upload today's orders from input.txt file
 2. Start Packing Today's Orders
@@ -1324,4 +1781,4 @@ def choose_option():
             print("Invalid option. Try again.")
 
 # Step 4: Call choose_option() function to start the program
-choose_option()
+initialize_program()
