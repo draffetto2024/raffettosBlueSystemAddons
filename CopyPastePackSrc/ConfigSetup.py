@@ -737,12 +737,13 @@ class MatchingApp:
 
                 for exactindex, exactphrase in enumerate(self.exactphrases):
                     linebreaks = exactphrase.count("\n")
-                    
                     remaining_lines = phrases[i:i + linebreaks + 1]
                     
-                    blockforexactcheck = "\n".join(remaining_lines)
-                
-                    if exactphrase in blockforexactcheck:
+                    # Clean both the input and the template line by line
+                    blockforexactcheck = self.clean_lines("\n".join(remaining_lines))
+                    cleaned_exactphrase = self.clean_lines(exactphrase)
+                   
+                    if cleaned_exactphrase in blockforexactcheck:
                         for item in self.exactphraseitems_2d[exactindex]:
                             for _ in range(phrasequantity):
                                 modified_phrases.append(item.strip())
@@ -879,7 +880,7 @@ class MatchingApp:
 
         def submit_items():
             items = text_area.get("1.0", tk.END).strip().split("\n")
-            self.itemslist = [item.strip() for item in items if item.strip()]
+            self.itemslist = [self.clean_lines(item) for item in items if item.strip()]  # Clean when taking input
             input_window.destroy()
             self.display_results(f"Phrase: {self.exactphrase}\n\nItems:\n" + "\n".join(f"Item {i+1}: {item}" for i, item in enumerate(self.itemslist)))
             self.next_step()  # Move to the next step automatically
@@ -951,6 +952,10 @@ class MatchingApp:
         result_text = "\n".join(results)
         self.results_text.set(result_text)
 
+    def clean_lines(self, text):
+        """Helper to clean whitespace line by line"""
+        return '\n'.join(line.strip() for line in text.splitlines())
+
 
     def find_matching_starting_words(self, block1, block2):
         words1 = block1.split()
@@ -991,16 +996,16 @@ class MatchingApp:
             nonlocal block1, block2, packagenumberphrase, blockseperator
             
             if self.current_direction_index == 0 and self.selected_text:
-                block1 = self.selected_text
+                block1 = self.clean_lines(self.selected_text)  # Clean when taking input
                 self.display_results("Order 1: \n" + block1)
             elif self.current_direction_index == 1 and self.selected_text:
-                block2 = self.selected_text
+                block2 = self.clean_lines(self.selected_text)  # Clean when taking input
                 self.display_results("Order 2: \n" + block2)
             elif self.current_direction_index == 2:
                 blockseperator = self.find_matching_starting_words(block1, block2)
                 self.display_results("Keyword: \n" + blockseperator)
             elif self.current_direction_index == 3 and self.selected_text:
-                packagenumberphrase = self.selected_text
+                packagenumberphrase = self.clean_lines(self.selected_text)  # Clean when taking input
                 self.display_results("Package Phrase: " + packagenumberphrase)
             elif self.current_direction_index == 4:
                 match = re.search(f"{re.escape(packagenumberphrase)} (\w+)", self.selected_text)
@@ -1050,11 +1055,12 @@ class MatchingApp:
         
         def process_step():
             if self.current_direction_index == 0 and self.selected_text and self.selected_text not in keywordslist:
-                keywordslist.append(self.selected_text)
-                print("About to call display_results from pair_setup step 0")
+                cleaned_text = self.clean_lines(self.selected_text)  # Clean when taking input
+                keywordslist.append(cleaned_text)
                 self.display_results("\n".join(f"Keyword {i+1}: {kw}" for i, kw in enumerate(keywordslist)))
             elif self.current_direction_index == 1 and self.selected_text and self.selected_text not in unwantedlist:
-                unwantedlist.append(self.selected_text)
+                cleaned_text = self.clean_lines(self.selected_text)  # Clean when taking input
+                unwantedlist.append(cleaned_text)
                 self.display_results("\n".join(f"Unwanted {i+1}: {uw}" for i, uw in enumerate(unwantedlist)))
             elif self.current_direction_index == 2:
                 if not keywordslist:
@@ -1105,10 +1111,12 @@ class MatchingApp:
         
         def process_step():
             if self.current_direction_index == 0 and self.selected_text and self.selected_text not in phraseslist:
-                phraseslist.append(self.selected_text)
+                cleaned_text = self.clean_lines(self.selected_text)  # Clean when taking input
+                phraseslist.append(cleaned_text)
                 self.display_results("\n".join(f"Phrase {i+1}: {p}" for i, p in enumerate(phraseslist)))
             elif self.current_direction_index == 1 and self.highlightbuttonpressed:
-                data.append(self.selected_text)
+                cleaned_text = self.clean_lines(self.selected_text)  # Clean when taking input
+                data.append(cleaned_text)
                 self.display_results("\n".join(f"QuantityPiece {i+1}: {d}" for i, d in enumerate(data)))
             elif self.current_direction_index == 2:
                 if not phraseslist or not data or len(phraseslist) != len(data):
@@ -1165,10 +1173,12 @@ class MatchingApp:
         
         def process_step():
             if self.current_direction_index == 0 and self.selected_text and self.selected_text not in phraseslist:
-                phraseslist.append(self.selected_text)
+                cleaned_text = self.clean_lines(self.selected_text)  # Clean when taking input
+                phraseslist.append(cleaned_text)
                 self.display_results("\n".join(f"Phrase {i+1}: {p}" for i, p in enumerate(phraseslist)))
             elif self.current_direction_index == 1 and self.highlightbuttonpressed:
-                data.append(self.selected_text)
+                cleaned_text = self.clean_lines(self.selected_text)  # Clean when taking input
+                data.append(cleaned_text)
                 self.display_results("\n".join(f"SecondaryPiece {i+1}: {d}" for i, d in enumerate(data)))
             elif self.current_direction_index == 2:
                 if not phraseslist or not data or len(phraseslist) != len(data):
@@ -1220,12 +1230,11 @@ class MatchingApp:
         
         def process_step():
             if self.current_direction_index == 0 and self.selected_text and self.selected_text != self.exactphrase:
-                self.exactphrase = self.selected_text
+                self.exactphrase = self.clean_lines(self.selected_text)  # Clean when taking input
                 self.display_results(f"Phrase: {self.exactphrase}")
-                self.next_step()  # Automatically move to the next step
+                self.next_step()
             elif self.current_direction_index == 1:
                 self.open_item_input_window()
-                # The next_step() is called within the open_item_input_window method
             elif self.current_direction_index == 2:
                 if not self.exactphrase or not self.itemslist:
                     self.display_results("Error: Exact phrase or items are missing. Please complete all steps.")
