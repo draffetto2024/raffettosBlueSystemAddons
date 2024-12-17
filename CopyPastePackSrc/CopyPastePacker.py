@@ -880,25 +880,48 @@ class App():
             self.master.update()
 
     def reset_window(self):
-        """Reset the window state"""
+        """Reset the window state with proper error handling"""
         # Clear barcode entry
         self.barcode_var.set("")
         
-        # Clear images and frames
-        for frame in self.image_frames:
-            frame.destroy()
-        self.image_frames.clear()
-        self.photo_references.clear()
+        # Clear images and frames with robust error handling
+        if hasattr(self, 'image_frames'):
+            for frame_data in self.image_frames:
+                try:
+                    if isinstance(frame_data, tuple):
+                        # Check if the first element is a frame
+                        if isinstance(frame_data[0], tk.Frame):
+                            frame_data[0].destroy()
+                        else:
+                            print(f"Warning: Expected Frame, got {type(frame_data[0])}")
+                    elif isinstance(frame_data, tk.Frame):
+                        frame_data.destroy()
+                    else:
+                        print(f"Warning: Unexpected frame data type: {type(frame_data)}")
+                except Exception as e:
+                    print(f"Error destroying frame: {str(e)}")
+                    continue
+                    
+            self.image_frames.clear()
+
+        if hasattr(self, 'photo_references'):
+            self.photo_references.clear()
         
         # Reset entry widgets
-        self.barcode_entry.pack(side=tk.LEFT, padx=10)
-        self.barcode_label.pack(side=tk.LEFT, padx=10)
-        self.barcode_entry.focus()
+        try:
+            self.barcode_entry.pack(side=tk.LEFT, padx=10)
+            self.barcode_label.pack(side=tk.LEFT, padx=10)
+            self.barcode_entry.focus()
+        except Exception as e:
+            print(f"Error resetting entry widgets: {str(e)}")
         
         # Clear item entry if it exists
-        if self.item_entry is not None:
-            self.item_entry.destroy()
-            self.item_entry = None
+        if hasattr(self, 'item_entry') and self.item_entry is not None:
+            try:
+                self.item_entry.destroy()
+                self.item_entry = None
+            except Exception as e:
+                print(f"Error destroying item entry: {str(e)}")
             
     def check_order(self, event):
         """Handle order barcode scanning"""
@@ -1099,16 +1122,21 @@ def start_packing_sequence(order_dict):
     app.run()
 
 def split_data(text, keywords):
-    # Copy the list of keywords
-    repeat_keywords = list(keywords)
+    # Clean text and keywords with line-by-line stripping
+    def clean_lines(text):
+        """Helper to clean whitespace line by line"""
+        return '\n'.join(line.strip() for line in text.splitlines())
     
-    # Initialize the dictionary to store the result
+    text = clean_lines(text)
+    keywords = [clean_lines(kw) for kw in keywords if clean_lines(kw)]
+    
+    # Initialize the list to store the result
     results = []
     
     # While loop to handle multiple blocks of text
-    while len(repeat_keywords) > 0:
+    while keywords:
         # Only consider keywords that are in the text
-        present_keywords = [keyword for keyword in repeat_keywords if keyword in text]
+        present_keywords = [keyword for keyword in keywords if keyword in text]
         
         if not present_keywords:
             break
@@ -1120,26 +1148,19 @@ def split_data(text, keywords):
         block_results = {}
         
         # Loop through the keywords
-        for i in range(len(present_keywords)):
-            keyword = present_keywords[i]
-            remaining_text = text.split(keyword, 1)[1].lstrip()
-
-            # Check if there's another keyword or newline character after the current keyword
-            end_indices = [idx for idx in [remaining_text.find(kw) for kw in present_keywords if kw != keyword] + [remaining_text.find('\n')] if idx != -1]
-            end_index = min(end_indices) if end_indices else None
-            
-            # If there's another keyword or newline character after the current keyword, use it to split the text
-            if end_index is not None:
-                block_results[keyword] = remaining_text[:end_index].strip()  # remove leading/trailing whitespace
-                text = keyword + remaining_text[end_index:]
+        for keyword in present_keywords:
+            parts = text.split(keyword, 1)
+            if len(parts) > 1:
+                before, after = parts
+                # Clean the extracted text
+                block_results[keyword] = clean_lines(after.split('\n', 1)[0])
+                text = after
             else:
-                # If not, all the remaining text belongs to the current keyword
-                block_results[keyword] = remaining_text.strip()  # remove leading/trailing whitespace
-                text = ''
                 break
 
-        results.append(block_results)
-        repeat_keywords = [kw for kw in repeat_keywords if kw not in block_results]
+        if block_results:
+            results.append(block_results)
+        keywords = [kw for kw in keywords if kw not in block_results]
     
     return results
 
@@ -1161,15 +1182,23 @@ def print_blocks(blocks, block_separator="=" * 50):
             print(line.strip())
 
 def split_blocks(text, keyword):
+    def clean_lines(text):
+        """Helper to clean whitespace line by line"""
+        return '\n'.join(line.strip() for line in text.splitlines())
+
+    # Clean both text and keyword
+    text = clean_lines(text)
+    keyword = clean_lines(keyword)
+    
     # Split the text on the keyword
     parts = text.split(keyword)
     
     # The first part doesn't need the keyword prepended
-    blocks = [parts[0]]
+    blocks = [clean_lines(parts[0])]
     
-    # For all other parts, prepend the keyword
+    # For all other parts, prepend the keyword and clean
     for part in parts[1:]:
-        blocks.append(keyword + part)
+        blocks.append(clean_lines(keyword + part))
     
     return blocks
 
@@ -1179,202 +1208,181 @@ def enter_text(acceptable_phrases):
     order_dict = {}
     packaged_order_dict = {}
     
-    text_input = (text_input.lower()).strip()
-    
-    # Connect to the database (create it if it doesn't exist)
-    conn = sqlite3.connect(path_to_db)
+    def clean_lines(text):
+        """Helper to clean whitespace line by line"""
+        return '\n'.join(line.strip() for line in text.splitlines())
 
-    # Create a cursor to execute SQL commands
+    text_input = clean_lines(text_input.lower())
+    
+    # Connect to the database
+    conn = sqlite3.connect(path_to_db)
     c = conn.cursor()   
     
     c.execute("SELECT DISTINCT * FROM blockseperator WHERE keywordstype = 'blockseperator'")
-    # Loop through the rows returned by the query
     rows = c.fetchall()
-    # Loop through each row and append the values to the respective lists
     for row in rows:
-        blockseperatorkeyword = (row[1]).lower()  # Assuming 'phrases' is the 2nd column
-        packagenumberphrase = (row[2]).lower()
-        
+        blockseperatorkeyword = clean_lines(row[1].lower())
+        packagenumberphrase = clean_lines(row[2].lower())
+    
     conn.close()
     
     blocks = split_blocks(text_input, blockseperatorkeyword)
-    print_blocks(blocks)
-
 
     for block in blocks:
         order_num = ""
-        phrases = block.split("\n")
-        modified_phrases = []  #\ list to store modified phrases
+        # Clean each phrase individually
+        phrases = [clean_lines(phrase) for phrase in block.split("\n") if phrase.strip()]
+        modified_phrases = []
         phrases_length = len(phrases)
-        phrasequantity = None
+        phrasequantity = 1
 
-        print("PHRASES", phrases)
-        print("PACKAGENUMBERPHRASE", packagenumberphrase)
-
-        # Extract order number
+        # Extract order number with clean lines
         for phrase in phrases:
-            match = re.search(f"{re.escape(packagenumberphrase)} ([^\s]+)", phrase)
+            clean_phrase = clean_lines(phrase)
+            match = re.search(f"{re.escape(packagenumberphrase)} ([^\s]+)", clean_phrase)
             if match:
                 order_num = ''.join([char for char in match.group(1) if char.isdigit()])
                 print(f"Found order number: {order_num}")
                 break
         
-        pairKeywordFound = False
-        global keywords_2d_list
-        global removals_list 
+        if not order_num:
+            print("Warning: No order number found for this block. Skipping...")
+            continue
+
+        # Process pairings with clean lines
         splitting_keywords_list = [None] * len(keywords_2d_list)
         keyword_positions = dict()
 
-        for i, line in enumerate(block.split("\n")):
+        block_lines = [clean_lines(line) for line in block.split("\n") if line.strip()]
+        clean_block = '\n'.join(block_lines)
+
+        # Find keywords in cleaned lines
+        for i, line in enumerate(block_lines):
             for j, keywords_list in enumerate(keywords_2d_list):
                 for keyword in keywords_list:
-                    keyword_position = line.find(keyword)
-                    if keyword_position != -1: # keyword is in line
-                        # Store the line and position within line for this keyword
+                    clean_keyword = clean_lines(keyword)
+                    keyword_position = line.find(clean_keyword)
+                    if keyword_position != -1:
                         current_position = (i, keyword_position)
-                        if keyword not in keyword_positions or current_position < keyword_positions[keyword]:
-                            keyword_positions[keyword] = current_position
-        
-        # Now, find the keyword with the lowest index
-        splitting_keywords_list = [None] * len(keywords_2d_list)
+                        if clean_keyword not in keyword_positions or current_position < keyword_positions[clean_keyword]:
+                            keyword_positions[clean_keyword] = current_position
+
+        # Process each keywords list
         for keyword, position in keyword_positions.items():
             for i, keywords_list in enumerate(keywords_2d_list):
-                if keyword in keywords_list:
-                    # If this is the first keyword we've seen for this keywords_list, or if the current keyword
-                    # has a lower index than the stored keyword, update the stored keyword
+                if keyword in [clean_lines(k) for k in keywords_list]:
                     if splitting_keywords_list[i] is None or position < keyword_positions[splitting_keywords_list[i]]:
                         splitting_keywords_list[i] = keyword
-        
-        #Pairing Logic
-        processed_blocklist = []  # Define processed_blocklist before the loop
+
+        # Pairing Logic with clean lines
         stringtobeadded = ""
         
         for i, keywords_list in enumerate(keywords_2d_list):
             splittingkeyword = splitting_keywords_list[i]
-            if splittingkeyword and splittingkeyword in block:  # if the first keyword is in the block
-                # Split the block on the keyword
-                sub_blocks = block.split(splittingkeyword)
-                
-                # re-add the keyword and filter out empty strings
-                sub_blocks = [splittingkeyword + sub_block for sub_block in sub_blocks if sub_block.strip()] 
+            if splittingkeyword and splittingkeyword in clean_block:
+                sub_blocks = clean_block.split(splittingkeyword)
+                sub_blocks = [clean_lines(splittingkeyword + sub_block) for sub_block in sub_blocks if sub_block.strip()]
                 prev_sub_block = ""
-                print(f"Sub-blocks for keyword '{splittingkeyword}':")
-                for sb in sub_blocks:
-                    print(sb)
-                    print("--------------------------------------------------------------------------------------------")
 
-                for sub_block in sub_blocks: 
-                    #We get back list of dicts    
-                    processed_block = split_data(sub_block, keywords_list)  # process each sub block
+                for sub_block in sub_blocks:
+                    processed_block = split_data(sub_block, keywords_list)
                     for dict_ in processed_block:
                         for keyword in keywords_list:
-                            if dict_ is not None and keyword in dict_:  # if keyword is in this dictionary
-                                stringtobeadded += dict_[keyword] + " "
+                            clean_keyword = clean_lines(keyword)
+                            if dict_ is not None and clean_keyword in dict_:
+                                stringtobeadded += clean_lines(dict_[clean_keyword]) + " "
                     
-                    #Find the most recent phrasequantity phrase and extract the phrasequantity
-                    global quantityphrases
-                    global quantitypositions
+                    # Find quantity with clean lines
                     phrasequantity = 1
                     last_line = ""
                     last_phrase = ""
 
-                    print("PREV_SUB_BLOCK", prev_sub_block)
-                    
-                    lines = prev_sub_block.splitlines()
-                    for line in lines:
+                    prev_lines = [clean_lines(line) for line in prev_sub_block.splitlines()]
+                    for line in prev_lines:
                         for quantityphrase in quantityphrases:
-                            if quantityphrase in line:
+                            clean_quantphrase = clean_lines(quantityphrase)
+                            if clean_quantphrase in line:
                                 last_line = line
-                                last_phrase = quantityphrase
+                                last_phrase = clean_quantphrase
                     
                     for quantindex, phrase in enumerate(quantityphrases):
-                        if phrase in last_phrase:
+                        clean_phrase = clean_lines(phrase)
+                        if clean_phrase in last_phrase:
                             seperatedphrase = last_line.split()
-                            phrasequantity = seperatedphrase[int(quantitypositions[quantindex])]
+                            try:
+                                phrasequantity = int(seperatedphrase[int(quantitypositions[quantindex])])
+                            except (IndexError, ValueError):
+                                phrasequantity = 1
                                 
-                    prev_sub_block = sub_block#for phrasequantity
+                    prev_sub_block = sub_block
                     
-                            
+                    # Clean removals and string
                     for removal in removals_list:
-                        stringtobeadded = stringtobeadded.replace(removal, "")
+                        stringtobeadded = stringtobeadded.replace(clean_lines(removal), "")
                     stringtobeadded = ' '.join(stringtobeadded.split())
-                    for _ in range(int(phrasequantity)):
-                        modified_phrases.append(stringtobeadded)
+                    
+                    # Add cleaned string to modified phrases
+                    clean_string = clean_lines(stringtobeadded)
+                    if clean_string:
+                        for _ in range(int(phrasequantity)):
+                            modified_phrases.append(clean_string)
                     stringtobeadded = ""
 
-        
-        quantityphrase = 1
+        # Process incomplete phrases and exact matches
         i = 0
         incompletekeyword = ""
-        phrasequantity = 1
         while i < len(phrases):
-            phrase = phrases[i].replace("’", "'")
-            phrase = phrase.strip()
-            packagenumberphrase = packagenumberphrase.strip()
+            phrase = clean_lines(phrases[i].replace("'", "'"))
             
-            # print("PACKAGENUMBERPHRASE ", packagenumberphrase)
-            # print("PHRASE ", phrase)
-
-            # # Try to match "package: <number>"
-            # match = re.search(r'package:\s*#?(\d+)', phrase, re.IGNORECASE)
-            # if match:
-            #     order_num = match.group(1)
-            #     print(f"Found order number from 'package:': {order_num}")
-            #     break
-
-            # match = re.search(f"{re.escape(packagenumberphrase)} ([^\s]+)", phrase)
-            # if match:
-            #     order_num = ''.join([char for char in match.group(1) if char.isdigit()])
-            #     print(f"Found order number: {order_num}")
-            #     break
-        
+            # Handle quantity phrases
             for quantindex, quantphrase in enumerate(quantityphrases):
-                if quantphrase.replace("’","'") in phrase:
+                clean_quantphrase = clean_lines(quantphrase.replace("'","'"))
+                if clean_quantphrase in phrase:
                     seperatedphrase = phrase.split()
-                    phrasequantity = int(seperatedphrase[int(quantitypositions[quantindex])])
+                    try:
+                        phrasequantity = int(seperatedphrase[int(quantitypositions[quantindex])])
+                    except (IndexError, ValueError):
+                        phrasequantity = 1
             
-            global incompletephrases
-            global secondarykeywords
-            
+            # Handle incomplete phrases
             for incompindex, incomp in enumerate(incompletephrases):
-                if incomp in phrase:
-                    incompletekeyword = secondarykeywords[incompindex]
+                clean_incomp = clean_lines(incomp)
+                if clean_incomp in phrase:
+                    incompletekeyword = clean_lines(secondarykeywords[incompindex])
             
             if incompletekeyword:
-                print("phrasequantity " + str(phrasequantity))
                 for _ in range(phrasequantity):
-                    modified_phrases.append(phrase + " " + incompletekeyword)
-                    print((phrase + " " + incompletekeyword).strip())
+                    modified_phrases.append(clean_lines(phrase + " " + incompletekeyword))
             
-            global exactphrases
-            global exactphraseitems_2d
-            
-            #Exact phrases may be multi-lined
+            # Handle exact phrases
             for exactindex, exactphrase in enumerate(exactphrases):
                 linebreaks = exactphrase.count("\n")
                 remaining_lines = phrases[i:i + linebreaks + 1]
-                blockforexactcheck = "\n".join(remaining_lines)
-                if exactphrase in blockforexactcheck:
-                    for item in exactphraseitems_2d[exactindex]:
-                        for _ in range(phrasequantity):
-                            modified_phrases.append(item)
-              
+                blockforexactcheck = clean_lines("\n".join(remaining_lines))
                 
+                clean_exactphrase = clean_lines(exactphrase)
+                if clean_exactphrase in blockforexactcheck:
+                    for item in exactphraseitems_2d[exactindex]:
+                        clean_item = clean_lines(item)
+                        for _ in range(phrasequantity):
+                            modified_phrases.append(clean_item)
             else:
                 for _ in range(phrasequantity):
-                    modified_phrases.append(phrase)
-            i +=1
-           
-         #Fix extra LASAGNE IN ORDER
-           
+                    modified_phrases.append(clean_lines(phrase))
+            
+            i += 1
+
+        # Match with acceptable phrases
         for modified_phrase in modified_phrases:
+            clean_modified = clean_lines(modified_phrase)
             for acceptable_phrase in acceptable_phrases:
-                acceptable_words = acceptable_phrase.split()[:-1]  # exclude the last word (barcode)
-                modified_words = modified_phrase.split()
+                clean_acceptable = clean_lines(acceptable_phrase)
+                acceptable_words = clean_acceptable.split()[:-1]
+                modified_words = clean_modified.split()
                 
                 if set(modified_words) == set(acceptable_words):
-                    barcode = acceptable_phrase.split()[-1]  # get the barcode
-                    item = " ".join(acceptable_words)  # join the remaining words as the item
+                    barcode = acceptable_phrase.split()[-1]
+                    item = " ".join(acceptable_words)
                     
                     if order_num not in order_dict:
                         order_dict[order_num] = [(item, barcode, 1)]
@@ -1383,12 +1391,12 @@ def enter_text(acceptable_phrases):
                         for i, (item_, barcode_, count) in enumerate(order_dict[order_num]):
                             if item_ == item and barcode_ == barcode:
                                 item_found = True
-                                order_dict[order_num][i] = (item_, barcode_, count+1)
+                                order_dict[order_num][i] = (item_, barcode_, count + 1)
                                 break
                         if not item_found:
                             order_dict[order_num].append((item, barcode, 1))
-                            
-    return order_dict   
+
+    return order_dict
 
 def print_orders(order_dict):
     print("Order Dictionary:")

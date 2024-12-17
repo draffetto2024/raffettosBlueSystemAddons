@@ -603,6 +603,7 @@ class MatchingApp:
                 print(line.strip())
 
     def perform_full_matching(self):
+
         print("\n=== Starting full matching ===")
         self.initial_text_position = self.text_widget.yview()
         current_position = self.text_widget.yview()
@@ -713,86 +714,78 @@ class MatchingApp:
                             modified_phrases.append(stringtobeadded.strip())
                         stringtobeadded = ""
 
-                i = 0
-                incompletekeyword = ""
-                while i < len(phrases):
-                    phrase = clean_lines(phrases[i].replace("'", "'"))
-                    
-                    for quantindex, quantphrase in enumerate(self.quantityphrases):
-                        clean_quantphrase = clean_lines(quantphrase.replace("'","'"))
-                        if clean_quantphrase in phrase:
-                            seperatedphrase = phrase.split()
-                            phrasequantity = int(seperatedphrase[int(self.quantitypositions[quantindex])])
-                    
-                    for incompindex, incomp in enumerate(self.incompletephrases):
-                        clean_incomp = clean_lines(incomp)
-                        if clean_incomp in phrase:
-                            incompletekeyword = clean_lines(self.secondarykeywords[incompindex])
-                    
-                    if incompletekeyword:
-                        for _ in range(phrasequantity):
-                            modified_phrases.append((phrase + " " + incompletekeyword).strip())
-                    
-                    print("\n=== Starting exact phrase check ===")
-                    print(f"Current phrasequantity before exact check: {phrasequantity}")
-
-                    for exactindex, exactphrase in enumerate(self.exactphrases):
-                        # print(f"\nChecking exact phrase #{exactindex}: '{exactphrase}'")
-                        linebreaks = exactphrase.count("\n")
-                        # print(f"Number of linebreaks in exact phrase: {linebreaks}")
-                        
-                        remaining_lines = phrases[i:i + linebreaks + 1]
-                        # print(f"Remaining lines to check: {remaining_lines}")
-                        
-                        blockforexactcheck = "\n".join(remaining_lines)
-                        # print(f"Block for exact check: '{blockforexactcheck}'")
-                        # print(f"Comparing with exact phrase: '{exactphrase}'")
-                    
-                        if exactphrase in blockforexactcheck:
-                            print("MATCH FOUND!")
-                            print(f"Items to add for this exact phrase: {self.exactphraseitems_2d[exactindex]}")
-                            for item in self.exactphraseitems_2d[exactindex]:
-                                print(f"Adding item {phrasequantity} times: {item}")
-                                for _ in range(phrasequantity):
-                                    modified_phrases.append(item.strip())
-                                    print(f"Modified phrases after adding: {modified_phrases}")
-                        else:
-                            print("No match found")
-                    i += 1
+            i = 0
+            incompletekeyword = ""
+            while i < len(phrases):
+                phrase = clean_lines(phrases[i].replace("'", "'"))
                 
-                # Match with UPC codes
-                print(f"Matching with UPC codes for order {order_num}")
-                for modified_phrase in modified_phrases:
-                    for item, upc in self.upc_codes.items():
-                        acceptable_words = item.split()
-                        modified_words = modified_phrase.split()
+                for quantindex, quantphrase in enumerate(self.quantityphrases):
+                    clean_quantphrase = clean_lines(quantphrase.replace("'","'"))
+                    if clean_quantphrase in phrase:
+                        seperatedphrase = phrase.split()
+                        phrasequantity = int(seperatedphrase[int(self.quantitypositions[quantindex])])
+                
+                for incompindex, incomp in enumerate(self.incompletephrases):
+                    clean_incomp = clean_lines(incomp)
+                    if clean_incomp in phrase:
+                        incompletekeyword = clean_lines(self.secondarykeywords[incompindex])
+                
+                if incompletekeyword:
+                    for _ in range(phrasequantity):
+                        modified_phrases.append((phrase + " " + incompletekeyword).strip())
+            
+
+                for exactindex, exactphrase in enumerate(self.exactphrases):
+                    linebreaks = exactphrase.count("\n")
+                    
+                    remaining_lines = phrases[i:i + linebreaks + 1]
+                    
+                    blockforexactcheck = "\n".join(remaining_lines)
+                
+                    if exactphrase in blockforexactcheck:
+                        for item in self.exactphraseitems_2d[exactindex]:
+                            for _ in range(phrasequantity):
+                                modified_phrases.append(item.strip())
+                
+                else:
+                    for _ in range(phrasequantity):
+                        modified_phrases.append(phrase.strip())
+
+                i += 1
+                
+            # Match with UPC codes
+            print(f"Matching with UPC codes for order {order_num}")
+            for modified_phrase in modified_phrases:
+                for item, upc in self.upc_codes.items():
+                    acceptable_words = item.split()
+                    modified_words = modified_phrase.split()
+                    
+                    if set(modified_words) == set(acceptable_words):
+                        barcode = upc
+                        item = " ".join(acceptable_words)
                         
-                        if set(modified_words) == set(acceptable_words):
-                            barcode = upc
-                            item = " ".join(acceptable_words)
-                            
-                            item_found = False
-                            for i, (item_, barcode_, count) in enumerate(order_dict[order_num]):
-                                if item_ == item and barcode_ == barcode:
-                                    item_found = True
-                                    order_dict[order_num][i] = (item_, barcode_, count + 1)
-                                    print(f"Updated existing item quantity: {item_}, New quantity: {count + 1}")
-                                    break
-                            if not item_found:
-                                order_dict[order_num].append((item, barcode, 1))
-                                print(f"Added new item to order {order_num}: {item}")
+                        item_found = False
+                        for i, (item_, barcode_, count) in enumerate(order_dict[order_num]):
+                            if item_ == item and barcode_ == barcode:
+                                item_found = True
+                                order_dict[order_num][i] = (item_, barcode_, count + 1)
+                                print(f"Updated existing item quantity: {item_}, New quantity: {count + 1}")
+                                break
+                        if not item_found:
+                            order_dict[order_num].append((item, barcode, 1))
+                            print(f"Added new item to order {order_num}: {item}")
             
-            print("Final order_dict:")
-            print(order_dict)
-            self.display_matched_order(order_dict)
+        print("Final order_dict:")
+        print(order_dict)
+        self.display_matched_order(order_dict)
 
-            self.text_widget.yview_moveto(self.initial_text_position[0])
-            self.results_text.yview_moveto(self.initial_results_position[0])
+        self.text_widget.yview_moveto(self.initial_text_position[0])
+        self.results_text.yview_moveto(self.initial_results_position[0])
 
-            print("Full matching - After display, position:", self.text_widget.yview()[0])
-            print("=== Finished full matching ===\n")
-            
-            print("Finished perform_full_matching")
+        print("Full matching - After display, position:", self.text_widget.yview()[0])
+        print("=== Finished full matching ===\n")
+        
+        print("Finished perform_full_matching")
 
     def display_matched_order(self, order_dict):
         # Store current scroll position at the start

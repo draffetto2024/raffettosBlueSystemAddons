@@ -1,58 +1,932 @@
-Select package #35006450
-Package: 35006450
-Customer Order: 23021261
+Select package #36563817
+Package: 36563817
+Customer Order: 24029125
 Toggle package details
-2 - Macaroni and Cheese - 4 lbs.
-Plain Egg Linguine
-Plain Egg Linguine
-AJ Olson
-The Dalles, OR
-UPS
-Next Day Air
-Shipping Label: Printed
-9/6/24 at 6:54am
-
-Select package #35023815
-Package: 35023815
-Customer Order: 23032263
-Toggle package details
-1 - Fresh Pasta + Ravioli Dinner for 8
-Alex Klag
-Brightwaters, NY
+2 - Raffetto's Lasagna - 2 pack
+       Cheese Lasagna
+Ally Demaio
+Orange, CT
 UPS
 Ground
 Shipping Label: Printed
-9/6/24 at 6:54am
+12/17/24 at 7:03am
 
-Select package #35034195
-Package: 35034195
-Customer Order: 23038687
+Select package #36131806
+Package: 36131806
+Customer Order: 23743715
+Toggle package details
+1 - Choose Your Own Fresh Pasta Sauce - 4 Pack
+Sauce: Arrabiata
+    Sauce: Marinara
+Sauce: Pink Sauce
+  Sauce: Sage Butter
+1 - Choose Your Own Fresh Pasta - 4 lbs.
+Pasta 1: Plain Egg
+Cut 1: Linguine (1/8")
+Pasta 2: Black Pepper
+Cut 2: Pappardelle (1")
+Pasta 3: Spinach
+Cut 3: Fettuccine (3/8")
+Pasta 4: Lemon
+Cut 4: Pappardelle (1")
+Andrea Scheinker
+San Francisco, CA
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36056589
+Package: 36056589
+Customer Order: 23698109
+Toggle package details
+1 - Raffetto's Lasagna - 2 pack
+Meat Lasagna
+Betty Hart
+Edinboro, PA
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36492906
+Package: 36492906
+Customer Order: 23980398
+Toggle package details
+1 - Raffetto's Lasagna - 2 pack
+1 Cheese + 1 Meat Lasagna
+Beverly Girolomo
+Rotonda West, FL
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36446059
+Package: 36446059
+Customer Order: 23948048
+Toggle package details
+2 - Macaroni and Cheese - 4 lbs.
+Bradley Poe
+Hayden, ID
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36057688
+Package: 36057688
+Customer Order: 23698706
 Toggle package details
 1 - Fresh Pasta + Ravioli Dinner for 8
-Anne Watson
-New Orleans, LA
+Carman Cheng
+Walnut Creek, CA
 UPS
-Next Day Air
+Next Day Air Saver
 Shipping Label: Printed
-9/6/24 at 6:54am
+12/17/24 at 7:03am
 
-Select package #35036309
-Package: 35036309
-Customer Order: 21098240
+Select package #36010830
+Package: 36010830
+Customer Order: 18901308
 Toggle package details
-1 - Macaroni and Cheese - 4 lbs.
-sara zilkha
-Aspen, CO
+1 - Choose Your Own Fresh Pasta Sauce - 4 Pack
+Sauce: Bolognese
+Sauce: Marinara
+Sauce: Pesto
+Sauce: Pink Sauce
+1 - Homemade Fresh Gnocchi Trio - 6 lbs.
+Carol Kish
+Peoria, AZ
 UPS
-Next Day Air
+Next Day Air Saver
 Shipping Label: Printed
-9/6/24 at 6:54am
+12/17/24 at 7:03am
 
-Select package #35039444
-Package: 35039444
-Customer Order: 23041886
+Select package #36257762
+Package: 36257762
+Customer Order: 23822400
+Toggle package details
+1 - Choose Your Own Pasta + Sauce - 3 Pack
+Pasta 1: Plain Egg
+Cut 1: Linguine (1/8")
+Pasta 2: Lemon Red Pepper
+Cut 2: Fettuccine (3/8")
+Pasta 3: Spinach
+Cut 3: Linguine (1/8")
+Sauce: Bolognese
+Sauce: Puttanesca
+Sauce: Marinara
+Chris Anderson
+Cleveland, OH
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #35700858
+Package: 35700858
+Customer Order: 23468500
+Toggle package details
+1 - Choose Your Own Fresh Pasta - 4 lbs.
+Pasta 1: Plain Egg
+Cut 1: Linguine (1/8")
+Pasta 2: Plain Egg
+Cut 2: Linguine (1/8")
+Pasta 3: Plain Egg
+Cut 3: Linguine (1/8")
+Pasta 4: Plain Egg
+Cut 4: Linguine (1/8")
+Cindy Cassidy
+Lakewood Ranch, FL
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36130546
+Package: 36130546
+Customer Order: 23742985
+Toggle package details
+1 - Choose Your Own Fresh Pasta Sauce - 4 Pack
+Sauce: Arrabiata
+Sauce: Marinara
+Sauce: Pink Sauce
+Sauce: Tomato Basil
+1 - Choose Your Own Fresh Pasta - 4 lbs.
+Pasta 1: Plain Egg
+Cut 1: Linguine (1/8")
+Pasta 2: Spinach
+Cut 2: Fettuccine (3/8")
+Pasta 3: Black Pepper
+Cut 3: Pappardelle (1")
+Pasta 4: Plain Egg
+Cut 4: Linguine (1/8")
+Dan Flynn
+Camarillo, CA
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36170113
+Package: 36170113
+Customer Order: 23767001
+Toggle package details
+1 - Homemade Fresh Gnocchi Trio - 6 lbs.
+Dante Sevi
+Orlando, FL
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36273036
+Package: 36273036
+Customer Order: 23832839
+Toggle package details
+1 - Choose Your Own Ravioli - 5 Pack
+Cheese + Spinach
+Goat Cheese
+Lobster
+Meat + Spinach
+Mushroom
+1 - Choose Your Own Fresh Pasta Sauce - 4 Pack
+Sauce: Arrabiata
+Sauce: Mushroom Pesto
+Sauce: Pesto
+Sauce: Puttanesca
+David Newcomb
+Chester, NJ
+UPS
+Ground
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36273459
+Package: 36273459
+Customer Order: 23832839
+Toggle package details
+1 - Raffetto's Lasagna - 2 pack
+1 Cheese + 1 Meat Lasagna
+David Newcomb
+Chester, NJ
+UPS
+Ground
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36221933
+Package: 36221933
+Customer Order: 23799170
+Toggle package details
+1 - Choose Your Own Ravioli + Sauce - 3 Pack
+Ravioli: Cheese
+Ravioli: Cheese + Spinach
+Ravioli: Mushroom
+Sauce: Marinara
+Sauce: Pesto
+Sauce: Tomato Basil
+David & Sandra Jonas
+Redondo Beach, CA
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36173406
+Package: 36173406
+Customer Order: 23768986
+Toggle package details
+2 - Fresh Pasta + Ravioli Dinner for 8
+Denise Davis
+Potsdam, NY
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36045835
+Package: 36045835
+Customer Order: 23631374
+Toggle package details
+1 - Choose Your Own Ravioli - 5 Pack
+Meat + Spinach
+Meat + Spinach
+Meat + Spinach
+Meat + Spinach
+Meat + Spinach
+1 - Choose Your Own Ravioli - 5 Pack
+Goat Cheese
+Goat Cheese
+Meat + Spinach
+Truffle
+Truffle
+Denise Moreno
+Moorpark, CA
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #35863150
+Package: 35863150
+Customer Order: 23573862
+Toggle package details
+1 - Choose Your Own Pasta + Sauce - 3 Pack
+Pasta 1: Lemon Red Pepper
+Cut 1: Linguine (1/8")
+Pasta 2: Spinach
+Cut 2: Fettuccine (3/8")
+Pasta 3: Plain Egg
+Cut 3: Pappardelle (1")
+Sauce: Bolognese
+Sauce: Mushroom Pesto
+Sauce: Pink Sauce
+Donna & Jim Grebe
+Marietta, GA
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36178185
+Package: 36178185
+Customer Order: 23771944
+Toggle package details
+1 - Choose Your Own Pasta + Sauce - 3 Pack
+Pasta 1: Spinach
+Cut 1: Linguine (1/8")
+Pasta 2: Plain Egg
+Cut 2: Fettuccine (3/8")
+Pasta 3: Whole Wheat
+Cut 3: Linguine (1/8")
+Sauce: Bolognese
+Sauce: Marinara
+Sauce: Pink Sauce
+Elyse Bouquin
+Mesa, AZ
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36438091
+Package: 36438091
+Customer Order: 21623995
+Toggle package details
+1 - Raffetto's Lasagna - 2 pack
+1 Cheese + 1 Meat Lasagna
+FIL WILLIAMS
+Sterling, VA
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36505506
+Package: 36505506
+Customer Order: 23988782
+Toggle package details
+1 - Raffetto's Lasagna - 2 pack
+Cheese Lasagna
+Frank Distefano
+Long Island City, NY
+UPS
+Ground
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36585596
+Package: 36585596
+Customer Order: 24044415
 Toggle package details
 1 - Choose Your Own Ravioli - 3 Pack
 Cheese
+Cheese + Spinach
+Roasted Red Pepper
+Ginny and Joe Pringle
+Santa Fe, NM
+UPS
+Next Day Air
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36480212
+Package: 36480212
+Customer Order: 23971690
+Toggle package details
+2 - Raffetto's Lasagna - 2 pack
+Cheese Lasagna
+howard roux
+Ottawa, IL
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36262779
+Package: 36262779
+Customer Order: 23825584
+Toggle package details
+1 - Fresh Pasta + Ravioli Dinner for 8
+Jean Bryan
+Madison, AL
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36549777
+Package: 36549777
+Customer Order: 24019442
+Toggle package details
+1 - Raffetto's Lasagna - 2 pack
+1 Cheese + 1 Meat Lasagna
+Joseph Alba
+Gainesville, FL
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36236348
+Package: 36236348
+Customer Order: 23807852
+Toggle package details
+1 - Raffetto's Lasagna - 2 pack
+1 Cheese + 1 Meat Lasagna
+Joshua Levine
+Longmeadow, MA
+UPS
+Ground
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36493241
+Package: 36493241
+Customer Order: 23980631
+Toggle package details
+2 - Macaroni and Cheese - 4 lbs.
+Judy Leetz
+Valparaiso, IN
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36589430
+Package: 36589430
+Customer Order: 24045927
+Toggle package details
+1 - Choose Your Own Ravioli - 5 Pack
+Meat + Spinach
+Meat + Spinach
+Meat + Spinach
+Meat + Spinach
+Meat + Spinach
+1 - Choose Your Own Ravioli - 5 Pack
 Cheese
 Cheese + Spinach
+Lobster
+Lobster
+Meat + Spinach
+Kathleen Bowen
+Budd Lake, NJ
+UPS
+Ground
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36590085
+Package: 36590085
+Customer Order: 24047470
+Toggle package details
+1 - Choose Your Own Ravioli - 3 Pack
+Lobster
+Lobster
+Meat + Spinach
+Kathleen Bowen
+Netcong, NJ
+UPS
+Ground
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36526963
+Package: 36526963
+Customer Order: 24003938
+Toggle package details
+3 - Macaroni and Cheese - 4 lbs.
+Kathryn Peck
+Atherton, CA
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36258250
+Package: 36258250
+Customer Order: 23822670
+Toggle package details
+1 - Macaroni and Cheese - 4 lbs.
+Kelly Schwartz
+Fairfield, IA
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #34016139
+Package: 34016139
+Customer Order: 22389083
+Toggle package details
+1 - Homemade Fresh Tortelloni - 4 lbs.
+4 Ricotta Cheese
+1 - Choose Your Own Ravioli - 5 Pack
+Cheese
+Cheese
+Goat Cheese
+Meat + Spinach
+Roasted Red Pepper
+1 - Choose Your Own Fresh Pasta Sauce - 4 Pack
+Sauce: Bolognese
+Sauce: Marinara
+Sauce: Pink Sauce
+Sauce: Sage Butter
+Laura Reynik Hoyt
+Chantilly, VA
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36430787
+Package: 36430787
+Customer Order: 23937774
+Toggle package details
+1 - Raffetto's Lasagna - 2 pack
+Cheese Lasagna
+Laurie Orosz
+Bloomfield, NJ
+UPS
+Ground
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #35970587
+Package: 35970587
+Customer Order: 20667293
+Toggle package details
+1 - Choose Your Own Ravioli + Sauce - 3 Pack
+Ravioli: Cheese
+Ravioli: Cheese + Spinach
+Ravioli: Mushroom
+Sauce: Arrabiata
+Sauce: Marinara
+Sauce: Tomato Basil
+Linda West
+Dover, OH
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #35793414
+Package: 35793414
+Customer Order: 23529641
+Toggle package details
+1 - Choose Your Own Ravioli - 5 Pack
+Meat + Spinach
+Meat + Spinach
+Meat + Spinach
+Mushroom
+Mushroom
+Louie Feletto
+Henderson, NV
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36100580
+Package: 36100580
+Customer Order: 23724968
+Toggle package details
+1 - Choose Your Own Ravioli + Sauce - 3 Pack
+Ravioli: Cheese + Spinach
+Ravioli: Meat + Spinach
+Ravioli: Mushroom
+Sauce: Bolognese
+Sauce: Marinara
+Sauce: Pink Sauce
+Louise Graber
+Rocky River, OH
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36451112
+Package: 36451112
+Customer Order: 23951409
+Toggle package details
+1 - Macaroni and Cheese - 4 lbs.
+Mary Babst
+Isle of Palms, SC
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36070548
+Package: 36070548
+Customer Order: 23706360
+Toggle package details
+1 - Choose Your Own Pasta + Sauce - 3 Pack
+Pasta 1: Spinach
+Cut 1: Linguine (1/8")
+Pasta 2: Plain Egg
+Cut 2: Fettuccine (3/8")
+Pasta 3: Plain Egg
+Cut 3: Pappardelle (1")
+Sauce: Marinara
+Sauce: Bolognese
+Sauce: Mushroom Pesto
+3 - Raffetto’s Ravioli
+Meat + Spinach
+Mary Grace Lodico
+Waynesville, NC
+UPS
+Next Day Air
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36130160
+Package: 36130160
+Customer Order: 23742741
+Toggle package details
+1 - Choose Your Own Pasta + Sauce - 3 Pack
+Pasta 1: Lemon
+Cut 1: Linguine (1/8")
+Pasta 2: Spinach
+Cut 2: Linguine (1/8")
+Pasta 3: Plain Egg
+Cut 3: Fettuccine (3/8")
+Sauce: Arrabiata
+Sauce: Marinara
+Sauce: Sage Butter
+Max and Mary Killinger
+El Prado, NM
+UPS
+Next Day Air
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36487145
+Package: 36487145
+Customer Order: 23975609
+Toggle package details
+3 - Macaroni and Cheese - 4 lbs.
+Melanie Miller
+Malvern, PA
+UPS
+Ground
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36044403
+Package: 36044403
+Customer Order: 23690933
+Toggle package details
+1 - Choose Your Own Ravioli + Sauce - 3 Pack
+Ravioli: Lobster
+Ravioli: Meat + Spinach
+Ravioli: Meat + Spinach
+Sauce: Bolognese
+Sauce: Bolognese
+Sauce: Pink Sauce
+Melonie Mulligan
+Saint Paul, MN
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #35965202
+Package: 35965202
+Customer Order: 23638479
+Toggle package details
+1 - Homemade Fresh Tortelloni - 4 lbs.
+4 Ricotta Cheese
+1 - Choose Your Own Fresh Pasta Sauce - 4 Pack
+Sauce: Marinara
+Sauce: Pesto
+Sauce: Pink Sauce
+Sauce: Tomato Basil
+1 - Raffetto's Lasagna - 2 pack
+Meat Lasagna
+Mike Bombardieri
+Santa Cruz, CA
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36465617
+Package: 36465617
+Customer Order: 23961324
+Toggle package details
+1 - Raffetto's Lasagna - 2 pack
+1 Cheese + 1 Meat Lasagna
+Mike OConnor
+Rancho Mirage, CA
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #35793274
+Package: 35793274
+Customer Order: 23529545
+Toggle package details
+1 - Choose Your Own Ravioli - 3 Pack
+Meat + Spinach
+Meat + Spinach
+Meat + Spinach
+Monica Feletto
+Fishers, IN
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36571411
+Package: 36571411
+Customer Order: 24034551
+Toggle package details
+1 - Choose Your Own Pasta + Sauce - 3 Pack
+Pasta 1: Rosemary
+Cut 1: Fettuccine (3/8")
+Pasta 2: Plain Egg
+Cut 2: Pappardelle (1")
+Pasta 3: Rosemary
+Cut 3: Linguine (1/8")
+Sauce: Bolognese
+Sauce: Bolognese
+Sauce: Puttanesca
+Nancy Lattin
+Granite Falls, WA
+UPS
+Next Day Air
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36221084
+Package: 36221084
+Customer Order: 23798629
+Toggle package details
+1 - Choose Your Own Ravioli + Sauce - 3 Pack
+Ravioli: Cheese
+Ravioli: Lobster
+Ravioli: Mushroom
+Sauce: Marinara
+Sauce: Pesto
+Sauce: Tomato Basil
+Norma & Tom Jonas
+Fairfield, CA
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36222239
+Package: 36222239
+Customer Order: 23799339
+Toggle package details
+1 - Choose Your Own Ravioli + Sauce - 3 Pack
+Ravioli: Cheese
+Ravioli: Cheese + Spinach
+Ravioli: Mushroom
+Sauce: Marinara
+Sauce: Pesto
+Sauce: Tomato Basil
+Patricia Danna
+Palm Desert, CA
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36447360
+Package: 36447360
+Customer Order: 23948954
+Toggle package details
+1 - Raffetto's Lasagna - 2 pack
+1 Cheese + 1 Meat Lasagna
+Patrick Gilbert
+Lakewood, NJ
+UPS
+Ground
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36248490
+Package: 36248490
+Customer Order: 23816412
+Toggle package details
+1 - Choose Your Own Fresh Pasta Sauce - 4 Pack
+Sauce: Bolognese
+Sauce: Pesto
+Sauce: Pink Sauce
+Sauce: Pink Sauce
+1 - Homemade Fresh Tortelloni - 4 lbs.
+4 Ricotta Cheese
+Rachelle Fawell
+Coeur D Alene, ID
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36221472
+Package: 36221472
+Customer Order: 23798859
+Toggle package details
+1 - Choose Your Own Ravioli + Sauce - 3 Pack
+Ravioli: Cheese
+Ravioli: Lobster
+Ravioli: Mushroom
+Sauce: Marinara
+Sauce: Pesto
+Sauce: Tomato Basil
+Robert & Audrey Jonas
+Palo Alto, CA
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36539024
+Package: 36539024
+Customer Order: 23446503
+Toggle package details
+1 - Raffetto's Lasagna - 2 pack
+Meat Lasagna
+1 - Raffetto's Lasagna - 2 pack
+1 Cheese + 1 Meat Lasagna
+Robin Rothfuss
+Cincinnati, OH
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36043654
+Package: 36043654
+Customer Order: 23690448
+Toggle package details
+1 - Choose Your Own Pasta + Sauce - 3 Pack
+Pasta 1: Plain Egg
+Cut 1: Linguine (1/8")
+Pasta 2: Lemon
+Cut 2: Linguine (1/8")
+Pasta 3: Spinach
+Cut 3: Linguine (1/8")
+Sauce: Tomato Basil
+Sauce: Pesto
+Sauce: Sage Butter
+Shawn and Mitch Barry
+Fletcher, NC
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #35939792
+Package: 35939792
+Customer Order: 23622268
+Toggle package details
+4 - Fresh Whole Wheat Pasta by the Pound
+Pappardelle (1-inch)
+T. Robinson
+Philadelphia, PA
+UPS
+Ground
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36579804
+Package: 36579804
+Customer Order: 24040429
+Toggle package details
+1 - Choose Your Own Fresh Pasta - 4 lbs.
+Pasta 1: Spinach
+Cut 1: Linguine (1/8")
+Pasta 2: Lemon
+Cut 2: Fettuccine (3/8")
+Pasta 3: Rosemary
+Cut 3: Pappardelle (1")
+Pasta 4: Lemon Red Pepper
+Cut 4: Linguine (1/8")
+The Gebhardt's
+Wildwood, MO
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36072203
+Package: 36072203
+Customer Order: 23707380
+Toggle package details
+1 - Choose Your Own Pasta + Sauce - 3 Pack
+Pasta 1: Plain Egg
+Cut 1: Linguine (1/8")
+Pasta 2: Spinach
+Cut 2: Linguine (1/8")
+Pasta 3: Black Pepper
+Cut 3: Linguine (1/8")
+Sauce: Marinara
+Sauce: Bolognese
+Sauce: Pesto
+The McKeown Family
+Westwood, MA
+UPS
+Ground
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36086852
+Package: 36086852
+Customer Order: 23716333
+Toggle package details
+1 - Raffetto's Lasagna - 2 pack
+Meat Lasagna
+Revenate Marketing
+Tish Millsap
+Oakland, CA
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+
+Select package #36558623
+Package: 36558623
+Customer Order: 24025439
+Toggle package details
+1 - Raffetto's Lasagna - 2 pack
+1 Cheese + 1 Meat Lasagna
+Zackary & Jenny Cadieux
+Rock Hill, SC
+UPS
+Next Day Air Saver
+Shipping Label: Printed
+12/17/24 at 7:03am
+Results per page
+100
+© 2024
+Order Swag
+Help & Support
+Email partners@goldbelly.com
+Need help?
