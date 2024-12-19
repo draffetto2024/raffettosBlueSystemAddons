@@ -1156,6 +1156,23 @@ class MatchingApp:
         
         self.current_function = process_step
 
+    def replace_special_characters(text: str) -> str:
+        # Define character mappings
+        character_mappings = {
+            'â€™': "'",  # Smart apostrophe replacement
+            # Add more mappings here as needed, for example:
+            # 'â€"': '-',  # Em dash
+            # 'â€œ': '"',  # Smart quotes (opening)
+            # 'â€': '"',   # Smart quotes (closing)
+        }
+
+        # Replace each special character with its standard equivalent
+        processed_text = text
+        for special_char, standard_char in character_mappings.items():
+            processed_text = processed_text.replace(special_char, standard_char)
+        
+        return processed_text
+
     def incompletephrase_setup(self):
         self.max_steps = 3  # Set max steps for this function
         self.update_step_indicator()
@@ -1195,7 +1212,9 @@ class MatchingApp:
                 
                 while phraseslist and data:
                     phrase = phraseslist.pop(0)
+                    phrase = replace_special_characters(phrase)
                     dat = data.pop(0)
+                    dat = replace_special_characters(dat)
                     
                     # Add duplicate check
                     if self.check_incomplete_phrase_duplicate(phrase):

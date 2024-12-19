@@ -1202,6 +1202,23 @@ def split_blocks(text, keyword):
     
     return blocks
 
+def replace_special_characters(text: str) -> str:
+    # Define character mappings
+    character_mappings = {
+        'â€™': "'",  # Smart apostrophe replacement
+        # Add more mappings here as needed, for example:
+        # 'â€"': '-',  # Em dash
+        # 'â€œ': '"',  # Smart quotes (opening)
+        # 'â€': '"',   # Smart quotes (closing)
+    }
+
+    # Replace each special character with its standard equivalent
+    processed_text = text
+    for special_char, standard_char in character_mappings.items():
+        processed_text = processed_text.replace(special_char, standard_char)
+    
+    return processed_text
+
 def enter_text(acceptable_phrases):
     with open(path_to_txt, "r") as file:
         text_input = file.read()
@@ -1212,7 +1229,9 @@ def enter_text(acceptable_phrases):
         """Helper to clean whitespace line by line"""
         return '\n'.join(line.strip() for line in text.splitlines())
 
+    
     text_input = clean_lines(text_input.lower())
+    text_input = replace_special_characters(text_input)
     
     # Connect to the database
     conn = sqlite3.connect(path_to_db)
@@ -1327,6 +1346,8 @@ def enter_text(acceptable_phrases):
                         for _ in range(int(phrasequantity)):
                             modified_phrases.append(clean_string)
                     stringtobeadded = ""
+
+        print("PHRASES:", phrases)
 
         # Process incomplete phrases and exact matches
         i = 0
