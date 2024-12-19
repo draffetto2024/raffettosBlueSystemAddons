@@ -1353,11 +1353,11 @@ def enter_text(acceptable_phrases):
         i = 0
         incompletekeyword = ""
         while i < len(phrases):
-            phrase = clean_lines(phrases[i].replace("'", "'"))
+            phrase = clean_lines(phrases[i])
             
             # Handle quantity phrases
             for quantindex, quantphrase in enumerate(quantityphrases):
-                clean_quantphrase = clean_lines(quantphrase.replace("'","'"))
+                clean_quantphrase = clean_lines(quantphrase)
                 if clean_quantphrase in phrase:
                     seperatedphrase = phrase.split()
                     try:
@@ -1368,6 +1368,8 @@ def enter_text(acceptable_phrases):
             # Handle incomplete phrases
             for incompindex, incomp in enumerate(incompletephrases):
                 clean_incomp = clean_lines(incomp)
+                print("PHRASE: ", phrase)
+                print("INCOMP", incomp)
                 if clean_incomp in phrase:
                     incompletekeyword = clean_lines(secondarykeywords[incompindex])
             

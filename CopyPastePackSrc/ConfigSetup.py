@@ -618,6 +618,7 @@ class MatchingApp:
         print("Starting perform_full_matching")
         text_input = self.text_widget.get("1.0", tk.END).lower()
         text_input = clean_lines(text_input)
+        text_input = self.replace_special_characters(text_input)
         print(f"Input text: {text_input}")
         order_dict = {}
 
@@ -717,10 +718,10 @@ class MatchingApp:
             i = 0
             incompletekeyword = ""
             while i < len(phrases):
-                phrase = clean_lines(phrases[i].replace("'", "'"))
+                phrase = clean_lines(phrases[i])
                 
                 for quantindex, quantphrase in enumerate(self.quantityphrases):
-                    clean_quantphrase = clean_lines(quantphrase.replace("'","'"))
+                    clean_quantphrase = clean_lines(quantphrase)
                     if clean_quantphrase in phrase:
                         seperatedphrase = phrase.split()
                         phrasequantity = int(seperatedphrase[int(self.quantitypositions[quantindex])])
@@ -1137,6 +1138,7 @@ class MatchingApp:
                         words = phrase.split()
                         del words[dat]
                         phrase = " ".join(words)
+                        phrase = self.replace_special_characters(phrase)
                         
                         # Add duplicate check
                         if self.check_quantity_duplicate(phrase):
@@ -1156,20 +1158,29 @@ class MatchingApp:
         
         self.current_function = process_step
 
-    def replace_special_characters(text: str) -> str:
+    def replace_special_characters(self, text: str) -> str:
         # Define character mappings
         character_mappings = {
-            'â€™': "'",  # Smart apostrophe replacement
-            # Add more mappings here as needed, for example:
-            # 'â€"': '-',  # Em dash
-            # 'â€œ': '"',  # Smart quotes (opening)
-            # 'â€': '"',   # Smart quotes (closing)
+            'â€™': "'",    # Smart apostrophe replacement
+            ''': "'",      # Another form of smart apostrophe
+            ''': "'",      # Another form of smart apostrophe
+            '\u2019': "'", # Unicode for smart apostrophe
+            '\xe2\x80\x99': "'", # UTF-8 bytes for smart apostrophe
         }
 
+        # Print the byte representation to see what we're dealing with
+        print("Original text bytes:", text.encode('utf-8'))
+        print("Original text repr:", repr(text))
+        
         # Replace each special character with its standard equivalent
         processed_text = text
         for special_char, standard_char in character_mappings.items():
+            if special_char in processed_text:
+                print(f"Found '{special_char}' in text, replacing with '{standard_char}'")
             processed_text = processed_text.replace(special_char, standard_char)
+        
+        print("Processed text bytes:", processed_text.encode('utf-8'))
+        print("Processed text repr:", repr(processed_text))
         
         return processed_text
 
@@ -1212,9 +1223,10 @@ class MatchingApp:
                 
                 while phraseslist and data:
                     phrase = phraseslist.pop(0)
-                    phrase = replace_special_characters(phrase)
+                    print("PHRASE: ", phrase)
+                    phrase = self.replace_special_characters(phrase)
+                    print("PHRASE AFTER", phrase)
                     dat = data.pop(0)
-                    dat = replace_special_characters(dat)
                     
                     # Add duplicate check
                     if self.check_incomplete_phrase_duplicate(phrase):
