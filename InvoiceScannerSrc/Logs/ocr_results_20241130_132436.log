@@ -1,0 +1,291 @@
+2024-11-30 13:24:36,039 - 
+DEBUG: Processing image: ./Invoices/InvoicePictures\19CLEV_426447_Raffetto's.jpg
+2024-11-30 13:24:36,533 - 
+Starting field extraction...
+2024-11-30 13:24:36,533 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-11-30 13:24:36,535 - Found next part 'no' in: 'NO'
+2024-11-30 13:24:36,535 - 
+Individual part bounding boxes:
+2024-11-30 13:24:36,535 - Part 0 ('INVOICE'):
+2024-11-30 13:24:36,535 -   Top-left: (1060, 3)
+2024-11-30 13:24:36,535 -   Bottom-right: (1124, 15)
+2024-11-30 13:24:36,535 - Part 1 ('NO'):
+2024-11-30 13:24:36,535 -   Top-left: (1130, 2)
+2024-11-30 13:24:36,535 -   Bottom-right: (1155, 15)
+2024-11-30 13:24:36,536 - 
+Final combined keyphrase bounding box:
+2024-11-30 13:24:36,536 -   Top-left: (1060, 2)
+2024-11-30 13:24:36,536 -   Bottom-right: (1155, 15)
+2024-11-30 13:24:36,541 - 
+MATCH FOUND: '426447'
+2024-11-30 13:24:36,541 - Match bounding box:
+2024-11-30 13:24:36,541 -   Top-left: (1060, 39)
+2024-11-30 13:24:36,541 -   Bottom-right: (1143, 53)
+2024-11-30 13:24:36,541 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-11-30 13:24:36,542 - Found next part 'no' in: 'NO'
+2024-11-30 13:24:36,542 - 
+Individual part bounding boxes:
+2024-11-30 13:24:36,542 - Part 0 ('ACCOUNT'):
+2024-11-30 13:24:36,542 -   Top-left: (11, 283)
+2024-11-30 13:24:36,542 -   Bottom-right: (80, 294)
+2024-11-30 13:24:36,542 - Part 1 ('NO'):
+2024-11-30 13:24:36,542 -   Top-left: (86, 283)
+2024-11-30 13:24:36,542 -   Bottom-right: (107, 294)
+2024-11-30 13:24:36,542 - 
+Final combined keyphrase bounding box:
+2024-11-30 13:24:36,542 -   Top-left: (11, 283)
+2024-11-30 13:24:36,542 -   Bottom-right: (107, 294)
+2024-11-30 13:24:36,552 - 
+MATCH FOUND: '19CLEV'
+2024-11-30 13:24:36,552 - Match bounding box:
+2024-11-30 13:24:36,552 -   Top-left: (23, 303)
+2024-11-30 13:24:36,552 -   Bottom-right: (105, 318)
+2024-11-30 13:24:36,552 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-11-30 13:24:36,553 - Found next part 'date' in: 'DATE'
+2024-11-30 13:24:36,553 - 
+Individual part bounding boxes:
+2024-11-30 13:24:36,553 - Part 0 ('INVOICE'):
+2024-11-30 13:24:36,553 -   Top-left: (1057, 92)
+2024-11-30 13:24:36,553 -   Bottom-right: (1123, 106)
+2024-11-30 13:24:36,553 - Part 1 ('DATE'):
+2024-11-30 13:24:36,553 -   Top-left: (1128, 93)
+2024-11-30 13:24:36,553 -   Bottom-right: (1169, 107)
+2024-11-30 13:24:36,553 - 
+Final combined keyphrase bounding box:
+2024-11-30 13:24:36,553 -   Top-left: (1057, 92)
+2024-11-30 13:24:36,553 -   Bottom-right: (1169, 107)
+2024-11-30 13:24:36,559 - 
+MATCH FOUND: '02/29/24'
+2024-11-30 13:24:36,559 - Match bounding box:
+2024-11-30 13:24:36,559 -   Top-left: (1044, 132)
+2024-11-30 13:24:36,559 -   Bottom-right: (1159, 146)
+2024-11-30 13:24:36,559 - 
+Attempting to find route number...
+2024-11-30 13:24:36,559 - 
+Searching for text near 'DRIVER/RT' in 'below' position:
+2024-11-30 13:24:36,559 - Found next part '/' in: '/'
+2024-11-30 13:24:36,559 - Found next part 'rt' in: 'RT'
+2024-11-30 13:24:36,559 - 
+Individual part bounding boxes:
+2024-11-30 13:24:36,559 - Part 0 ('DRIVER'):
+2024-11-30 13:24:36,560 -   Top-left: (468, 282)
+2024-11-30 13:24:36,560 -   Bottom-right: (512, 292)
+2024-11-30 13:24:36,560 - Part 1 ('/'):
+2024-11-30 13:24:36,560 -   Top-left: (512, 282)
+2024-11-30 13:24:36,560 -   Bottom-right: (517, 292)
+2024-11-30 13:24:36,560 - Part 2 ('RT'):
+2024-11-30 13:24:36,560 -   Top-left: (517, 282)
+2024-11-30 13:24:36,560 -   Bottom-right: (531, 292)
+2024-11-30 13:24:36,560 - 
+Final combined keyphrase bounding box:
+2024-11-30 13:24:36,560 -   Top-left: (468, 282)
+2024-11-30 13:24:36,560 -   Bottom-right: (531, 292)
+2024-11-30 13:24:36,567 - 
+MATCH FOUND: '2'
+2024-11-30 13:24:36,567 - Match bounding box:
+2024-11-30 13:24:36,567 -   Top-left: (511, 303)
+2024-11-30 13:24:36,567 -   Bottom-right: (523, 315)
+2024-11-30 13:24:36,567 - 
+Extracted field values:
+2024-11-30 13:24:36,567 - Invoice Number: 426447
+2024-11-30 13:24:36,567 - Customer Number: 19CLEV
+2024-11-30 13:24:36,567 - Date: 02/29/24
+2024-11-30 13:24:36,567 - Route Number: 2
+2024-11-30 13:24:36,570 - Deleted original file: ./Invoices/InvoicePictures\19CLEV_426447_Raffetto's.jpg
+2024-11-30 13:24:36,570 - 
+DEBUG: Processing image: ./Invoices/InvoicePictures\AURARE_426460_Fresh.jpg
+2024-11-30 13:24:37,041 - 
+Starting field extraction...
+2024-11-30 13:24:37,041 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-11-30 13:24:37,042 - Found next part 'no' in: 'NO'
+2024-11-30 13:24:37,042 - 
+Individual part bounding boxes:
+2024-11-30 13:24:37,042 - Part 0 ('INVOICE'):
+2024-11-30 13:24:37,042 -   Top-left: (1057, 16)
+2024-11-30 13:24:37,042 -   Bottom-right: (1122, 28)
+2024-11-30 13:24:37,042 - Part 1 ('NO'):
+2024-11-30 13:24:37,042 -   Top-left: (1128, 16)
+2024-11-30 13:24:37,042 -   Bottom-right: (1152, 27)
+2024-11-30 13:24:37,042 - 
+Final combined keyphrase bounding box:
+2024-11-30 13:24:37,042 -   Top-left: (1057, 16)
+2024-11-30 13:24:37,042 -   Bottom-right: (1152, 28)
+2024-11-30 13:24:37,048 - 
+MATCH FOUND: '426460'
+2024-11-30 13:24:37,048 - Match bounding box:
+2024-11-30 13:24:37,048 -   Top-left: (1057, 50)
+2024-11-30 13:24:37,048 -   Bottom-right: (1141, 65)
+2024-11-30 13:24:37,048 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-11-30 13:24:37,049 - Found next part 'no' in: 'NO'
+2024-11-30 13:24:37,049 - 
+Individual part bounding boxes:
+2024-11-30 13:24:37,049 - Part 0 ('ACCOUNT'):
+2024-11-30 13:24:37,049 -   Top-left: (7, 275)
+2024-11-30 13:24:37,049 -   Bottom-right: (78, 287)
+2024-11-30 13:24:37,049 - Part 1 ('NO'):
+2024-11-30 13:24:37,049 -   Top-left: (83, 275)
+2024-11-30 13:24:37,049 -   Bottom-right: (105, 287)
+2024-11-30 13:24:37,049 - 
+Final combined keyphrase bounding box:
+2024-11-30 13:24:37,049 -   Top-left: (7, 275)
+2024-11-30 13:24:37,049 -   Bottom-right: (105, 287)
+2024-11-30 13:24:37,056 - 
+MATCH FOUND: 'AURARE'
+2024-11-30 13:24:37,056 - Match bounding box:
+2024-11-30 13:24:37,056 -   Top-left: (17, 295)
+2024-11-30 13:24:37,056 -   Bottom-right: (103, 312)
+2024-11-30 13:24:37,056 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-11-30 13:24:37,057 - Found next part 'date' in: 'DATE'
+2024-11-30 13:24:37,057 - 
+Individual part bounding boxes:
+2024-11-30 13:24:37,057 - Part 0 ('INVOICE'):
+2024-11-30 13:24:37,057 -   Top-left: (1053, 104)
+2024-11-30 13:24:37,057 -   Bottom-right: (1117, 118)
+2024-11-30 13:24:37,057 - Part 1 ('DATE'):
+2024-11-30 13:24:37,057 -   Top-left: (1123, 105)
+2024-11-30 13:24:37,057 -   Bottom-right: (1167, 119)
+2024-11-30 13:24:37,057 - 
+Final combined keyphrase bounding box:
+2024-11-30 13:24:37,058 -   Top-left: (1053, 104)
+2024-11-30 13:24:37,058 -   Bottom-right: (1167, 119)
+2024-11-30 13:24:37,064 - 
+MATCH FOUND: '02/29/24'
+2024-11-30 13:24:37,064 - Match bounding box:
+2024-11-30 13:24:37,064 -   Top-left: (1041, 142)
+2024-11-30 13:24:37,064 -   Bottom-right: (1155, 160)
+2024-11-30 13:24:37,064 - 
+Attempting to find route number...
+2024-11-30 13:24:37,064 - 
+Searching for text near 'DRIVER/RT' in 'below' position:
+2024-11-30 13:24:37,064 - Found next part '/' in: '/'
+2024-11-30 13:24:37,065 - Found next part 'rt' in: 'RT'
+2024-11-30 13:24:37,065 - 
+Individual part bounding boxes:
+2024-11-30 13:24:37,065 - Part 0 ('DRIVER'):
+2024-11-30 13:24:37,065 -   Top-left: (464, 279)
+2024-11-30 13:24:37,065 -   Bottom-right: (508, 292)
+2024-11-30 13:24:37,065 - Part 1 ('/'):
+2024-11-30 13:24:37,065 -   Top-left: (508, 280)
+2024-11-30 13:24:37,065 -   Bottom-right: (513, 291)
+2024-11-30 13:24:37,065 - Part 2 ('RT'):
+2024-11-30 13:24:37,065 -   Top-left: (513, 280)
+2024-11-30 13:24:37,065 -   Bottom-right: (526, 292)
+2024-11-30 13:24:37,065 - 
+Final combined keyphrase bounding box:
+2024-11-30 13:24:37,065 -   Top-left: (464, 279)
+2024-11-30 13:24:37,065 -   Bottom-right: (526, 292)
+2024-11-30 13:24:37,073 - 
+MATCH FOUND: '2'
+2024-11-30 13:24:37,073 - Match bounding box:
+2024-11-30 13:24:37,074 -   Top-left: (507, 304)
+2024-11-30 13:24:37,074 -   Bottom-right: (520, 316)
+2024-11-30 13:24:37,074 - 
+Extracted field values:
+2024-11-30 13:24:37,074 - Invoice Number: 426460
+2024-11-30 13:24:37,074 - Customer Number: AURARE
+2024-11-30 13:24:37,074 - Date: 02/29/24
+2024-11-30 13:24:37,074 - Route Number: 2
+2024-11-30 13:24:37,076 - Deleted original file: ./Invoices/InvoicePictures\AURARE_426460_Fresh.jpg
+2024-11-30 13:24:37,076 - 
+DEBUG: Processing image: ./Invoices/InvoicePictures\BELLAL_426432.jpg
+2024-11-30 13:24:37,518 - 
+Starting field extraction...
+2024-11-30 13:24:37,518 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-11-30 13:24:37,519 - Found next part 'no' in: 'NO'
+2024-11-30 13:24:37,519 - 
+Individual part bounding boxes:
+2024-11-30 13:24:37,519 - Part 0 ('INVOICE'):
+2024-11-30 13:24:37,519 -   Top-left: (1053, 9)
+2024-11-30 13:24:37,519 -   Bottom-right: (1120, 22)
+2024-11-30 13:24:37,519 - Part 1 ('NO'):
+2024-11-30 13:24:37,519 -   Top-left: (1126, 9)
+2024-11-30 13:24:37,519 -   Bottom-right: (1150, 22)
+2024-11-30 13:24:37,519 - 
+Final combined keyphrase bounding box:
+2024-11-30 13:24:37,519 -   Top-left: (1053, 9)
+2024-11-30 13:24:37,519 -   Bottom-right: (1150, 22)
+2024-11-30 13:24:37,527 - 
+MATCH FOUND: '426432'
+2024-11-30 13:24:37,527 - Match bounding box:
+2024-11-30 13:24:37,527 -   Top-left: (1055, 43)
+2024-11-30 13:24:37,527 -   Bottom-right: (1139, 58)
+2024-11-30 13:24:37,527 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-11-30 13:24:37,527 - Found next part 'no' in: 'NO'
+2024-11-30 13:24:37,527 - 
+Individual part bounding boxes:
+2024-11-30 13:24:37,527 - Part 0 ('ACCOUNT'):
+2024-11-30 13:24:37,527 -   Top-left: (8, 282)
+2024-11-30 13:24:37,527 -   Bottom-right: (78, 294)
+2024-11-30 13:24:37,527 - Part 1 ('NO'):
+2024-11-30 13:24:37,527 -   Top-left: (83, 282)
+2024-11-30 13:24:37,527 -   Bottom-right: (104, 293)
+2024-11-30 13:24:37,527 - 
+Final combined keyphrase bounding box:
+2024-11-30 13:24:37,527 -   Top-left: (8, 282)
+2024-11-30 13:24:37,528 -   Bottom-right: (104, 294)
+2024-11-30 13:24:37,528 - 
+MATCH FOUND: 'BELLAL'
+2024-11-30 13:24:37,528 - Match bounding box:
+2024-11-30 13:24:37,528 -   Top-left: (19, 301)
+2024-11-30 13:24:37,528 -   Bottom-right: (103, 315)
+2024-11-30 13:24:37,528 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-11-30 13:24:37,528 - Found next part 'date' in: 'DATE'
+2024-11-30 13:24:37,529 - 
+Individual part bounding boxes:
+2024-11-30 13:24:37,529 - Part 0 ('INVOICE'):
+2024-11-30 13:24:37,529 -   Top-left: (1053, 100)
+2024-11-30 13:24:37,529 -   Bottom-right: (1118, 113)
+2024-11-30 13:24:37,529 - Part 1 ('DATE'):
+2024-11-30 13:24:37,529 -   Top-left: (1124, 100)
+2024-11-30 13:24:37,529 -   Bottom-right: (1166, 112)
+2024-11-30 13:24:37,529 - 
+Final combined keyphrase bounding box:
+2024-11-30 13:24:37,529 -   Top-left: (1053, 100)
+2024-11-30 13:24:37,529 -   Bottom-right: (1166, 113)
+2024-11-30 13:24:37,537 - 
+MATCH FOUND: '02/29/24'
+2024-11-30 13:24:37,537 - Match bounding box:
+2024-11-30 13:24:37,537 -   Top-left: (1041, 140)
+2024-11-30 13:24:37,537 -   Bottom-right: (1155, 154)
+2024-11-30 13:24:37,537 - 
+Attempting to find route number...
+2024-11-30 13:24:37,537 - 
+Searching for text near 'DRIVER/RT' in 'below' position:
+2024-11-30 13:24:37,537 - Found next part '/' in: '/'
+2024-11-30 13:24:37,537 - Found next part 'rt' in: 'RT'
+2024-11-30 13:24:37,537 - 
+Individual part bounding boxes:
+2024-11-30 13:24:37,537 - Part 0 ('DRIVER'):
+2024-11-30 13:24:37,537 -   Top-left: (465, 282)
+2024-11-30 13:24:37,537 -   Bottom-right: (508, 294)
+2024-11-30 13:24:37,537 - Part 1 ('/'):
+2024-11-30 13:24:37,537 -   Top-left: (507, 282)
+2024-11-30 13:24:37,538 -   Bottom-right: (512, 293)
+2024-11-30 13:24:37,538 - Part 2 ('RT'):
+2024-11-30 13:24:37,538 -   Top-left: (512, 282)
+2024-11-30 13:24:37,538 -   Bottom-right: (527, 293)
+2024-11-30 13:24:37,538 - 
+Final combined keyphrase bounding box:
+2024-11-30 13:24:37,538 -   Top-left: (465, 282)
+2024-11-30 13:24:37,538 -   Bottom-right: (527, 294)
+2024-11-30 13:24:37,539 - 
+MATCH FOUND: '3'
+2024-11-30 13:24:37,539 - Match bounding box:
+2024-11-30 13:24:37,539 -   Top-left: (508, 303)
+2024-11-30 13:24:37,539 -   Bottom-right: (520, 315)
+2024-11-30 13:24:37,539 - 
+Extracted field values:
+2024-11-30 13:24:37,539 - Invoice Number: 426432
+2024-11-30 13:24:37,539 - Customer Number: BELLAL
+2024-11-30 13:24:37,539 - Date: 02/29/24
+2024-11-30 13:24:37,539 - Route Number: 3
+2024-11-30 13:24:37,542 - Deleted original file: ./Invoices/InvoicePictures\BELLAL_426432.jpg

@@ -21,7 +21,8 @@ from collections import defaultdict
 
 
 # Simplified path definitions using relative paths
-service_account_key = "./caramel-compass-429017-h3-c2d4e157e809.json"
+# service_account_key = "./caramel-compass-429017-h3-c2d4e157e809.json"
+service_account_key = "./invoicescanner-446017-e1844c3df524.json"
 invoice_folder = "./Invoices/InvoicePictures"
 destination_base_folder = "./Invoices/SortedInvoices"
 unsorted_base_folder = "./Invoices/UnsortedInvoices"
@@ -33,103 +34,13 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = service_account_key
 # Initialize the Vision API client
 client = vision.ImageAnnotatorClient()
 
+
 # Email details
-sender_email = "gingoso2@gmail.com"
-app_password = "soiz avjw bdtu hmtn"
+# sender_email = "gingoso2@gmail.com"
+sender_email = "derekraffetto@gmail.com"
+# app_password = "soiz avjw bdtu hmtn"
+app_password = "sqha dkre bten tgpe"
 
-class ReportManager:
-    def __init__(self):
-        self.reports_folder = "./Reports"
-        self.current_session_invoices = []
-        os.makedirs(self.reports_folder, exist_ok=True)
-        
-    def add_invoice(self, invoice_num, route_num):
-        """Add an invoice to the current session tracking."""
-        self.current_session_invoices.append({
-            'invoice_num': invoice_num.strip() if invoice_num else invoice_num,
-            'route_num': route_num.strip() if route_num else 'Unassigned'
-        })
-    
-    def generate_report(self):
-        """Generate or update the daily report for processed invoices."""
-        if not self.current_session_invoices:
-            print("No invoices to report.")
-            return
-            
-        today = datetime.now().strftime("%Y-%m-%d")
-        report_path = os.path.join(self.reports_folder, f"invoice_report_{today}.txt")
-        
-        # Read existing invoices if report exists
-        existing_invoices = []
-        if os.path.exists(report_path):
-            with open(report_path, 'r') as f:
-                # Skip header lines
-                lines = f.readlines()[3:]
-                for line in lines:
-                    if line.strip():
-                        # Split on whitespace and combine all but the last part as invoice number
-                        parts = line.strip().split()
-                        if len(parts) >= 2:
-                            route_num = parts[-1]  # Last part is route number
-                            invoice_num = ' '.join(parts[:-1])  # All other parts form invoice number
-                            existing_invoices.append({
-                                'invoice_num': invoice_num,
-                                'route_num': route_num
-                            })
-        
-        # Combine existing and new invoices
-        all_invoices = existing_invoices + self.current_session_invoices
-        
-        # Sort by route number first, then by invoice number
-        sorted_invoices = sorted(all_invoices, 
-                               key=lambda x: (x['route_num'], x['invoice_num']))
-        
-        # Generate report content
-        report_content = f"Invoice Report - Generated {today}\n"
-        report_content += "=" * 50 + "\n\n"
-        
-        current_route = None
-        for invoice in sorted_invoices:
-            # Add route header if route changes
-            if invoice['route_num'] != current_route:
-                current_route = invoice['route_num']
-                report_content += f"\nRoute Number: {current_route}\n"
-                report_content += "-" * 20 + "\n"
-            
-            # Add invoice with proper spacing for alignment
-            report_content += f"{invoice['invoice_num']}    {invoice['route_num']}\n"
-        
-        # Write report
-        with open(report_path, 'w') as f:
-            f.write(report_content)
-        
-        print(f"Report generated: {report_path}")
-        
-        # Clear current session invoices after report generation
-        self.current_session_invoices = []
-
-class RouteManager:
-    def __init__(self, base_folder):
-        self.base_folder = base_folder
-        self.route_map = defaultdict(list)
-    
-    def extract_route_number(self, texts):
-        """Extract route number using existing OCR text detection pattern."""
-        return find_text_near_keyphrase(texts, "Driver/Route #", "below", 50)
-    
-    def add_invoice_to_route(self, route_number, invoice_number, file_path, date):
-        """Add an invoice to the route mapping."""
-        self.route_map[route_number].append({
-            'invoice_number': invoice_number,
-            'path': file_path,
-            'date': date
-        })
-        # Sort invoices within this route by invoice number
-        self.route_map[route_number].sort(key=lambda x: x['invoice_number'])
-    
-    def get_sorted_routes(self):
-        """Get all routes sorted with their invoices."""
-        return dict(sorted(self.route_map.items()))
 
 class CustomerTracker:
     def __init__(self, base_folder, inactivity_threshold_days=21):
@@ -252,7 +163,7 @@ def display_image_and_get_input(image_path):
     root.title("Invoice Preview and Input")
     
     # Store user input in a mutable object that can be accessed by the validate_and_submit function
-    user_input = {'customer_id': None, 'invoice_num': None, 'date': None, 'route_num': None}
+    user_input = {'customer_id': None, 'invoice_num': None, 'date': None}
     
     try:
         # Load and display image
@@ -290,30 +201,24 @@ def display_image_and_get_input(image_path):
     date_entry = ttk.Entry(input_frame)
     date_entry.grid(row=2, column=1, pady=5)
     
-    # Route number input
-    ttk.Label(input_frame, text="Route Number (optional):").grid(row=3, column=0, sticky='e', pady=5)
-    route_num_entry = ttk.Entry(input_frame)
-    route_num_entry.grid(row=3, column=1, pady=5)
-    
     # Error label
     error_label = ttk.Label(input_frame, text="", foreground="red")
     error_label.grid(row=4, column=0, columnspan=2)
     
     def focus_next_empty(event=None):
-        """Focus next empty field or submit if all required fields are filled."""
+        """Focus next empty field or submit if all are filled."""
         current = root.focus_get()
-        entries = [customer_id_entry, invoice_num_entry, date_entry, route_num_entry]
-        required_entries = [customer_id_entry, invoice_num_entry, date_entry]  # Route is optional
+        entries = [customer_id_entry, invoice_num_entry, date_entry]
         
         if current in entries:
             current_idx = entries.index(current)
             # Check remaining fields
             for idx in range(current_idx + 1, len(entries)):
-                if entries[idx] in required_entries and not entries[idx].get().strip():
+                if not entries[idx].get().strip():
                     entries[idx].focus()
                     return "break"
-            # If we get here and all required fields are filled, try to submit
-            if all(entry.get().strip() for entry in required_entries):
+            # If we get here and current field is not empty, try to submit
+            if current.get().strip():
                 submit_wrapper()
         return "break"
     
@@ -321,7 +226,8 @@ def display_image_and_get_input(image_path):
         customer_id = customer_id_entry.get().strip()
         invoice_num = invoice_num_entry.get().strip()
         date = date_entry.get().strip()
-        route_num = route_num_entry.get().strip()
+        
+        print(f"Validating input - Customer ID: {customer_id}, Invoice: {invoice_num}, Date: {date}")
         
         # Validate customer ID
         if not is_six_alphanumeric(customer_id):
@@ -340,19 +246,19 @@ def display_image_and_get_input(image_path):
         # Validate and possibly convert date format
         date_result = is_date_format(date)
         if isinstance(date_result, str):
-            date = date_result  # Date was converted from MMDDYY to MM/DD/YY
+            # Date was in MMDDYY format and was converted
+            date = date_result
         elif not date_result:
             error_label.config(text="Invalid Date format - use MM/DD/YY or MMDDYY")
             date_entry.focus()
             date_entry.selection_range(0, tk.END)
             return
         
-        # Store all values
+        # If all validations pass, store the values and close window
         user_input['customer_id'] = customer_id
         user_input['invoice_num'] = invoice_num
         user_input['date'] = date
-        user_input['route_num'] = route_num if route_num else None
-        
+        print(f"DEBUG: All validations passed. Input values: {user_input}")
         root.quit()
         root.destroy()
     
@@ -360,7 +266,6 @@ def display_image_and_get_input(image_path):
     customer_id_entry.bind('<Return>', focus_next_empty)
     invoice_num_entry.bind('<Return>', focus_next_empty)
     date_entry.bind('<Return>', focus_next_empty)
-    route_num_entry.bind('<Return>', focus_next_empty)
     
     # Center the window
     root.update_idletasks()
@@ -381,6 +286,7 @@ def display_image_and_get_input(image_path):
     except Exception as e:
         print(f"Error in mainloop: {e}")
     
+    print(f"Returning user input: {user_input}")
     return user_input
 
 # Validate paths
@@ -430,53 +336,26 @@ def print_bounding_box(description, box):
 
 
 def find_text_near_keyphrase(texts, keyphrase, position, threshold):
-    """Find text elements that appear in sequence within a threshold distance."""
     logging.info(f"\nSearching for text near '{keyphrase}' in '{position}' position:")
     
-    # Split keyphrase into individual characters/words
-    keyphrase_parts = []
-    current_part = ""
-    
-    # Split into parts while preserving special characters
-    for char in keyphrase:
-        if char.isalpha():
-            current_part += char
-        else:
-            if current_part:
-                keyphrase_parts.append(current_part)
-                current_part = ""
-            if not char.isspace():  # Add special characters as their own parts
-                keyphrase_parts.append(char)
-    if current_part:  # Add final part if exists
-        keyphrase_parts.append(current_part)
-    
-    keyphrase_parts = [part.lower() for part in keyphrase_parts]
+    keyphrase_parts = keyphrase.lower().split()
     keyphrase_texts = []
-    keyphrase_boxes = []
     
-    # Search for first part
     for i, text in enumerate(texts):
-        if keyphrase_parts[0].lower() in text.description.lower():
+        if keyphrase_parts[0] in text.description.lower():
             keyphrase_texts = [text]
-            keyphrase_boxes = [text.bounding_poly.vertices]
             current_box = text.bounding_poly.vertices
             
-            # Look for remaining parts
-            last_found_idx = i
+            # Look for remaining parts within the threshold
             for part in keyphrase_parts[1:]:
                 found = False
-                # Look at next few texts (reduced threshold to 25)
-                for j, next_text in enumerate(texts[last_found_idx + 1:last_found_idx + 5]):
-                    if part.lower() in next_text.description.lower():
-                        next_box = next_text.bounding_poly.vertices
-                        if is_within_threshold(current_box, next_box, 25):  # Reduced threshold
-                            logging.info(f"Found next part '{part}' in: '{next_text.description}'")
-                            keyphrase_texts.append(next_text)
-                            keyphrase_boxes.append(next_box)
-                            current_box = combine_boxes(current_box, next_box)
-                            last_found_idx = last_found_idx + j + 1
-                            found = True
-                            break
+                for next_text in texts[i+1:]:
+                    next_box = next_text.bounding_poly.vertices
+                    if part in next_text.description.lower() and is_within_threshold(current_box, next_box, threshold):
+                        keyphrase_texts.append(next_text)
+                        current_box = combine_boxes(current_box, next_box)
+                        found = True
+                        break
                 if not found:
                     break
             
@@ -484,32 +363,26 @@ def find_text_near_keyphrase(texts, keyphrase, position, threshold):
                 break
     
     if len(keyphrase_texts) != len(keyphrase_parts):
-        logging.info(f"Could not find complete keyphrase '{keyphrase}'")
+        logging.info(f"Complete keyphrase '{keyphrase}' not found within threshold.")
         return None
     
-    # Log the individual boxes for debugging
-    logging.info("\nIndividual part bounding boxes:")
-    for i, box in enumerate(keyphrase_boxes):
-        logging.info(f"Part {i} ('{keyphrase_texts[i].description}'):")
-        logging.info(f"  Top-left: ({box[0].x}, {box[0].y})")
-        logging.info(f"  Bottom-right: ({box[2].x}, {box[2].y})")
+    # Combine bounding boxes of keyphrase parts
+    keyphrase_box = keyphrase_texts[0].bounding_poly.vertices
+    for text in keyphrase_texts[1:]:
+        keyphrase_box = combine_boxes(keyphrase_box, text.bounding_poly.vertices)
     
-    # Create bounding box for complete keyphrase
-    keyphrase_box = keyphrase_boxes[0]
-    for box in keyphrase_boxes[1:]:
-        keyphrase_box = combine_boxes(keyphrase_box, box)
-    
-    logging.info(f"\nFinal combined keyphrase bounding box:")
+    logging.info(f"Keyphrase '{' '.join(text.description for text in keyphrase_texts)}' bounding box:")
     logging.info(f"  Top-left: ({keyphrase_box[0].x}, {keyphrase_box[0].y})")
     logging.info(f"  Bottom-right: ({keyphrase_box[2].x}, {keyphrase_box[2].y})")
     
-    # Search for text near the keyphrase
+    # Now search for text near the keyphrase
     for adjacent_text in texts:
         if adjacent_text in keyphrase_texts:
-            continue
+            continue  # Skip the keyphrase itself
         adjacent_box = adjacent_text.bounding_poly.vertices
         
         if is_in_position(keyphrase_box, adjacent_box, position, threshold):
+            # Check if the adjacent text contains alphanumeric characters
             if re.search(r'[a-zA-Z0-9]', adjacent_text.description):
                 logging.info(f"\nMATCH FOUND: '{adjacent_text.description}'")
                 logging.info(f"Match bounding box:")
@@ -517,7 +390,7 @@ def find_text_near_keyphrase(texts, keyphrase, position, threshold):
                 logging.info(f"  Bottom-right: ({adjacent_box[2].x}, {adjacent_box[2].y})")
                 return adjacent_text.description
     
-    logging.info(f"No matching text found near '{keyphrase}'")
+    logging.info(f"No alphanumeric matching text found near '{keyphrase}'")
     return None
 
 def is_within_threshold(box1, box2, threshold):
@@ -526,39 +399,25 @@ def is_within_threshold(box1, box2, threshold):
             abs(box2[0].y - box1[0].y) < threshold)
 
 def combine_boxes(box1, box2):
-    """Combine two bounding boxes more precisely."""
-    # Create a minimal box that contains both boxes
+    # Combine two bounding boxes
     return [
-        types.Vertex(x=min(box1[0].x, box2[0].x), y=min(box1[0].y, box2[0].y)),  # Top-left
-        types.Vertex(x=max(box1[1].x, box2[1].x), y=min(box1[1].y, box2[1].y)),  # Top-right
-        types.Vertex(x=max(box1[2].x, box2[2].x), y=max(box1[2].y, box2[2].y)),  # Bottom-right
-        types.Vertex(x=min(box1[3].x, box2[3].x), y=max(box1[3].y, box2[3].y))   # Bottom-left
+        types.Vertex(x=min(box1[0].x, box2[0].x), y=min(box1[0].y, box2[0].y)),
+        types.Vertex(x=max(box1[1].x, box2[1].x), y=min(box1[1].y, box2[1].y)),
+        types.Vertex(x=max(box1[2].x, box2[2].x), y=max(box1[2].y, box2[2].y)),
+        types.Vertex(x=min(box1[3].x, box2[3].x), y=max(box1[3].y, box2[3].y))
     ]
 
 
 
 
-# def print_all_text_elements(texts):
-#     print("\nAll detected text elements:")
-#     for i, text in enumerate(texts):
-#         print(f"Text {i + 1}: '{text.description}'")
-#         box = text.bounding_poly.vertices
-#         print(f"  Top-left: ({box[0].x}, {box[0].y})")
-#         print(f"  Bottom-right: ({box[2].x}, {box[2].y})")
-#         print()
-
 def print_all_text_elements(texts):
-    logging.info("\n=== COMPLETE OCR RESULTS ===")
-    for i, text in enumerate(texts[1:]):  # Skip first element which contains all text
+    print("\nAll detected text elements:")
+    for i, text in enumerate(texts):
+        print(f"Text {i + 1}: '{text.description}'")
         box = text.bounding_poly.vertices
-        logging.info(f"\nText Element {i}:")
-        logging.info(f"Content: '{text.description}'")
-        logging.info(f"Bounding Box:")
-        logging.info(f"  Top-left: ({box[0].x}, {box[0].y})")
-        logging.info(f"  Top-right: ({box[1].x}, {box[1].y})")
-        logging.info(f"  Bottom-right: ({box[2].x}, {box[2].y})")
-        logging.info(f"  Bottom-left: ({box[3].x}, {box[3].y})")
-    logging.info("\n=== END OCR RESULTS ===\n")
+        print(f"  Top-left: ({box[0].x}, {box[0].y})")
+        print(f"  Bottom-right: ({box[2].x}, {box[2].y})")
+        print()
 
 
 def is_in_position(box1, box2, position, threshold):
@@ -688,25 +547,20 @@ def extract_month(date_str):
 def extract_day(date_str):
     return date_str.split('/')[1]
 
-# Update copy_image_to_sorted_folder to handle the complete filename base properly
-def copy_image_to_sorted_folder(image_path, filename_base, customer_id, date):
+def copy_image_to_sorted_folder(image_path, six_digit_number, customer_id, date):
     year, month, day = extract_year(date), extract_month(date), extract_day(date)
     destination_folder = os.path.join(destination_base_folder, year, month, day)
     os.makedirs(destination_folder, exist_ok=True)
-    
-    # Ensure we're using the complete filename_base
-    destination_path = os.path.join(destination_folder, f"{filename_base}.jpg")
+    destination_path = os.path.join(destination_folder, f"{customer_id}_{six_digit_number}.jpg")
     print(f"DEBUG: Attempting to copy from {image_path} to {destination_path}")
     try:
         shutil.copy2(image_path, destination_path)
         print(f"Copied and renamed image to: {destination_path}")
+        # Add this line to update customer activity
         customer_tracker.update_customer_activity(customer_id, date)
     except Exception as e:
         print(f"DEBUG: Error copying file: {e}")
-    
-    # Extract invoice number from filename_base for email
-    invoice_num = filename_base.split('_')[1]
-    send_email_with_attachment(destination_path, customer_id, invoice_num, date)
+    send_email_with_attachment(destination_path, customer_id, six_digit_number, date)
 
 def copy_image_to_unsorted_folder(image_path):
     today = datetime.now().strftime("%Y-%m-%d")
@@ -786,57 +640,58 @@ log_file = os.path.join(log_folder, f"ocr_results_{datetime.now().strftime('%Y%m
 logging.basicConfig(filename=log_file, level=logging.DEBUG, format='%(asctime)s - %(message)s')
 
 def process_invoice_image(image_path, manual_mode=False):
-    """Modified process_invoice_image to include better route number logging."""
-    logging.info(f"\nDEBUG: Processing image: {image_path}")
+    """Process a single invoice image."""
+    logging.info(f"DEBUG: Processing image: {image_path}")
     processed_successfully = False
     
-    if not manual_mode:
+    # If in manual mode, skip automatic detection
+    if manual_mode:
+        print(f"\nProcessing failed invoice: {os.path.basename(image_path)}")
+        user_input = display_image_and_get_input(image_path)
+        
+        if all(user_input.values()):
+            logging.info(f"DEBUG: Manual input successful, copying image to sorted folder")
+            print(f"Processing manual input: {user_input}")
+            copy_image_to_sorted_folder(
+                image_path,
+                user_input['invoice_num'],
+                user_input['customer_id'],
+                user_input['date']
+            )
+            processed_successfully = True
+        else:
+            logging.info(f"DEBUG: Manual input cancelled or invalid, copying to unsorted folder")
+            print("Manual input failed or cancelled, moving to unsorted folder")
+            copy_image_to_unsorted_folder(image_path)
+    else:
+        # Automatic detection mode
         image = cv2.imread(image_path)
         texts = extract_text_and_positions(image)
         
-        # Debug print all detected text
-        print("\nAll detected text elements:")
-        for i, text in enumerate(texts[1:]):  # Skip first element which contains all text
-            print(f"Text {i}: '{text.description}'")
-            box = text.bounding_poly.vertices
-            print(f"  Position: ({box[0].x}, {box[0].y}) to ({box[2].x}, {box[2].y})")
-        
-        logging.info("\nStarting field extraction...")
         invoice_num = find_text_near_keyphrase(texts, "INVOICE NO", "below", 50)
-        customer_num = find_text_near_keyphrase(texts, "ACCOUNT NO", "below", 50)
+        customer_num = None
+        for threshold in range(5, 101, 5):
+            customer_num = find_text_near_keyphrase(texts, "ACCOUNT NO", "below", threshold)
+            if customer_num:
+                break
         date_num = find_text_near_keyphrase(texts, "INVOICE DATE", "below", 50)
-        
-        logging.info("\nAttempting to find route number...")
-        route_num = find_text_near_keyphrase(texts, "DRIVER/RT", "below", 50)
-        if not route_num:
-            logging.info("First attempt failed, trying alternative format...")
-            route_num = find_text_near_keyphrase(texts, "Driver/Route #", "below", 50)
-        
-        logging.info("\nExtracted field values:")
-        logging.info(f"Invoice Number: {invoice_num}")
-        logging.info(f"Customer Number: {customer_num}")
-        logging.info(f"Date: {date_num}")
-        logging.info(f"Route Number: {route_num}")
         
         if (invoice_num and is_six_alphanumeric(invoice_num) and
             customer_num and is_six_alphanumeric(customer_num) and
             date_num and is_date_format(date_num)):
-            
-            filename_base = f"{customer_num}_{invoice_num}"
-            if route_num:
-                filename_base += f"_{route_num}"
-            
-            copy_image_to_sorted_folder(image_path, filename_base, customer_num, date_num)
-            
-            # Add to report tracking
-            report_manager.add_invoice(invoice_num, route_num)
-            
+            logging.info(f"DEBUG: Automatic detection successful, copying image to sorted folder")
+            copy_image_to_sorted_folder(image_path, invoice_num, customer_num, date_num)
             processed_successfully = True
-            try:
-                os.remove(image_path)
-                logging.info(f"Deleted original file: {image_path}")
-            except Exception as e:
-                logging.error(f"Error deleting original file {image_path}: {e}")
+        else:
+            logging.info(f"DEBUG: Automatic detection failed")
+    
+    # Delete original file if processed successfully
+    if processed_successfully:
+        try:
+            os.remove(image_path)
+            print(f"Deleted original file: {image_path}")
+        except Exception as e:
+            print(f"Error deleting original file {image_path}: {e}")
     
     return processed_successfully
 
@@ -1013,9 +868,6 @@ def process_invoices(invoice_folder):
 
     print("\nInvoice processing completed.")
 
-    # Generate report for this session's invoices
-    report_manager.generate_report()
-
 def process_pdf_invoice(pdf_path):
     doc = fitz.open(pdf_path)
     try:
@@ -1060,13 +912,8 @@ def remove_customer_email(excel_file, customer_id):
 
 if __name__ == "__main__":
     print("DEBUG: Starting invoice processing")
-
-    # Initialize report manager
-    report_manager = ReportManager()
-
     process_invoices(invoice_folder)
     check_inactive_customers()  # Add this line
-
 
     print("Program execution completed.")
 

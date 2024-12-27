@@ -1,0 +1,227 @@
+2024-12-27 13:20:34,741 - 
+DEBUG: Processing image: ./Invoices/InvoicePictures\BLUEDO_433881.jpg
+2024-12-27 13:20:35,204 - 
+Starting field extraction...
+2024-12-27 13:20:35,204 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-27 13:20:35,204 - Found next part 'no' in: 'NO'
+2024-12-27 13:20:35,205 - 
+Individual part bounding boxes:
+2024-12-27 13:20:35,205 - Part 0 ('INVOICE'):
+2024-12-27 13:20:35,205 -   Top-left: (1031, 0)
+2024-12-27 13:20:35,205 -   Bottom-right: (1095, 11)
+2024-12-27 13:20:35,205 - Part 1 ('NO'):
+2024-12-27 13:20:35,205 -   Top-left: (1102, 0)
+2024-12-27 13:20:35,206 -   Bottom-right: (1127, 11)
+2024-12-27 13:20:35,206 - 
+Final combined keyphrase bounding box:
+2024-12-27 13:20:35,206 -   Top-left: (1031, 0)
+2024-12-27 13:20:35,206 -   Bottom-right: (1127, 11)
+2024-12-27 13:20:35,212 - 
+MATCH FOUND: '433881'
+2024-12-27 13:20:35,212 - Match bounding box:
+2024-12-27 13:20:35,212 -   Top-left: (1037, 16)
+2024-12-27 13:20:35,212 -   Bottom-right: (1120, 32)
+2024-12-27 13:20:35,212 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-27 13:20:35,212 - Could not find complete keyphrase 'ACCOUNT NO'
+2024-12-27 13:20:35,212 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-27 13:20:35,213 - Found next part 'date' in: 'DATE'
+2024-12-27 13:20:35,213 - 
+Individual part bounding boxes:
+2024-12-27 13:20:35,213 - Part 0 ('INVOICE'):
+2024-12-27 13:20:35,213 -   Top-left: (1029, 88)
+2024-12-27 13:20:35,213 -   Bottom-right: (1092, 99)
+2024-12-27 13:20:35,213 - Part 1 ('DATE'):
+2024-12-27 13:20:35,213 -   Top-left: (1098, 88)
+2024-12-27 13:20:35,213 -   Bottom-right: (1140, 99)
+2024-12-27 13:20:35,213 - 
+Final combined keyphrase bounding box:
+2024-12-27 13:20:35,213 -   Top-left: (1029, 88)
+2024-12-27 13:20:35,213 -   Bottom-right: (1140, 99)
+2024-12-27 13:20:35,219 - 
+MATCH FOUND: '11/14/24'
+2024-12-27 13:20:35,219 - Match bounding box:
+2024-12-27 13:20:35,219 -   Top-left: (1024, 113)
+2024-12-27 13:20:35,219 -   Bottom-right: (1135, 127)
+2024-12-27 13:20:35,219 - 
+Attempting to find route number...
+2024-12-27 13:20:35,220 - 
+Searching for text near 'DRIVER/RT' in 'below' position:
+2024-12-27 13:20:35,220 - Could not find complete keyphrase 'DRIVER/RT'
+2024-12-27 13:20:35,220 - First attempt failed, trying alternative format...
+2024-12-27 13:20:35,220 - 
+Searching for text near 'Driver/Route #' in 'below' position:
+2024-12-27 13:20:35,221 - Could not find complete keyphrase 'Driver/Route #'
+2024-12-27 13:20:35,221 - 
+Extracted field values:
+2024-12-27 13:20:35,221 - Invoice Number: 433881
+2024-12-27 13:20:35,221 - Customer Number: None
+2024-12-27 13:20:35,221 - Date: 11/14/24
+2024-12-27 13:20:35,221 - Route Number: None
+2024-12-27 13:20:35,222 - 
+DEBUG: Processing image: ./Invoices/InvoicePictures\EMILIO_433866.jpg
+2024-12-27 13:20:35,624 - 
+Starting field extraction...
+2024-12-27 13:20:35,625 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-27 13:20:35,625 - Found next part 'no' in: 'NO'
+2024-12-27 13:20:35,625 - 
+Individual part bounding boxes:
+2024-12-27 13:20:35,625 - Part 0 ('INVOICE'):
+2024-12-27 13:20:35,625 -   Top-left: (1032, 0)
+2024-12-27 13:20:35,625 -   Bottom-right: (1096, 11)
+2024-12-27 13:20:35,625 - Part 1 ('NO'):
+2024-12-27 13:20:35,625 -   Top-left: (1103, 0)
+2024-12-27 13:20:35,625 -   Bottom-right: (1127, 11)
+2024-12-27 13:20:35,625 - 
+Final combined keyphrase bounding box:
+2024-12-27 13:20:35,625 -   Top-left: (1032, 0)
+2024-12-27 13:20:35,625 -   Bottom-right: (1127, 11)
+2024-12-27 13:20:35,629 - 
+MATCH FOUND: '433866'
+2024-12-27 13:20:35,629 - Match bounding box:
+2024-12-27 13:20:35,629 -   Top-left: (1039, 16)
+2024-12-27 13:20:35,629 -   Bottom-right: (1123, 30)
+2024-12-27 13:20:35,629 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-27 13:20:35,630 - Could not find complete keyphrase 'ACCOUNT NO'
+2024-12-27 13:20:35,630 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-27 13:20:35,630 - Found next part 'date' in: 'DATE'
+2024-12-27 13:20:35,630 - 
+Individual part bounding boxes:
+2024-12-27 13:20:35,630 - Part 0 ('INVOICE'):
+2024-12-27 13:20:35,630 -   Top-left: (1029, 87)
+2024-12-27 13:20:35,630 -   Bottom-right: (1094, 99)
+2024-12-27 13:20:35,631 - Part 1 ('DATE'):
+2024-12-27 13:20:35,631 -   Top-left: (1100, 87)
+2024-12-27 13:20:35,631 -   Bottom-right: (1141, 99)
+2024-12-27 13:20:35,631 - 
+Final combined keyphrase bounding box:
+2024-12-27 13:20:35,631 -   Top-left: (1029, 87)
+2024-12-27 13:20:35,631 -   Bottom-right: (1141, 99)
+2024-12-27 13:20:35,635 - 
+MATCH FOUND: '11/14/24'
+2024-12-27 13:20:35,635 - Match bounding box:
+2024-12-27 13:20:35,635 -   Top-left: (1026, 113)
+2024-12-27 13:20:35,635 -   Bottom-right: (1139, 129)
+2024-12-27 13:20:35,635 - 
+Attempting to find route number...
+2024-12-27 13:20:35,635 - 
+Searching for text near 'DRIVER/RT' in 'below' position:
+2024-12-27 13:20:35,636 - Found next part '/' in: '/'
+2024-12-27 13:20:35,636 - Found next part 'rt' in: 'RT'
+2024-12-27 13:20:35,636 - 
+Individual part bounding boxes:
+2024-12-27 13:20:35,636 - Part 0 ('DRIVER'):
+2024-12-27 13:20:35,636 -   Top-left: (452, 269)
+2024-12-27 13:20:35,636 -   Bottom-right: (495, 282)
+2024-12-27 13:20:35,636 - Part 1 ('/'):
+2024-12-27 13:20:35,636 -   Top-left: (494, 268)
+2024-12-27 13:20:35,636 -   Bottom-right: (501, 282)
+2024-12-27 13:20:35,636 - Part 2 ('RT'):
+2024-12-27 13:20:35,636 -   Top-left: (498, 267)
+2024-12-27 13:20:35,636 -   Bottom-right: (513, 281)
+2024-12-27 13:20:35,636 - 
+Final combined keyphrase bounding box:
+2024-12-27 13:20:35,636 -   Top-left: (452, 267)
+2024-12-27 13:20:35,636 -   Bottom-right: (513, 282)
+2024-12-27 13:20:35,649 - No matching text found near 'DRIVER/RT'
+2024-12-27 13:20:35,649 - First attempt failed, trying alternative format...
+2024-12-27 13:20:35,649 - 
+Searching for text near 'Driver/Route #' in 'below' position:
+2024-12-27 13:20:35,650 - Found next part '/' in: '/'
+2024-12-27 13:20:35,650 - Could not find complete keyphrase 'Driver/Route #'
+2024-12-27 13:20:35,650 - 
+Extracted field values:
+2024-12-27 13:20:35,650 - Invoice Number: 433866
+2024-12-27 13:20:35,650 - Customer Number: None
+2024-12-27 13:20:35,650 - Date: 11/14/24
+2024-12-27 13:20:35,650 - Route Number: None
+2024-12-27 13:20:35,651 - 
+DEBUG: Processing image: ./Invoices/InvoicePictures\MARIEL_433887.jpg
+2024-12-27 13:20:36,140 - 
+Starting field extraction...
+2024-12-27 13:20:36,140 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-27 13:20:36,141 - Could not find complete keyphrase 'INVOICE NO'
+2024-12-27 13:20:36,141 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-27 13:20:36,141 - Found next part 'no' in: 'NO'
+2024-12-27 13:20:36,141 - 
+Individual part bounding boxes:
+2024-12-27 13:20:36,141 - Part 0 ('ACCOUNT'):
+2024-12-27 13:20:36,141 -   Top-left: (2, 273)
+2024-12-27 13:20:36,141 -   Bottom-right: (72, 284)
+2024-12-27 13:20:36,141 - Part 1 ('NO'):
+2024-12-27 13:20:36,141 -   Top-left: (77, 273)
+2024-12-27 13:20:36,141 -   Bottom-right: (98, 284)
+2024-12-27 13:20:36,141 - 
+Final combined keyphrase bounding box:
+2024-12-27 13:20:36,141 -   Top-left: (2, 273)
+2024-12-27 13:20:36,142 -   Bottom-right: (98, 284)
+2024-12-27 13:20:36,148 - 
+MATCH FOUND: 'MARIEL'
+2024-12-27 13:20:36,148 - Match bounding box:
+2024-12-27 13:20:36,148 -   Top-left: (2, 290)
+2024-12-27 13:20:36,148 -   Bottom-right: (87, 305)
+2024-12-27 13:20:36,148 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-27 13:20:36,148 - Found next part 'date' in: 'DATE'
+2024-12-27 13:20:36,148 - 
+Individual part bounding boxes:
+2024-12-27 13:20:36,148 - Part 0 ('INVOICE'):
+2024-12-27 13:20:36,148 -   Top-left: (1028, 83)
+2024-12-27 13:20:36,148 -   Bottom-right: (1092, 95)
+2024-12-27 13:20:36,148 - Part 1 ('DATE'):
+2024-12-27 13:20:36,148 -   Top-left: (1098, 83)
+2024-12-27 13:20:36,148 -   Bottom-right: (1139, 95)
+2024-12-27 13:20:36,148 - 
+Final combined keyphrase bounding box:
+2024-12-27 13:20:36,148 -   Top-left: (1028, 83)
+2024-12-27 13:20:36,149 -   Bottom-right: (1139, 95)
+2024-12-27 13:20:36,154 - 
+MATCH FOUND: '11/14/24'
+2024-12-27 13:20:36,154 - Match bounding box:
+2024-12-27 13:20:36,154 -   Top-left: (1024, 114)
+2024-12-27 13:20:36,154 -   Bottom-right: (1135, 129)
+2024-12-27 13:20:36,154 - 
+Attempting to find route number...
+2024-12-27 13:20:36,154 - 
+Searching for text near 'DRIVER/RT' in 'below' position:
+2024-12-27 13:20:36,154 - Found next part '/' in: '/'
+2024-12-27 13:20:36,154 - Found next part 'rt' in: 'RT'
+2024-12-27 13:20:36,154 - 
+Individual part bounding boxes:
+2024-12-27 13:20:36,154 - Part 0 ('DRIVER'):
+2024-12-27 13:20:36,154 -   Top-left: (451, 269)
+2024-12-27 13:20:36,155 -   Bottom-right: (493, 280)
+2024-12-27 13:20:36,155 - Part 1 ('/'):
+2024-12-27 13:20:36,155 -   Top-left: (493, 269)
+2024-12-27 13:20:36,155 -   Bottom-right: (498, 279)
+2024-12-27 13:20:36,155 - Part 2 ('RT'):
+2024-12-27 13:20:36,155 -   Top-left: (498, 269)
+2024-12-27 13:20:36,155 -   Bottom-right: (512, 279)
+2024-12-27 13:20:36,155 - 
+Final combined keyphrase bounding box:
+2024-12-27 13:20:36,155 -   Top-left: (451, 269)
+2024-12-27 13:20:36,155 -   Bottom-right: (512, 280)
+2024-12-27 13:20:36,162 - 
+MATCH FOUND: 'E'
+2024-12-27 13:20:36,162 - Match bounding box:
+2024-12-27 13:20:36,162 -   Top-left: (491, 287)
+2024-12-27 13:20:36,162 -   Bottom-right: (503, 301)
+2024-12-27 13:20:36,162 - 
+Extracted field values:
+2024-12-27 13:20:36,162 - Invoice Number: None
+2024-12-27 13:20:36,162 - Customer Number: MARIEL
+2024-12-27 13:20:36,162 - Date: 11/14/24
+2024-12-27 13:20:36,162 - Route Number: E
+2024-12-27 13:20:36,163 - 
+DEBUG: Processing image: ./Invoices/InvoicePictures\BLUEDO_433881.jpg
+2024-12-27 13:20:36,163 - 
+DEBUG: Processing image: ./Invoices/InvoicePictures\EMILIO_433866.jpg
+2024-12-27 13:20:36,163 - 
+DEBUG: Processing image: ./Invoices/InvoicePictures\MARIEL_433887.jpg
