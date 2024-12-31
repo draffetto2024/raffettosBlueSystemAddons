@@ -551,15 +551,26 @@ def copy_image_to_sorted_folder(image_path, six_digit_number, customer_id, date)
     year, month, day = extract_year(date), extract_month(date), extract_day(date)
     destination_folder = os.path.join(destination_base_folder, year, month, day)
     os.makedirs(destination_folder, exist_ok=True)
-    destination_path = os.path.join(destination_folder, f"{customer_id}_{six_digit_number}.jpg")
-    print(f"DEBUG: Attempting to copy from {image_path} to {destination_path}")
+    
+    base_name = f"{customer_id}_{six_digit_number}"
+    extension = os.path.splitext(image_path)[1]
+    
+    # Try original filename first
+    destination_path = os.path.join(destination_folder, f"{base_name}{extension}")
+    counter = 1
+    
+    # If file exists, add incremental number until we find unused name
+    while os.path.exists(destination_path):
+        destination_path = os.path.join(destination_folder, f"{base_name}_{counter}{extension}")
+        counter += 1
+    
     try:
         shutil.copy2(image_path, destination_path)
         print(f"Copied and renamed image to: {destination_path}")
-        # Add this line to update customer activity
         customer_tracker.update_customer_activity(customer_id, date)
     except Exception as e:
         print(f"DEBUG: Error copying file: {e}")
+        
     send_email_with_attachment(destination_path, customer_id, six_digit_number, date)
 
 def copy_image_to_unsorted_folder(image_path):
@@ -644,7 +655,6 @@ def process_invoice_image(image_path, manual_mode=False):
     logging.info(f"DEBUG: Processing image: {image_path}")
     processed_successfully = False
     
-    # If in manual mode, skip automatic detection
     if manual_mode:
         print(f"\nProcessing failed invoice: {os.path.basename(image_path)}")
         user_input = display_image_and_get_input(image_path)
@@ -664,18 +674,29 @@ def process_invoice_image(image_path, manual_mode=False):
             print("Manual input failed or cancelled, moving to unsorted folder")
             copy_image_to_unsorted_folder(image_path)
     else:
-        # Automatic detection mode
         image = cv2.imread(image_path)
         texts = extract_text_and_positions(image)
         
-        invoice_num = find_text_near_keyphrase(texts, "INVOICE NO", "below", 50)
+        invoice_num = None
         customer_num = None
-        for threshold in range(5, 101, 5):
-            customer_num = find_text_near_keyphrase(texts, "ACCOUNT NO", "below", threshold)
-            if customer_num:
-                break
-        date_num = find_text_near_keyphrase(texts, "INVOICE DATE", "below", 50)
+        date_num = None
         
+        # Try increasingly larger thresholds for each field
+        for threshold in range(5, 501, 5):
+            if not invoice_num or not is_six_alphanumeric(invoice_num):
+                invoice_num = find_text_near_keyphrase(texts, "INVOICE NO", "below", threshold)
+            
+            if not customer_num or not is_six_alphanumeric(customer_num):
+                customer_num = find_text_near_keyphrase(texts, "ACCOUNT NO", "below", threshold)
+            
+            if not date_num or not is_date_format(date_num):
+                date_num = find_text_near_keyphrase(texts, "INVOICE DATE", "below", threshold)
+            
+            if (invoice_num and is_six_alphanumeric(invoice_num) and
+                customer_num and is_six_alphanumeric(customer_num) and
+                date_num and is_date_format(date_num)):
+                break
+                
         if (invoice_num and is_six_alphanumeric(invoice_num) and
             customer_num and is_six_alphanumeric(customer_num) and
             date_num and is_date_format(date_num)):
@@ -685,7 +706,6 @@ def process_invoice_image(image_path, manual_mode=False):
         else:
             logging.info(f"DEBUG: Automatic detection failed")
     
-    # Delete original file if processed successfully
     if processed_successfully:
         try:
             os.remove(image_path)
@@ -694,84 +714,6 @@ def process_invoice_image(image_path, manual_mode=False):
             print(f"Error deleting original file {image_path}: {e}")
     
     return processed_successfully
-
-# def process_invoices(invoice_folder):
-#     """Process all invoices in the folder."""
-#     print(f"DEBUG: Processing invoices in folder: {invoice_folder}")
-#     if not os.path.exists(invoice_folder):
-#         print(f"ERROR: Invoice folder does not exist: {invoice_folder}")
-#         return
-
-#     # Store failed invoices for manual processing
-#     failed_invoices = []
-
-#     # First pass: Automatic processing
-#     print("\nStarting automatic processing of invoices...")
-#     for filename in os.listdir(invoice_folder):
-#         file_path = os.path.join(invoice_folder, filename)
-        
-#         if filename.lower().endswith('.pdf'):
-#             print(f"Processing PDF file: {filename}")
-#             try:
-#                 # Convert PDF to images and process each page
-#                 doc = fitz.open(file_path)
-#                 for page_num in range(len(doc)):
-#                     pix = doc[page_num].get_pixmap(matrix=fitz.Matrix(2, 2))
-#                     temp_image_path = save_pixmap_with_retry(pix)
-#                     try:
-#                         if not process_invoice_image(temp_image_path):
-#                             # Store the failed page for manual processing
-#                             failed_invoices.append(temp_image_path)
-#                     except Exception as e:
-#                         print(f"Error processing PDF page {page_num + 1}: {str(e)}")
-#                 doc.close()
-#                 # Delete original PDF after processing all pages
-#                 os.remove(file_path)
-#                 print(f"Deleted original PDF: {file_path}")
-#             except Exception as e:
-#                 print(f"Error processing PDF {filename}: {str(e)}")
-        
-#         elif filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-#             print(f"Processing image file: {filename}")
-#             try:
-#                 if not process_invoice_image(file_path):
-#                     failed_invoices.append(file_path)
-#             except Exception as e:
-#                 print(f"Error processing image {filename}: {str(e)}")
-        
-#         else:
-#             print(f"Skipped non-invoice file: {filename}")
-
-#     # Second pass: Manual processing of failed invoices
-#     if failed_invoices:
-#         print(f"\nFound {len(failed_invoices)} invoices that need manual processing.")
-#         print("Starting manual processing...\n")
-        
-#         for failed_invoice in failed_invoices:
-#             try:
-#                 process_invoice_image(failed_invoice, manual_mode=True)
-#             except Exception as e:
-#                 print(f"Error during manual processing of {os.path.basename(failed_invoice)}: {str(e)}")
-            
-#             # Clean up temporary files (PDF pages)
-#             if failed_invoice.startswith(tempfile.gettempdir()):
-#                 try:
-#                     if os.path.exists(failed_invoice):  # Check if file still exists
-#                         os.remove(failed_invoice)
-#                         print(f"Removed temporary file: {failed_invoice}")
-#                 except Exception as e:
-#                     print(f"Error removing temporary file: {str(e)}")
-    
-#     else:
-#         print("\nAll invoices were processed automatically. No manual input needed.")
-
-#     print("\nInvoice processing completed.")
-
-#     # Do not delete the original invoice after processing
-#     # os.remove(invoice_path)
-#     # print(f"DEBUG: Deleted original invoice: {invoice_path}")
-
-#     print("="*40)  # Separator for readability
 
 import tempfile
 import time
@@ -804,10 +746,8 @@ def process_invoices(invoice_folder):
         print(f"ERROR: Invoice folder does not exist: {invoice_folder}")
         return
 
-    # Store failed invoices for manual processing
     failed_invoices = []
 
-    # First pass: Automatic processing
     print("\nStarting automatic processing of invoices...")
     for filename in os.listdir(invoice_folder):
         file_path = os.path.join(invoice_folder, filename)
@@ -815,21 +755,31 @@ def process_invoices(invoice_folder):
         if filename.lower().endswith('.pdf'):
             print(f"Processing PDF file: {filename}")
             try:
-                # Convert PDF to images and process each page
                 doc = fitz.open(file_path)
+                all_pages_processed = True
+                temp_files = []
+                
                 for page_num in range(len(doc)):
                     pix = doc[page_num].get_pixmap(matrix=fitz.Matrix(2, 2))
                     temp_image_path = save_pixmap_with_retry(pix)
+                    temp_files.append(temp_image_path)
                     try:
                         if not process_invoice_image(temp_image_path):
-                            # Store the failed page for manual processing
                             failed_invoices.append(temp_image_path)
+                            all_pages_processed = False
                         else:
-                            # Remove temp file if successful
                             os.remove(temp_image_path)
                     except Exception as e:
                         print(f"Error processing PDF page {page_num + 1}: {str(e)}")
+                        all_pages_processed = False
+                
                 doc.close()
+                
+                # Only delete original PDF if all pages were processed successfully
+                if all_pages_processed:
+                    os.remove(file_path)
+                    print(f"Deleted original PDF: {file_path}")
+                    
             except Exception as e:
                 print(f"Error processing PDF {filename}: {str(e)}")
         
@@ -844,24 +794,34 @@ def process_invoices(invoice_folder):
         else:
             print(f"Skipped non-invoice file: {filename}")
 
-    # Second pass: Manual processing of failed invoices
     if failed_invoices:
         print(f"\nFound {len(failed_invoices)} invoices that need manual processing.")
         print("Starting manual processing...\n")
         
         for failed_invoice in failed_invoices:
             try:
-                process_invoice_image(failed_invoice, manual_mode=True)
+                manual_result = process_invoice_image(failed_invoice, manual_mode=True)
+                original_file = failed_invoice
+                
+                # If it's a temp file from PDF, find the original PDF file
+                if failed_invoice.startswith(tempfile.gettempdir()):
+                    # Clean up the temp file
+                    try:
+                        os.remove(failed_invoice)
+                        print(f"Removed temporary file: {failed_invoice}")
+                    except Exception as e:
+                        print(f"Error removing temporary file: {str(e)}")
+                else:
+                    # For direct image files, delete original after processing
+                    try:
+                        if os.path.exists(failed_invoice):
+                            os.remove(failed_invoice)
+                            print(f"Deleted original file after manual processing: {failed_invoice}")
+                    except Exception as e:
+                        print(f"Error deleting original file: {str(e)}")
+                        
             except Exception as e:
                 print(f"Error during manual processing of {os.path.basename(failed_invoice)}: {str(e)}")
-            
-            # Clean up temporary files
-            if failed_invoice.startswith(tempfile.gettempdir()):
-                try:
-                    os.remove(failed_invoice)
-                    print(f"Removed temporary file: {failed_invoice}")
-                except Exception as e:
-                    print(f"Error removing temporary file: {str(e)}")
     
     else:
         print("\nAll invoices were processed automatically. No manual input needed.")

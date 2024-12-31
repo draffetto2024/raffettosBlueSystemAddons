@@ -1,0 +1,35 @@
+2024-12-31 12:01:51,906 - DEBUG: Processing image: ./Invoices/InvoicePictures\WALKIN_426473.jpg
+2024-12-31 12:01:52,329 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-31 12:01:52,330 - Keyphrase 'INVOICE NO' bounding box:
+2024-12-31 12:01:52,330 -   Top-left: (1050, 58)
+2024-12-31 12:01:52,330 -   Bottom-right: (1148, 71)
+2024-12-31 12:01:52,334 - 
+MATCH FOUND: '426473'
+2024-12-31 12:01:52,334 - Match bounding box:
+2024-12-31 12:01:52,334 -   Top-left: (1047, 94)
+2024-12-31 12:01:52,334 -   Bottom-right: (1130, 108)
+2024-12-31 12:01:52,334 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 12:01:52,337 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 12:01:52,337 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 12:01:52,337 - Keyphrase 'ACCOUNT NO' bounding box:
+2024-12-31 12:01:52,337 -   Top-left: (4, 374)
+2024-12-31 12:01:52,337 -   Bottom-right: (100, 386)
+2024-12-31 12:01:52,342 - 
+MATCH FOUND: 'WALKIN'
+2024-12-31 12:01:52,342 - Match bounding box:
+2024-12-31 12:01:52,342 -   Top-left: (14, 395)
+2024-12-31 12:01:52,342 -   Bottom-right: (101, 410)
+2024-12-31 12:01:52,342 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-31 12:01:52,342 - Keyphrase 'INVOICE DATE' bounding box:
+2024-12-31 12:01:52,342 -   Top-left: (1048, 154)
+2024-12-31 12:01:52,342 -   Bottom-right: (1160, 169)
+2024-12-31 12:01:52,348 - 
+MATCH FOUND: '03/01/24'
+2024-12-31 12:01:52,348 - Match bounding box:
+2024-12-31 12:01:52,348 -   Top-left: (1036, 200)
+2024-12-31 12:01:52,348 -   Bottom-right: (1150, 212)
+2024-12-31 12:01:52,349 - DEBUG: Automatic detection successful, copying image to sorted folder

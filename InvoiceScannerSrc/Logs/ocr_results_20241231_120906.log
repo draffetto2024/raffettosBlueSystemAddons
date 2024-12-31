@@ -1,0 +1,157 @@
+2024-12-31 12:09:06,020 - DEBUG: Processing image: ./Invoices/InvoicePictures\19CLEV_426447.jpg
+2024-12-31 12:09:06,411 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-31 12:09:06,412 - Complete keyphrase 'INVOICE NO' not found within threshold.
+2024-12-31 12:09:06,412 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 12:09:06,413 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 12:09:06,413 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-31 12:09:06,413 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2024-12-31 12:09:06,414 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-31 12:09:06,415 - Keyphrase 'INVOICE NO' bounding box:
+2024-12-31 12:09:06,415 -   Top-left: (1060, 2)
+2024-12-31 12:09:06,415 -   Bottom-right: (1155, 15)
+2024-12-31 12:09:06,428 - No alphanumeric matching text found near 'INVOICE NO'
+2024-12-31 12:09:06,428 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 12:09:06,429 - Keyphrase 'ACCOUNT NO' bounding box:
+2024-12-31 12:09:06,429 -   Top-left: (11, 283)
+2024-12-31 12:09:06,429 -   Bottom-right: (107, 294)
+2024-12-31 12:09:06,438 - 
+MATCH FOUND: '19CLEV'
+2024-12-31 12:09:06,438 - Match bounding box:
+2024-12-31 12:09:06,438 -   Top-left: (23, 303)
+2024-12-31 12:09:06,438 -   Bottom-right: (105, 318)
+2024-12-31 12:09:06,438 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-31 12:09:06,439 - Keyphrase 'INVOICE DATE' bounding box:
+2024-12-31 12:09:06,439 -   Top-left: (1057, 92)
+2024-12-31 12:09:06,439 -   Bottom-right: (1169, 107)
+2024-12-31 12:09:06,453 - No alphanumeric matching text found near 'INVOICE DATE'
+2024-12-31 12:09:06,453 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-31 12:09:06,453 - Keyphrase 'INVOICE NO' bounding box:
+2024-12-31 12:09:06,453 -   Top-left: (1060, 2)
+2024-12-31 12:09:06,453 -   Bottom-right: (1155, 15)
+2024-12-31 12:09:06,466 - No alphanumeric matching text found near 'INVOICE NO'
+2024-12-31 12:09:06,467 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-31 12:09:06,467 - Keyphrase 'INVOICE DATE' bounding box:
+2024-12-31 12:09:06,467 -   Top-left: (1057, 92)
+2024-12-31 12:09:06,467 -   Bottom-right: (1169, 107)
+2024-12-31 12:09:06,481 - No alphanumeric matching text found near 'INVOICE DATE'
+2024-12-31 12:09:06,481 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-31 12:09:06,481 - Keyphrase 'INVOICE NO' bounding box:
+2024-12-31 12:09:06,481 -   Top-left: (1060, 2)
+2024-12-31 12:09:06,481 -   Bottom-right: (1155, 15)
+2024-12-31 12:09:06,494 - No alphanumeric matching text found near 'INVOICE NO'
+2024-12-31 12:09:06,494 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-31 12:09:06,495 - Keyphrase 'INVOICE DATE' bounding box:
+2024-12-31 12:09:06,495 -   Top-left: (1057, 92)
+2024-12-31 12:09:06,495 -   Bottom-right: (1169, 107)
+2024-12-31 12:09:06,508 - No alphanumeric matching text found near 'INVOICE DATE'
+2024-12-31 12:09:06,508 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-31 12:09:06,509 - Keyphrase 'INVOICE NO' bounding box:
+2024-12-31 12:09:06,509 -   Top-left: (1060, 2)
+2024-12-31 12:09:06,509 -   Bottom-right: (1155, 15)
+2024-12-31 12:09:06,514 - 
+MATCH FOUND: '426447'
+2024-12-31 12:09:06,514 - Match bounding box:
+2024-12-31 12:09:06,514 -   Top-left: (1060, 39)
+2024-12-31 12:09:06,514 -   Bottom-right: (1143, 53)
+2024-12-31 12:09:06,515 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-31 12:09:06,515 - Keyphrase 'INVOICE DATE' bounding box:
+2024-12-31 12:09:06,515 -   Top-left: (1057, 92)
+2024-12-31 12:09:06,515 -   Bottom-right: (1169, 107)
+2024-12-31 12:09:06,521 - 
+MATCH FOUND: '02/29/24'
+2024-12-31 12:09:06,521 - Match bounding box:
+2024-12-31 12:09:06,521 -   Top-left: (1044, 132)
+2024-12-31 12:09:06,521 -   Bottom-right: (1159, 146)
+2024-12-31 12:09:06,522 - DEBUG: Automatic detection successful, copying image to sorted folder
+2024-12-31 12:09:06,524 - DEBUG: Processing image: ./Invoices/InvoicePictures\ANTICA_426446.jpg
+2024-12-31 12:09:06,996 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-31 12:09:06,998 - Complete keyphrase 'INVOICE NO' not found within threshold.
+2024-12-31 12:09:06,998 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 12:09:06,998 - Keyphrase 'ACCOUNT NO' bounding box:
+2024-12-31 12:09:06,998 -   Top-left: (8, 276)
+2024-12-31 12:09:06,998 -   Bottom-right: (104, 289)
+2024-12-31 12:09:07,014 - No alphanumeric matching text found near 'ACCOUNT NO'
+2024-12-31 12:09:07,015 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-31 12:09:07,015 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2024-12-31 12:09:07,015 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-31 12:09:07,016 - Keyphrase 'INVOICE NO' bounding box:
+2024-12-31 12:09:07,016 -   Top-left: (1057, 15)
+2024-12-31 12:09:07,016 -   Bottom-right: (1153, 28)
+2024-12-31 12:09:07,032 - No alphanumeric matching text found near 'INVOICE NO'
+2024-12-31 12:09:07,032 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 12:09:07,033 - Keyphrase 'ACCOUNT NO' bounding box:
+2024-12-31 12:09:07,033 -   Top-left: (8, 276)
+2024-12-31 12:09:07,033 -   Bottom-right: (104, 289)
+2024-12-31 12:09:07,049 - 
+MATCH FOUND: 'ANTICA'
+2024-12-31 12:09:07,049 - Match bounding box:
+2024-12-31 12:09:07,049 -   Top-left: (18, 297)
+2024-12-31 12:09:07,049 -   Bottom-right: (103, 312)
+2024-12-31 12:09:07,049 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-31 12:09:07,049 - Keyphrase 'INVOICE DATE' bounding box:
+2024-12-31 12:09:07,049 -   Top-left: (1054, 103)
+2024-12-31 12:09:07,049 -   Bottom-right: (1167, 120)
+2024-12-31 12:09:07,066 - No alphanumeric matching text found near 'INVOICE DATE'
+2024-12-31 12:09:07,066 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-31 12:09:07,066 - Keyphrase 'INVOICE NO' bounding box:
+2024-12-31 12:09:07,066 -   Top-left: (1057, 15)
+2024-12-31 12:09:07,066 -   Bottom-right: (1153, 28)
+2024-12-31 12:09:07,082 - No alphanumeric matching text found near 'INVOICE NO'
+2024-12-31 12:09:07,083 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-31 12:09:07,084 - Keyphrase 'INVOICE DATE' bounding box:
+2024-12-31 12:09:07,084 -   Top-left: (1054, 103)
+2024-12-31 12:09:07,084 -   Bottom-right: (1167, 120)
+2024-12-31 12:09:07,100 - No alphanumeric matching text found near 'INVOICE DATE'
+2024-12-31 12:09:07,100 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-31 12:09:07,101 - Keyphrase 'INVOICE NO' bounding box:
+2024-12-31 12:09:07,101 -   Top-left: (1057, 15)
+2024-12-31 12:09:07,101 -   Bottom-right: (1153, 28)
+2024-12-31 12:09:07,118 - No alphanumeric matching text found near 'INVOICE NO'
+2024-12-31 12:09:07,118 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-31 12:09:07,119 - Keyphrase 'INVOICE DATE' bounding box:
+2024-12-31 12:09:07,119 -   Top-left: (1054, 103)
+2024-12-31 12:09:07,119 -   Bottom-right: (1167, 120)
+2024-12-31 12:09:07,135 - No alphanumeric matching text found near 'INVOICE DATE'
+2024-12-31 12:09:07,135 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-31 12:09:07,136 - Keyphrase 'INVOICE NO' bounding box:
+2024-12-31 12:09:07,136 -   Top-left: (1057, 15)
+2024-12-31 12:09:07,136 -   Bottom-right: (1153, 28)
+2024-12-31 12:09:07,142 - 
+MATCH FOUND: '426446'
+2024-12-31 12:09:07,142 - Match bounding box:
+2024-12-31 12:09:07,142 -   Top-left: (1057, 50)
+2024-12-31 12:09:07,142 -   Bottom-right: (1142, 64)
+2024-12-31 12:09:07,142 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-31 12:09:07,143 - Keyphrase 'INVOICE DATE' bounding box:
+2024-12-31 12:09:07,143 -   Top-left: (1054, 103)
+2024-12-31 12:09:07,143 -   Bottom-right: (1167, 120)
+2024-12-31 12:09:07,149 - 
+MATCH FOUND: '02/29/24'
+2024-12-31 12:09:07,149 - Match bounding box:
+2024-12-31 12:09:07,149 -   Top-left: (1042, 144)
+2024-12-31 12:09:07,149 -   Bottom-right: (1156, 161)
+2024-12-31 12:09:07,150 - DEBUG: Automatic detection successful, copying image to sorted folder

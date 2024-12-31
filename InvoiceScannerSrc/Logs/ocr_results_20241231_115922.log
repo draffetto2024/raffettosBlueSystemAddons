@@ -1,0 +1,207 @@
+2024-12-31 11:59:22,502 - DEBUG: Processing image: ./Invoices/InvoicePictures\BLUEDO_433881.jpg
+2024-12-31 11:59:22,945 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-31 11:59:22,947 - Keyphrase 'INVOICE NO' bounding box:
+2024-12-31 11:59:22,947 -   Top-left: (1031, 0)
+2024-12-31 11:59:22,947 -   Bottom-right: (1127, 11)
+2024-12-31 11:59:22,953 - 
+MATCH FOUND: '433881'
+2024-12-31 11:59:22,953 - Match bounding box:
+2024-12-31 11:59:22,953 -   Top-left: (1037, 16)
+2024-12-31 11:59:22,953 -   Bottom-right: (1120, 32)
+2024-12-31 11:59:22,953 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,954 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,954 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,955 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,955 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,956 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,956 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,956 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,956 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,957 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,957 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,958 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,958 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,958 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,958 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,959 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,959 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,960 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,960 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,961 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,961 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,962 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,962 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,962 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,962 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,962 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,962 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,964 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,964 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,964 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,964 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,965 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,965 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,965 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,965 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,966 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,966 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,967 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,967 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:22,968 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:22,968 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-31 11:59:22,969 - Keyphrase 'INVOICE DATE' bounding box:
+2024-12-31 11:59:22,969 -   Top-left: (1029, 88)
+2024-12-31 11:59:22,969 -   Bottom-right: (1140, 99)
+2024-12-31 11:59:22,975 - 
+MATCH FOUND: '11/14/24'
+2024-12-31 11:59:22,975 - Match bounding box:
+2024-12-31 11:59:22,975 -   Top-left: (1024, 113)
+2024-12-31 11:59:22,975 -   Bottom-right: (1135, 127)
+2024-12-31 11:59:22,975 - DEBUG: Automatic detection failed
+2024-12-31 11:59:22,976 - DEBUG: Processing image: ./Invoices/InvoicePictures\EMILIO_433866.jpg
+2024-12-31 11:59:23,333 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-31 11:59:23,334 - Keyphrase 'INVOICE NO' bounding box:
+2024-12-31 11:59:23,334 -   Top-left: (1032, 0)
+2024-12-31 11:59:23,334 -   Bottom-right: (1127, 11)
+2024-12-31 11:59:23,338 - 
+MATCH FOUND: '433866'
+2024-12-31 11:59:23,338 - Match bounding box:
+2024-12-31 11:59:23,338 -   Top-left: (1039, 16)
+2024-12-31 11:59:23,338 -   Bottom-right: (1123, 30)
+2024-12-31 11:59:23,338 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,339 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,339 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,339 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,339 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,340 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,340 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,340 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,340 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,341 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,341 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,341 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,341 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,342 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,342 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,342 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,342 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,343 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,343 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,343 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,343 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,344 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,344 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,344 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,344 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,345 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,345 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,345 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,345 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,346 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,346 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,346 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,346 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,347 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,347 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,347 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,347 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,348 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,348 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,348 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,348 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-31 11:59:23,349 - Keyphrase 'INVOICE DATE' bounding box:
+2024-12-31 11:59:23,349 -   Top-left: (1029, 87)
+2024-12-31 11:59:23,349 -   Bottom-right: (1141, 99)
+2024-12-31 11:59:23,353 - 
+MATCH FOUND: '11/14/24'
+2024-12-31 11:59:23,353 - Match bounding box:
+2024-12-31 11:59:23,353 -   Top-left: (1026, 113)
+2024-12-31 11:59:23,354 -   Bottom-right: (1139, 129)
+2024-12-31 11:59:23,354 - DEBUG: Automatic detection failed
+2024-12-31 11:59:23,354 - DEBUG: Processing image: ./Invoices/InvoicePictures\MARIEL_433887.jpg
+2024-12-31 11:59:23,769 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2024-12-31 11:59:23,770 - Complete keyphrase 'INVOICE NO' not found within threshold.
+2024-12-31 11:59:23,770 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,771 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2024-12-31 11:59:23,771 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2024-12-31 11:59:23,772 - Keyphrase 'ACCOUNT NO' bounding box:
+2024-12-31 11:59:23,772 -   Top-left: (2, 273)
+2024-12-31 11:59:23,772 -   Bottom-right: (98, 284)
+2024-12-31 11:59:23,778 - 
+MATCH FOUND: 'MARIEL'
+2024-12-31 11:59:23,778 - Match bounding box:
+2024-12-31 11:59:23,778 -   Top-left: (2, 290)
+2024-12-31 11:59:23,778 -   Bottom-right: (87, 305)
+2024-12-31 11:59:23,778 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2024-12-31 11:59:23,778 - Keyphrase 'INVOICE DATE' bounding box:
+2024-12-31 11:59:23,778 -   Top-left: (1028, 83)
+2024-12-31 11:59:23,779 -   Bottom-right: (1139, 95)
+2024-12-31 11:59:23,783 - 
+MATCH FOUND: '11/14/24'
+2024-12-31 11:59:23,783 - Match bounding box:
+2024-12-31 11:59:23,783 -   Top-left: (1024, 114)
+2024-12-31 11:59:23,783 -   Bottom-right: (1135, 129)
+2024-12-31 11:59:23,784 - DEBUG: Automatic detection failed
+2024-12-31 11:59:23,784 - DEBUG: Processing image: ./Invoices/InvoicePictures\BLUEDO_433881.jpg
+2024-12-31 11:59:23,912 - STREAM b'IHDR' 16 13
+2024-12-31 11:59:23,912 - STREAM b'pHYs' 41 9
+2024-12-31 11:59:23,912 - STREAM b'IDAT' 62 738751
+2024-12-31 11:59:33,205 - DEBUG: Manual input cancelled or invalid, copying to unsorted folder
+2024-12-31 11:59:33,209 - DEBUG: Processing image: ./Invoices/InvoicePictures\EMILIO_433866.jpg
+2024-12-31 11:59:33,243 - STREAM b'IHDR' 16 13
+2024-12-31 11:59:33,243 - STREAM b'pHYs' 41 9
+2024-12-31 11:59:33,243 - STREAM b'IDAT' 62 655076
+2024-12-31 11:59:35,161 - DEBUG: Manual input cancelled or invalid, copying to unsorted folder
+2024-12-31 11:59:35,162 - DEBUG: Processing image: ./Invoices/InvoicePictures\MARIEL_433887.jpg
+2024-12-31 11:59:35,199 - STREAM b'IHDR' 16 13
+2024-12-31 11:59:35,199 - STREAM b'pHYs' 41 9
+2024-12-31 11:59:35,199 - STREAM b'IDAT' 62 848456
+2024-12-31 11:59:35,986 - DEBUG: Manual input cancelled or invalid, copying to unsorted folder
