@@ -341,6 +341,7 @@ def find_text_near_keyphrase(texts, keyphrase, position, threshold):
     keyphrase_parts = keyphrase.lower().split()
     keyphrase_texts = []
     
+    # Find the keyphrase first
     for i, text in enumerate(texts):
         if keyphrase_parts[0] in text.description.lower():
             keyphrase_texts = [text]
@@ -375,22 +376,50 @@ def find_text_near_keyphrase(texts, keyphrase, position, threshold):
     logging.info(f"  Top-left: ({keyphrase_box[0].x}, {keyphrase_box[0].y})")
     logging.info(f"  Bottom-right: ({keyphrase_box[2].x}, {keyphrase_box[2].y})")
     
+    # Store valid matches to pick the best one
+    valid_matches = []
+    
     # Now search for text near the keyphrase
     for adjacent_text in texts:
         if adjacent_text in keyphrase_texts:
             continue  # Skip the keyphrase itself
+            
         adjacent_box = adjacent_text.bounding_poly.vertices
         
+        # Skip if the bounding box is too large (likely entire document)
+        box_width = adjacent_box[2].x - adjacent_box[0].x
+        box_height = adjacent_box[2].y - adjacent_box[0].y
+        if box_width > 500 or box_height > 500:  # Adjust these thresholds as needed
+            continue
+            
         if is_in_position(keyphrase_box, adjacent_box, position, threshold):
-            # Check if the adjacent text contains alphanumeric characters
-            if re.search(r'[a-zA-Z0-9]', adjacent_text.description):
-                logging.info(f"\nMATCH FOUND: '{adjacent_text.description}'")
-                logging.info(f"Match bounding box:")
-                logging.info(f"  Top-left: ({adjacent_box[0].x}, {adjacent_box[0].y})")
-                logging.info(f"  Bottom-right: ({adjacent_box[2].x}, {adjacent_box[2].y})")
-                return adjacent_text.description
+            text_value = adjacent_text.description.strip()
+            
+            # Validate based on keyphrase type
+            is_valid = False
+            if "INVOICE NO" in keyphrase.upper():
+                is_valid = bool(re.match(r'^[A-Za-z0-9]{6}$', text_value))
+            elif "ACCOUNT NO" in keyphrase.upper():
+                is_valid = bool(re.match(r'^[A-Za-z0-9]{6}$', text_value))
+            elif "INVOICE DATE" in keyphrase.upper():
+                is_valid = bool(re.match(r'^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/\d{2}$', text_value))
+            
+            if is_valid:
+                distance = calculate_distance(keyphrase_box, adjacent_box)
+                valid_matches.append((text_value, distance, adjacent_box))
     
-    logging.info(f"No alphanumeric matching text found near '{keyphrase}'")
+    if valid_matches:
+        # Sort by distance and take the closest match
+        valid_matches.sort(key=lambda x: x[1])
+        best_match = valid_matches[0]
+        
+        logging.info(f"\nMATCH FOUND: '{best_match[0]}'")
+        logging.info(f"Match bounding box:")
+        logging.info(f"  Top-left: ({best_match[2][0].x}, {best_match[2][0].y})")
+        logging.info(f"  Bottom-right: ({best_match[2][2].x}, {best_match[2][2].y})")
+        return best_match[0]
+    
+    logging.info(f"No valid matching text found near '{keyphrase}'")
     return None
 
 def is_within_threshold(box1, box2, threshold):
@@ -546,6 +575,17 @@ def extract_month(date_str):
 
 def extract_day(date_str):
     return date_str.split('/')[1]
+
+def calculate_distance(box1, box2):
+    """Calculate the minimum distance between two bounding boxes."""
+    # Calculate center points
+    center1_x = (box1[0].x + box1[2].x) / 2
+    center1_y = (box1[0].y + box1[2].y) / 2
+    center2_x = (box2[0].x + box2[2].x) / 2
+    center2_y = (box2[0].y + box2[2].y) / 2
+    
+    # Calculate Euclidean distance
+    return ((center1_x - center2_x) ** 2 + (center1_y - center2_y) ** 2) ** 0.5
 
 def copy_image_to_sorted_folder(image_path, six_digit_number, customer_id, date):
     year, month, day = extract_year(date), extract_month(date), extract_day(date)

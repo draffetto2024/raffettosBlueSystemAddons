@@ -1,0 +1,226 @@
+2025-01-03 08:28:00,265 - DEBUG: Processing image: ./Invoices/InvoicePictures\PICCTH_435272.jpg
+2025-01-03 08:28:00,762 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-01-03 08:28:00,763 - Complete keyphrase 'INVOICE NO' not found within threshold.
+2025-01-03 08:28:00,764 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-01-03 08:28:00,764 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-01-03 08:28:00,764 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-01-03 08:28:00,765 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-01-03 08:28:00,767 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-01-03 08:28:00,767 - Keyphrase 'INVOICE NO' bounding box:
+2025-01-03 08:28:00,767 -   Top-left: (990, 7)
+2025-01-03 08:28:00,767 -   Bottom-right: (1120, 25)
+2025-01-03 08:28:00,787 - No valid matching text found near 'INVOICE NO'
+2025-01-03 08:28:00,787 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-01-03 08:28:00,788 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-01-03 08:28:00,788 -   Top-left: (1, 290)
+2025-01-03 08:28:00,788 -   Bottom-right: (98, 304)
+2025-01-03 08:28:00,808 - No valid matching text found near 'ACCOUNT NO'
+2025-01-03 08:28:00,808 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-01-03 08:28:00,809 - Keyphrase 'INVOICE DATE' bounding box:
+2025-01-03 08:28:00,809 -   Top-left: (986, 85)
+2025-01-03 08:28:00,809 -   Bottom-right: (1131, 103)
+2025-01-03 08:28:00,829 - No valid matching text found near 'INVOICE DATE'
+2025-01-03 08:28:00,829 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-01-03 08:28:00,829 - Keyphrase 'INVOICE NO' bounding box:
+2025-01-03 08:28:00,829 -   Top-left: (990, 7)
+2025-01-03 08:28:00,829 -   Bottom-right: (1120, 25)
+2025-01-03 08:28:00,849 - No valid matching text found near 'INVOICE NO'
+2025-01-03 08:28:00,849 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-01-03 08:28:00,850 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-01-03 08:28:00,850 -   Top-left: (1, 290)
+2025-01-03 08:28:00,850 -   Bottom-right: (98, 304)
+2025-01-03 08:28:00,870 - No valid matching text found near 'ACCOUNT NO'
+2025-01-03 08:28:00,870 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-01-03 08:28:00,871 - Keyphrase 'INVOICE DATE' bounding box:
+2025-01-03 08:28:00,871 -   Top-left: (986, 85)
+2025-01-03 08:28:00,871 -   Bottom-right: (1131, 103)
+2025-01-03 08:28:00,891 - No valid matching text found near 'INVOICE DATE'
+2025-01-03 08:28:00,891 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-01-03 08:28:00,892 - Keyphrase 'INVOICE NO' bounding box:
+2025-01-03 08:28:00,892 -   Top-left: (990, 7)
+2025-01-03 08:28:00,892 -   Bottom-right: (1120, 25)
+2025-01-03 08:28:00,912 - No valid matching text found near 'INVOICE NO'
+2025-01-03 08:28:00,912 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-01-03 08:28:00,913 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-01-03 08:28:00,913 -   Top-left: (1, 290)
+2025-01-03 08:28:00,913 -   Bottom-right: (98, 304)
+2025-01-03 08:28:00,933 - No valid matching text found near 'ACCOUNT NO'
+2025-01-03 08:28:00,933 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-01-03 08:28:00,933 - Keyphrase 'INVOICE DATE' bounding box:
+2025-01-03 08:28:00,933 -   Top-left: (986, 85)
+2025-01-03 08:28:00,933 -   Bottom-right: (1131, 103)
+2025-01-03 08:28:00,953 - No valid matching text found near 'INVOICE DATE'
+2025-01-03 08:28:00,953 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-01-03 08:28:00,954 - Keyphrase 'INVOICE NO' bounding box:
+2025-01-03 08:28:00,954 -   Top-left: (990, 7)
+2025-01-03 08:28:00,954 -   Bottom-right: (1120, 25)
+2025-01-03 08:28:00,974 - No valid matching text found near 'INVOICE NO'
+2025-01-03 08:28:00,974 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-01-03 08:28:00,974 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-01-03 08:28:00,974 -   Top-left: (1, 290)
+2025-01-03 08:28:00,974 -   Bottom-right: (98, 304)
+2025-01-03 08:28:00,994 - No valid matching text found near 'ACCOUNT NO'
+2025-01-03 08:28:00,994 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-01-03 08:28:00,995 - Keyphrase 'INVOICE DATE' bounding box:
+2025-01-03 08:28:00,995 -   Top-left: (986, 85)
+2025-01-03 08:28:00,995 -   Bottom-right: (1131, 103)
+2025-01-03 08:28:01,015 - 
+MATCH FOUND: '12/31/24'
+2025-01-03 08:28:01,015 - Match bounding box:
+2025-01-03 08:28:01,015 -   Top-left: (1022, 128)
+2025-01-03 08:28:01,016 -   Bottom-right: (1132, 145)
+2025-01-03 08:28:01,016 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-01-03 08:28:01,016 - Keyphrase 'INVOICE NO' bounding box:
+2025-01-03 08:28:01,016 -   Top-left: (990, 7)
+2025-01-03 08:28:01,016 -   Bottom-right: (1120, 25)
+2025-01-03 08:28:01,036 - No valid matching text found near 'INVOICE NO'
+2025-01-03 08:28:01,036 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-01-03 08:28:01,037 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-01-03 08:28:01,037 -   Top-left: (1, 290)
+2025-01-03 08:28:01,037 -   Bottom-right: (98, 304)
+2025-01-03 08:28:01,057 - 
+MATCH FOUND: 'PICCTH'
+2025-01-03 08:28:01,057 - Match bounding box:
+2025-01-03 08:28:01,057 -   Top-left: (18, 332)
+2025-01-03 08:28:01,057 -   Bottom-right: (100, 346)
+2025-01-03 08:28:01,057 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-01-03 08:28:01,058 - Keyphrase 'INVOICE NO' bounding box:
+2025-01-03 08:28:01,058 -   Top-left: (990, 7)
+2025-01-03 08:28:01,058 -   Bottom-right: (1120, 25)
+2025-01-03 08:28:01,079 - 
+MATCH FOUND: '435272'
+2025-01-03 08:28:01,079 - Match bounding box:
+2025-01-03 08:28:01,079 -   Top-left: (1019, 61)
+2025-01-03 08:28:01,079 -   Bottom-right: (1103, 75)
+2025-01-03 08:28:01,081 - DEBUG: Automatic detection successful, copying image to sorted folder
+2025-01-03 08:28:01,083 - DEBUG: Processing image: ./Invoices/InvoicePictures\THUMAN_435267.jpg
+2025-01-03 08:28:01,563 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-01-03 08:28:01,564 - Complete keyphrase 'INVOICE NO' not found within threshold.
+2025-01-03 08:28:01,564 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-01-03 08:28:01,564 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-01-03 08:28:01,564 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-01-03 08:28:01,565 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-01-03 08:28:01,565 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-01-03 08:28:01,566 - Keyphrase 'INVOICE NO' bounding box:
+2025-01-03 08:28:01,566 -   Top-left: (989, 11)
+2025-01-03 08:28:01,566 -   Bottom-right: (1117, 27)
+2025-01-03 08:28:01,584 - No valid matching text found near 'INVOICE NO'
+2025-01-03 08:28:01,584 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-01-03 08:28:01,584 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-01-03 08:28:01,585 -   Top-left: (0, 288)
+2025-01-03 08:28:01,585 -   Bottom-right: (96, 301)
+2025-01-03 08:28:01,602 - No valid matching text found near 'ACCOUNT NO'
+2025-01-03 08:28:01,602 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-01-03 08:28:01,603 - Keyphrase 'INVOICE DATE' bounding box:
+2025-01-03 08:28:01,603 -   Top-left: (985, 88)
+2025-01-03 08:28:01,603 -   Bottom-right: (1129, 105)
+2025-01-03 08:28:01,621 - No valid matching text found near 'INVOICE DATE'
+2025-01-03 08:28:01,621 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-01-03 08:28:01,621 - Keyphrase 'INVOICE NO' bounding box:
+2025-01-03 08:28:01,621 -   Top-left: (989, 11)
+2025-01-03 08:28:01,621 -   Bottom-right: (1117, 27)
+2025-01-03 08:28:01,639 - No valid matching text found near 'INVOICE NO'
+2025-01-03 08:28:01,639 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-01-03 08:28:01,640 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-01-03 08:28:01,640 -   Top-left: (0, 288)
+2025-01-03 08:28:01,640 -   Bottom-right: (96, 301)
+2025-01-03 08:28:01,657 - No valid matching text found near 'ACCOUNT NO'
+2025-01-03 08:28:01,657 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-01-03 08:28:01,658 - Keyphrase 'INVOICE DATE' bounding box:
+2025-01-03 08:28:01,658 -   Top-left: (985, 88)
+2025-01-03 08:28:01,658 -   Bottom-right: (1129, 105)
+2025-01-03 08:28:01,676 - No valid matching text found near 'INVOICE DATE'
+2025-01-03 08:28:01,677 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-01-03 08:28:01,677 - Keyphrase 'INVOICE NO' bounding box:
+2025-01-03 08:28:01,677 -   Top-left: (989, 11)
+2025-01-03 08:28:01,677 -   Bottom-right: (1117, 27)
+2025-01-03 08:28:01,695 - No valid matching text found near 'INVOICE NO'
+2025-01-03 08:28:01,695 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-01-03 08:28:01,695 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-01-03 08:28:01,695 -   Top-left: (0, 288)
+2025-01-03 08:28:01,695 -   Bottom-right: (96, 301)
+2025-01-03 08:28:01,713 - No valid matching text found near 'ACCOUNT NO'
+2025-01-03 08:28:01,713 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-01-03 08:28:01,713 - Keyphrase 'INVOICE DATE' bounding box:
+2025-01-03 08:28:01,714 -   Top-left: (985, 88)
+2025-01-03 08:28:01,714 -   Bottom-right: (1129, 105)
+2025-01-03 08:28:01,731 - No valid matching text found near 'INVOICE DATE'
+2025-01-03 08:28:01,731 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-01-03 08:28:01,732 - Keyphrase 'INVOICE NO' bounding box:
+2025-01-03 08:28:01,732 -   Top-left: (989, 11)
+2025-01-03 08:28:01,732 -   Bottom-right: (1117, 27)
+2025-01-03 08:28:01,750 - No valid matching text found near 'INVOICE NO'
+2025-01-03 08:28:01,750 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-01-03 08:28:01,750 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-01-03 08:28:01,750 -   Top-left: (0, 288)
+2025-01-03 08:28:01,750 -   Bottom-right: (96, 301)
+2025-01-03 08:28:01,768 - No valid matching text found near 'ACCOUNT NO'
+2025-01-03 08:28:01,768 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-01-03 08:28:01,768 - Keyphrase 'INVOICE DATE' bounding box:
+2025-01-03 08:28:01,768 -   Top-left: (985, 88)
+2025-01-03 08:28:01,768 -   Bottom-right: (1129, 105)
+2025-01-03 08:28:01,786 - 
+MATCH FOUND: '12/31/24'
+2025-01-03 08:28:01,786 - Match bounding box:
+2025-01-03 08:28:01,786 -   Top-left: (1023, 131)
+2025-01-03 08:28:01,786 -   Bottom-right: (1132, 148)
+2025-01-03 08:28:01,786 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-01-03 08:28:01,787 - Keyphrase 'INVOICE NO' bounding box:
+2025-01-03 08:28:01,787 -   Top-left: (989, 11)
+2025-01-03 08:28:01,787 -   Bottom-right: (1117, 27)
+2025-01-03 08:28:01,804 - No valid matching text found near 'INVOICE NO'
+2025-01-03 08:28:01,804 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-01-03 08:28:01,805 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-01-03 08:28:01,805 -   Top-left: (0, 288)
+2025-01-03 08:28:01,805 -   Bottom-right: (96, 301)
+2025-01-03 08:28:01,822 - 
+MATCH FOUND: 'THUMAN'
+2025-01-03 08:28:01,823 - Match bounding box:
+2025-01-03 08:28:01,823 -   Top-left: (18, 329)
+2025-01-03 08:28:01,823 -   Bottom-right: (100, 343)
+2025-01-03 08:28:01,823 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-01-03 08:28:01,824 - Keyphrase 'INVOICE NO' bounding box:
+2025-01-03 08:28:01,824 -   Top-left: (989, 11)
+2025-01-03 08:28:01,824 -   Bottom-right: (1117, 27)
+2025-01-03 08:28:01,841 - 
+MATCH FOUND: '435267'
+2025-01-03 08:28:01,841 - Match bounding box:
+2025-01-03 08:28:01,841 -   Top-left: (1019, 63)
+2025-01-03 08:28:01,841 -   Bottom-right: (1104, 78)
+2025-01-03 08:28:01,843 - DEBUG: Automatic detection successful, copying image to sorted folder
