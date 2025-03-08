@@ -17,6 +17,10 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 from collections import defaultdict
 
+import numpy as np
+import pandas as pd
+import sqlite3
+
 
 
 
@@ -702,6 +706,7 @@ def process_invoice_image(image_path, manual_mode=False):
         if all(user_input.values()):
             logging.info(f"DEBUG: Manual input successful, copying image to sorted folder")
             print(f"Processing manual input: {user_input}")
+
             copy_image_to_sorted_folder(
                 image_path,
                 user_input['invoice_num'],
@@ -741,6 +746,10 @@ def process_invoice_image(image_path, manual_mode=False):
             customer_num and is_six_alphanumeric(customer_num) and
             date_num and is_date_format(date_num)):
             logging.info(f"DEBUG: Automatic detection successful, copying image to sorted folder")
+            
+            # Add this line to extract and display the invoice data
+            process_invoice_data_extraction(image_path, invoice_num, customer_num, date_num)
+            
             copy_image_to_sorted_folder(image_path, invoice_num, customer_num, date_num)
             processed_successfully = True
         else:
@@ -910,13 +919,830 @@ def remove_customer_email(excel_file, customer_id):
     df.to_excel(excel_file, index=False, header=False)
     print(f"Removed {customer_id} from the list.")
 
-if __name__ == "__main__":
-    print("DEBUG: Starting invoice processing")
-    process_invoices(invoice_folder)
-    check_inactive_customers()  # Add this line
 
-    print("Program execution completed.")
 
-    input("Press Enter to exit...")
+#********************************************************************************************#********************************************************************************************
+#********************************************************************************************#********************************************************************************************
+#********************************************************************************************#********************************************************************************************
+
+import cv2
+
+def print_tabular_data(texts):
+    """
+    Print the OCR data in a tabular format to visualize the detected grid.
+    This is a simplified visualization that doesn't require drawing on the image.
+    """
+    # Skip the first text annotation which is the entire text
+    texts = texts[1:] if len(texts) > 1 else texts
     
-    print("DEBUG: Finished invoice processing")
+    print("\n===== DETECTED TEXT ELEMENTS IN TABULAR FORM =====")
+    
+    # Create a dictionary to store text by row position
+    rows = defaultdict(list)
+    row_threshold = 10  # Pixels within which elements are considered the same row
+    
+    for text in texts:
+        content = text.description.strip()
+        if not content:
+            continue
+            
+        box = text.bounding_poly.vertices
+        center_y = (box[0].y + box[2].y) / 2
+        center_x = (box[0].x + box[2].x) / 2
+        
+        # Find or create appropriate row
+        matched_row = None
+        for row_y in rows.keys():
+            if abs(center_y - row_y) < row_threshold:
+                matched_row = row_y
+                break
+                
+        if matched_row is None:
+            matched_row = center_y
+            
+        rows[matched_row].append((content, center_x))
+    
+    # Sort rows by Y position (top to bottom)
+    sorted_rows = sorted(rows.items(), key=lambda x: x[0])
+    
+    # Print each row
+    for i, (y, elements) in enumerate(sorted_rows):
+        # Sort elements by X position (left to right)
+        sorted_elements = sorted(elements, key=lambda x: x[1])
+        elements_text = [f"{text} ({x:.1f})" for text, x in sorted_elements]
+        print(f"Row {i+1} (y={y:.1f}): {' | '.join(elements_text)}")
+
+def extract_invoice_items(texts):
+    """
+    Extract line items from Raffetto's invoices which have a consistent format.
+    This function uses hardcoded positions based on the known invoice layout.
+    """
+    print("\nDEBUG: Starting line item extraction for Raffetto's invoice format...")
+    
+    # Hardcoded column positions based on Raffetto's invoice layout
+    column_positions = {
+        "item_no": 65.0,      # Position of item numbers like 01LASW, P1FETT
+        "qty_ordered": 155.0, # Position of ordered quantities
+        "qty_shipped": 215.0, # Position of shipped quantities
+        "unit": 290.0,        # Position of unit (CS)
+        "description": 570.0, # Position of item descriptions
+        "case_pack": 910.0,   # Position of case pack details
+        "unit_price": 1020.0, # Position of unit prices
+        "extension": 1135.0   # Position of extension (total) prices
+    }
+    
+    # Hardcoded y-coordinate range for the header row
+    header_y_range = (340.0, 370.0)
+    
+    # Hardcoded y-coordinate range for the data rows (typical line items area)
+    data_y_min = 380.0
+    data_y_max = 900.0  # Set this to exclude footer content
+    
+    print(f"DEBUG: Using hardcoded column positions: {column_positions}")
+    print(f"DEBUG: Using hardcoded data row range: y={data_y_min} to y={data_y_max}")
+    
+    # Group text elements by their y-coordinate to form rows
+    rows = defaultdict(list)
+    row_threshold = 20  # Larger threshold to group related elements
+    
+    for text in texts[1:]:  # Skip the first text which is entire document text
+        content = text.description.strip()
+        if not content:
+            continue
+            
+        box = text.bounding_poly.vertices
+        center_y = (box[0].y + box[2].y) / 2
+        center_x = (box[0].x + box[2].x) / 2
+        
+        # Only consider elements in the data rows area
+        if data_y_min <= center_y <= data_y_max:
+            # Find or create appropriate row
+            matched_row = None
+            for row_y in rows.keys():
+                if abs(center_y - row_y) < row_threshold:
+                    matched_row = row_y
+                    break
+                    
+            if matched_row is None:
+                matched_row = center_y
+                
+            rows[matched_row].append((content, center_x))
+    
+    # Print the rows we found for debugging
+    print(f"\nDEBUG: Found {len(rows)} potential data rows in the expected region")
+    for row_idx, (row_y, elements) in enumerate(sorted(rows.items(), key=lambda x: x[0])):
+        print(f"DEBUG: Row {row_idx+1} (y={row_y:.1f}): {[e[0] for e in elements]}")
+    
+    # Process rows into line items
+    line_items = []
+    column_threshold = 100  # Wider threshold for matching text to columns
+    
+    for row_y, elements in sorted(rows.items(), key=lambda x: x[0]):
+        # Skip rows with too few elements (likely not actual line items)
+        if len(elements) < 3:
+            print(f"DEBUG: Skipping row at y={row_y:.1f} - only {len(elements)} elements")
+            continue
+        
+        # Initialize item with empty values
+        item = {
+            "item_no": "",
+            "qty_ordered": "",
+            "qty_shipped": "",
+            "unit": "",
+            "description": "",
+            "case_pack": "",
+            "unit_price": "",
+            "extension": ""
+        }
+        
+        # Store elements for each column separately for better processing
+        description_elements = []
+        
+        # Assign elements to columns based on X position
+        for content, x_pos in elements:
+            # Find the closest column
+            best_match = None
+            best_distance = float('inf')
+            
+            for col, col_x in column_positions.items():
+                distance = abs(x_pos - col_x)
+                if distance < best_distance and distance < column_threshold:
+                    best_distance = distance
+                    best_match = col
+            
+            if best_match:
+                # Special handling for description column - collect all elements
+                if best_match == "description":
+                    description_elements.append(content)
+                # For other columns, just set the value
+                else:
+                    item[best_match] = content
+        
+        # Combine all description elements into a single string
+        if description_elements:
+            item["description"] = " ".join(description_elements)
+        
+        # Clean up numeric fields
+        for field in ["qty_ordered", "qty_shipped", "unit_price", "extension"]:
+            if item[field]:
+                # Remove any non-numeric characters except decimal points
+                item[field] = re.sub(r'[^\d.]', '', item[field])
+        
+        # Check if we have meaningful data
+        has_item_code = bool(item["item_no"])
+        has_description = bool(item["description"])
+        has_price = bool(item["unit_price"] or item["extension"])
+        
+        # Only add items that have at least an item code, description, or price
+        if has_item_code or has_description or has_price:
+            print(f"DEBUG: Found valid line item: {item}")
+            line_items.append(item)
+        else:
+            print(f"DEBUG: Discarded row - no meaningful data")
+    
+    print(f"DEBUG: Successfully extracted {len(line_items)} line items")
+    return line_items
+
+def create_invoice_database():
+    """Create SQLite database for invoice data with proper error handling."""
+    print("DEBUG: Creating/checking invoice database...")
+    
+    try:
+        # Connect to database (will create it if it doesn't exist)
+        conn = sqlite3.connect('invoice_database.db')
+        cursor = conn.cursor()
+        
+        # Check if tables already exist
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='invoices'")
+        invoices_exists = cursor.fetchone() is not None
+        
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_items'")
+        items_exists = cursor.fetchone() is not None
+        
+        # For invoices table
+        if invoices_exists:
+            print("DEBUG: 'invoices' table already exists, checking columns...")
+            cursor.execute("PRAGMA table_info(invoices)")
+            columns = [row[1] for row in cursor.fetchall()]
+            print(f"DEBUG: Existing 'invoices' columns: {columns}")
+            
+            # If table exists but missing expected columns, drop and recreate
+            expected_columns = ['invoice_id', 'customer_id', 'invoice_date', 'total_amount', 'shipping_amount', 'processed_date']
+            if not all(col in columns for col in expected_columns):
+                print("DEBUG: 'invoices' table missing required columns, recreating...")
+                cursor.execute("DROP TABLE invoices")
+                invoices_exists = False
+        
+        if not invoices_exists:
+            print("DEBUG: Creating 'invoices' table...")
+            cursor.execute('''
+            CREATE TABLE invoices (
+                invoice_id TEXT PRIMARY KEY,
+                customer_id TEXT,
+                invoice_date TEXT,
+                total_amount REAL,
+                shipping_amount REAL,
+                processed_date TEXT
+            )
+            ''')
+            print("DEBUG: 'invoices' table created successfully")
+        
+        # For invoice_items table
+        if items_exists:
+            print("DEBUG: 'invoice_items' table already exists, checking columns...")
+            cursor.execute("PRAGMA table_info(invoice_items)")
+            columns = [row[1] for row in cursor.fetchall()]
+            print(f"DEBUG: Existing 'invoice_items' columns: {columns}")
+            
+            # If table exists but missing expected columns, drop and recreate
+            expected_columns = ['id', 'invoice_id', 'item_no', 'qty_ordered', 'qty_shipped', 'unit', 'description', 'case_pack', 'unit_price', 'extension']
+            if not all(col in columns for col in expected_columns):
+                print("DEBUG: 'invoice_items' table missing required columns, recreating...")
+                cursor.execute("DROP TABLE invoice_items")
+                items_exists = False
+        
+        if not items_exists:
+            print("DEBUG: Creating 'invoice_items' table...")
+            cursor.execute('''
+            CREATE TABLE invoice_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                invoice_id TEXT,
+                item_no TEXT,
+                qty_ordered INTEGER,
+                qty_shipped INTEGER,
+                unit TEXT,
+                description TEXT,
+                case_pack TEXT,
+                unit_price REAL,
+                extension REAL,
+                FOREIGN KEY (invoice_id) REFERENCES invoices (invoice_id)
+            )
+            ''')
+            print("DEBUG: 'invoice_items' table created successfully")
+        
+        conn.commit()
+        print("DEBUG: Database setup complete")
+        return True
+        
+    except sqlite3.Error as e:
+        print(f"DEBUG: SQLite error during database creation: {e}")
+        return False
+        
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+def save_invoice_to_database(invoice_num, customer_id, date, line_items):
+    """Save invoice and line items to SQLite database with better error handling."""
+    print("\nDEBUG: Starting database save operation...")
+    
+    if not invoice_num or not customer_id or not date or not line_items:
+        print("ERROR: Missing required invoice data, not saving to database.")
+        return False
+    
+    # Create database if it doesn't exist or needs updating
+    if not create_invoice_database():
+        print("ERROR: Failed to create or verify database, cannot save data.")
+        return False
+    
+    try:
+        # Connect to database
+        conn = sqlite3.connect('invoice_database.db')
+        cursor = conn.cursor()
+        
+        # Calculate total amount from line items
+        total_amount = 0
+        for item in line_items:
+            if item["extension"]:
+                try:
+                    total_amount += float(item["extension"])
+                except ValueError:
+                    print(f"DEBUG: Invalid extension value: '{item['extension']}', skipping in total")
+        
+        print(f"DEBUG: Calculated total amount: ${total_amount:.2f}")
+        
+        # Check if invoice already exists
+        cursor.execute("SELECT invoice_id FROM invoices WHERE invoice_id = ?", (invoice_num,))
+        if cursor.fetchone():
+            print(f"INFO: Invoice {invoice_num} already exists in database, skipping.")
+            conn.close()
+            return False
+        
+        # Insert invoice record
+        print(f"DEBUG: Adding invoice metadata to database...")
+        cursor.execute(
+            "INSERT INTO invoices (invoice_id, customer_id, invoice_date, total_amount, processed_date) VALUES (?, ?, ?, ?, ?)",
+            (invoice_num, customer_id, date, total_amount, datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        )
+        
+        # Insert line items
+        print(f"DEBUG: Adding {len(line_items)} line items to database...")
+        for i, item in enumerate(line_items, 1):
+            # Print progress for large invoices
+            if i % 5 == 0 or i == len(line_items):
+                print(f"  DEBUG: Progress: {i}/{len(line_items)} items processed")
+                
+            try:
+                # Convert values to appropriate types
+                qty_ordered = int(float(item["qty_ordered"])) if item["qty_ordered"] else None
+                qty_shipped = int(float(item["qty_shipped"])) if item["qty_shipped"] else None
+                unit_price = float(item["unit_price"]) if item["unit_price"] else None
+                extension = float(item["extension"]) if item["extension"] else None
+                
+                cursor.execute(
+                    """INSERT INTO invoice_items 
+                       (invoice_id, item_no, qty_ordered, qty_shipped, unit, description, case_pack, unit_price, extension)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        invoice_num,
+                        item["item_no"],
+                        qty_ordered,
+                        qty_shipped,
+                        item["unit"],
+                        item["description"],
+                        item["case_pack"],
+                        unit_price,
+                        extension
+                    )
+                )
+                print(f"  DEBUG: Added line item {i}: {item['item_no']} - {item['description']}")
+                
+            except (ValueError, TypeError) as e:
+                print(f"  WARNING: Error converting values for line item {i}: {e}")
+                # Still try to insert with None values
+                cursor.execute(
+                    """INSERT INTO invoice_items 
+                       (invoice_id, item_no, description, case_pack)
+                       VALUES (?, ?, ?, ?)""",
+                    (
+                        invoice_num,
+                        item["item_no"],
+                        item["description"],
+                        item["case_pack"]
+                    )
+                )
+                print(f"  DEBUG: Added partial line item {i} with basic info only")
+        
+        conn.commit()
+        print(f"SUCCESS: Invoice {invoice_num} with {len(line_items)} line items saved to database.")
+        return True
+        
+    except sqlite3.Error as e:
+        if 'conn' in locals():
+            conn.rollback()
+        print(f"ERROR: Database error during save operation: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+        print(f"ERROR: Unexpected error during save operation: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+def process_invoice_data_extraction(image_path, invoice_num, customer_id, date):
+    """
+    Process an invoice image to extract line items and save them to the database.
+    This function should be called after the invoice metadata is extracted.
+    
+    Parameters:
+    - image_path: Path to the invoice image
+    - invoice_num: The invoice number (already extracted)
+    - customer_id: The customer ID (already extracted)
+    - date: The invoice date (already extracted)
+    
+    Returns:
+    - True if data was successfully extracted and saved, False otherwise
+    """
+    try:
+        print("\n" + "="*80)
+        print(f"PROCESSING INVOICE DATA: #{invoice_num} | Customer: {customer_id} | Date: {date}")
+        print("="*80)
+        
+        # Read the image
+        image = cv2.imread(image_path)
+        if image is None:
+            print(f"Failed to read image: {image_path}")
+            return False
+        
+        # Extract text annotations using Google Vision API
+        texts = extract_text_and_positions(image)
+        if not texts:
+            print(f"No text extracted from image: {image_path}")
+            return False
+        
+        # Print tabular representation of the data for debugging (optional)
+        # print_tabular_data(texts)
+        
+        # Extract line items
+        line_items = extract_invoice_items(texts)
+        
+        # Prepare data for display
+        if line_items:
+            # First, print the invoice metadata
+            print("\n" + "-"*80)
+            print("INVOICE METADATA:")
+            print(f"Invoice Number: {invoice_num}")
+            print(f"Customer ID:    {customer_id}")
+            print(f"Invoice Date:   {date}")
+            print("-"*80)
+            
+            # Create a DataFrame for better display
+            df = pd.DataFrame(line_items)
+            
+            # Reorder columns for better readability
+            columns_order = ["item_no", "description", "qty_ordered", "qty_shipped", 
+                           "unit", "case_pack", "unit_price", "extension"]
+            
+            # Only include columns that exist
+            display_columns = [col for col in columns_order if col in df.columns]
+            df = df[display_columns]
+            
+            # Rename columns for display
+            column_names = {
+                "item_no": "Item #",
+                "description": "Description",
+                "qty_ordered": "Qty Ord",
+                "qty_shipped": "Qty Ship",
+                "unit": "Unit",
+                "case_pack": "Case Pack",
+                "unit_price": "Unit Price",
+                "extension": "Total"
+            }
+            df = df.rename(columns={k: column_names[k] for k in display_columns})
+            
+            # Format numeric columns
+            for col in ["Qty Ord", "Qty Ship"]:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+            
+            for col in ["Unit Price", "Total"]:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                    df[col] = df[col].apply(lambda x: f"${x:.2f}")
+            
+            # Print the extracted items in a nicely formatted table
+            print("\nEXTRACTED LINE ITEMS:")
+            print("-"*80)
+            print(df.to_string(index=False))
+            print("-"*80)
+            
+            # Calculate and display the total
+            try:
+                total = sum(float(item['extension']) for item in line_items if item['extension'])
+                shipping = 0  # You may extract this separately if available
+                
+                print(f"\nSUMMARY:")
+                print(f"{'Items Total:':<15} ${total:.2f}")
+                print(f"{'Shipping:':<15} ${shipping:.2f}")
+                print(f"{'Grand Total:':<15} ${total + shipping:.2f}")
+                print("-"*80)
+            except (ValueError, TypeError):
+                print("Could not calculate total - invalid numeric data")
+        else:
+            print("\nNo line items extracted from invoice")
+            return False
+        
+        # Save to database
+        print("\nSaving invoice data to database...")
+        success = save_invoice_to_database(invoice_num, customer_id, date, line_items)
+        
+        if success:
+            print(f"Successfully saved invoice #{invoice_num} to database")
+        else:
+            print(f"Failed to save invoice #{invoice_num} to database")
+            
+        print("="*80 + "\n")
+        return success
+        
+    except Exception as e:
+        print(f"Error processing invoice data: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def query_customer_purchases(customer_id=None, start_date=None, end_date=None):
+    """
+    Query purchases by customer with optional date range filtering.
+    Returns a pandas DataFrame with the results.
+    """
+    conn = sqlite3.connect('invoice_database.db')
+    
+    query = """
+    SELECT i.invoice_id, i.customer_id, i.invoice_date, i.total_amount,
+           COUNT(it.id) AS item_count
+    FROM invoices i
+    LEFT JOIN invoice_items it ON i.invoice_id = it.invoice_id
+    """
+    
+    conditions = []
+    params = []
+    
+    if customer_id:
+        conditions.append("i.customer_id = ?")
+        params.append(customer_id)
+    
+    if start_date:
+        conditions.append("i.invoice_date >= ?")
+        params.append(start_date)
+    
+    if end_date:
+        conditions.append("i.invoice_date <= ?")
+        params.append(end_date)
+    
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    
+    query += " GROUP BY i.invoice_id ORDER BY i.invoice_date DESC"
+    
+    df = pd.read_sql_query(query, conn, params=params)
+    conn.close()
+    
+    return df
+
+def query_product_sales(item_no=None, description=None, start_date=None, end_date=None):
+    """
+    Query sales data for specific products.
+    You can search by item_no, description (partial match), or date range.
+    Returns a pandas DataFrame with the results.
+    """
+    conn = sqlite3.connect('invoice_database.db')
+    
+    query = """
+    SELECT it.item_no, it.description, it.case_pack, 
+           SUM(it.qty_shipped) AS total_quantity,
+           AVG(it.unit_price) AS avg_price,
+           SUM(it.extension) AS total_sales,
+           COUNT(DISTINCT i.invoice_id) AS order_count,
+           COUNT(DISTINCT i.customer_id) AS customer_count
+    FROM invoice_items it
+    JOIN invoices i ON it.invoice_id = i.invoice_id
+    """
+    
+    conditions = []
+    params = []
+    
+    if item_no:
+        conditions.append("it.item_no = ?")
+        params.append(item_no)
+    
+    if description:
+        conditions.append("it.description LIKE ?")
+        params.append(f"%{description}%")
+    
+    if start_date:
+        conditions.append("i.invoice_date >= ?")
+        params.append(start_date)
+    
+    if end_date:
+        conditions.append("i.invoice_date <= ?")
+        params.append(end_date)
+    
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    
+    query += " GROUP BY it.item_no ORDER BY total_sales DESC"
+    
+    df = pd.read_sql_query(query, conn, params=params)
+    conn.close()
+    
+    return df
+
+def query_sales_by_day_of_week():
+    """
+    Analyze sales patterns by day of week.
+    Returns a pandas DataFrame with day of week and sales metrics.
+    """
+    conn = sqlite3.connect('invoice_database.db')
+    
+    # SQLite has a strftime function to extract day of week (0=Sunday, 6=Saturday)
+    query = """
+    SELECT 
+        CASE 
+            WHEN strftime('%w', i.invoice_date) = '0' THEN 'Sunday'
+            WHEN strftime('%w', i.invoice_date) = '1' THEN 'Monday'
+            WHEN strftime('%w', i.invoice_date) = '2' THEN 'Tuesday'
+            WHEN strftime('%w', i.invoice_date) = '3' THEN 'Wednesday'
+            WHEN strftime('%w', i.invoice_date) = '4' THEN 'Thursday'
+            WHEN strftime('%w', i.invoice_date) = '5' THEN 'Friday'
+            WHEN strftime('%w', i.invoice_date) = '6' THEN 'Saturday'
+        END AS day_of_week,
+        COUNT(DISTINCT i.invoice_id) AS invoice_count,
+        SUM(i.total_amount) AS total_sales,
+        AVG(i.total_amount) AS avg_invoice_amount,
+        COUNT(DISTINCT i.customer_id) AS unique_customers
+    FROM invoices i
+    GROUP BY day_of_week
+    ORDER BY CASE day_of_week
+        WHEN 'Sunday' THEN 1
+        WHEN 'Monday' THEN 2
+        WHEN 'Tuesday' THEN 3
+        WHEN 'Wednesday' THEN 4
+        WHEN 'Thursday' THEN 5
+        WHEN 'Friday' THEN 6
+        WHEN 'Saturday' THEN 7
+    END
+    """
+    
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    
+    return df
+
+def generate_customer_activity_report():
+    """
+    Generate a report of customer purchasing activity.
+    Returns a pandas DataFrame sorted by total purchase amount.
+    """
+    conn = sqlite3.connect('invoice_database.db')
+    
+    query = """
+    SELECT 
+        i.customer_id,
+        COUNT(DISTINCT i.invoice_id) AS invoice_count,
+        MIN(i.invoice_date) AS first_order_date,
+        MAX(i.invoice_date) AS last_order_date,
+        SUM(i.total_amount) AS total_spent,
+        AVG(i.total_amount) AS avg_order_value,
+        COUNT(DISTINCT it.item_no) AS unique_products_ordered
+    FROM invoices i
+    LEFT JOIN invoice_items it ON i.invoice_id = it.invoice_id
+    GROUP BY i.customer_id
+    ORDER BY total_spent DESC
+    """
+    
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    
+    return df
+
+def test_invoice_extraction(image_path):
+    """Test function for extracting data from a single invoice."""
+    print(f"Testing invoice extraction on: {image_path}")
+    
+    # Read the image
+    image = cv2.imread(image_path)
+    texts = extract_text_and_positions(image)
+    
+    # Print tabular form
+    print_tabular_data(texts)
+    
+    # Extract metadata
+    invoice_num = None
+    customer_id = None
+    invoice_date = None
+    
+    for threshold in range(5, 501, 5):
+        if not invoice_num:
+            invoice_num = find_text_near_keyphrase(texts, "INVOICE NO", "below", threshold)
+        if not customer_id:
+            customer_id = find_text_near_keyphrase(texts, "ACCOUNT NO", "below", threshold)
+        if not invoice_date:
+            invoice_date = find_text_near_keyphrase(texts, "INVOICE DATE", "below", threshold)
+        
+        if invoice_num and customer_id and invoice_date:
+            break
+    
+    print(f"\nExtracted Metadata:")
+    print(f"Invoice Number: {invoice_num}")
+    print(f"Customer ID: {customer_id}")
+    print(f"Invoice Date: {invoice_date}")
+    
+    # Extract line items
+    line_items = extract_invoice_items(texts)
+    
+    # Display as DataFrame
+    if line_items:
+        df = pd.DataFrame(line_items)
+        print("\nExtracted Line Items:")
+        print(df)
+        
+        # Save to CSV for review
+        df.to_csv("test_extraction.csv", index=False)
+        print("Line items saved to test_extraction.csv")
+        
+        # Calculate total
+        try:
+            total = sum(float(item['extension']) for item in line_items if item['extension'])
+            print(f"\nTotal Invoice Amount: ${total:.2f}")
+        except:
+            print("Could not calculate total")
+    else:
+        print("No line items extracted")
+    
+    # If you have valid metadata, try saving to database
+    if invoice_num and customer_id and invoice_date and line_items:
+        save_invoice_to_database(invoice_num, customer_id, invoice_date, line_items)
+
+# Add this at the end of your file, replacing or enhancing your existing main block
+
+if __name__ == "__main__":
+    print("\n" + "="*80)
+    print("INVOICE PROCESSING AND DATA EXTRACTION SYSTEM")
+    print("="*80)
+    
+    # Validate paths
+    if not validate_paths():
+        print("Exiting due to invalid paths.")
+        exit(1)
+    
+    # Display menu
+    print("\nSelect an option:")
+    print("1. Process all invoices in folder")
+    print("2. Test OCR on a single invoice")
+    print("3. Generate reports from database")
+    print("4. Exit")
+    
+    choice = input("\nEnter your choice (1-4): ")
+    
+    if choice == "1":
+        # Process all invoices in the folder
+        print("\nProcessing all invoices in folder:", invoice_folder)
+        process_invoices(invoice_folder)
+        check_inactive_customers()
+        
+    elif choice == "2":
+        # Test OCR on a single invoice
+        test_file = input("\nEnter path to invoice image file: ")
+        if os.path.exists(test_file):
+            test_ocr_extraction(test_file)
+        else:
+            print(f"ERROR: File not found: {test_file}")
+            
+    elif choice == "3":
+        # Generate reports from database
+        print("\n" + "-"*80)
+        print("DATABASE REPORTS")
+        print("-"*80)
+        print("Select a report type:")
+        print("1. Customer Purchase History")
+        print("2. Product Sales Analysis")
+        print("3. Sales by Day of Week")
+        print("4. Customer Activity Report")
+        print("5. Return to main menu")
+        
+        report_choice = input("\nEnter report choice (1-5): ")
+        
+        if report_choice == "1":
+            customer_id = input("Enter customer ID (leave blank for all): ")
+            if customer_id:
+                df = query_customer_purchases(customer_id)
+            else:
+                df = query_customer_purchases()
+                
+            if not df.empty:
+                print("\nCustomer Purchase History:")
+                print(df)
+                csv_path = f"customer_purchases_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                df.to_csv(csv_path, index=False)
+                print(f"\nReport saved to {csv_path}")
+            else:
+                print("No purchase history found")
+                
+        elif report_choice == "2":
+            product = input("Enter product code or description (leave blank for all): ")
+            if len(product) == 6 and product.isalnum():
+                df = query_product_sales(item_no=product)
+            elif product:
+                df = query_product_sales(description=product)
+            else:
+                df = query_product_sales()
+                
+            if not df.empty:
+                print("\nProduct Sales Report:")
+                print(df)
+                csv_path = f"product_sales_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                df.to_csv(csv_path, index=False)
+                print(f"\nReport saved to {csv_path}")
+            else:
+                print("No product sales found")
+                
+        elif report_choice == "3":
+            df = query_sales_by_day_of_week()
+            if not df.empty:
+                print("\nSales by Day of Week:")
+                print(df)
+                csv_path = f"sales_by_day_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                df.to_csv(csv_path, index=False)
+                print(f"\nReport saved to {csv_path}")
+            else:
+                print("No sales data found")
+                
+        elif report_choice == "4":
+            df = generate_customer_activity_report()
+            if not df.empty:
+                print("\nCustomer Activity Report:")
+                print(df)
+                csv_path = f"customer_activity_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                df.to_csv(csv_path, index=False)
+                print(f"\nReport saved to {csv_path}")
+            else:
+                print("No customer activity data found")
+                
+    print("\nProgram execution completed.")
+    input("Press Enter to exit...")
