@@ -1641,7 +1641,10 @@ def choose_option():
 4. Delete today's orders
 5. View UPC Codes
 6. Exit
-7. Today's Products at a Glance\n""")
+7. Today's Products at a Glance
+8. Generate and print Pasta Cut Pick List\n""")
+
+        
         if option == "4":
             confirmation = input("Are you sure you want to delete today's orders? Yes/No: ").lower()
             if confirmation in ["yes", "y"]:
@@ -1808,6 +1811,167 @@ def choose_option():
             display_todays_products()
         elif option == "5":
             display_phrases_as_table(acceptable_phrases)
+        elif option == "8":
+            try:
+                # [All your existing code for reading data and processing pasta cuts - keep everything the same until the file creation part]
+                
+                # Read all products from the UPC Excel file
+                df = pd.read_excel(path_to_xlsx, engine='openpyxl', dtype=str)
+                
+                # Create a view with just the first two columns
+                valid_products = df.iloc[:, :2].copy()
+                
+                # Get column names from first two columns
+                first_col = df.columns[0]
+                second_col = df.columns[1]
+                
+                # Filter out any rows with missing data in first two columns
+                valid_products = valid_products[valid_products[first_col].notna() & 
+                                            valid_products[second_col].notna()]
+                
+                # Filter out any rows that contain headers
+                valid_products = valid_products[~valid_products[first_col].str.lower().isin(['item name', 'product name', 'name', 'upc', 'upc code'])]
+                
+                # Rename columns
+                valid_products.columns = ["Item Name", "UPC Code"]
+                
+                # Convert item names to lowercase to match database
+                valid_products["Item Name"] = valid_products["Item Name"].str.lower()
+                valid_products["UPC Code"] = valid_products["UPC Code"].astype(str).str.rstrip('.0')
+                
+                # Filter for only pasta cuts
+                pasta_cuts = ["linguine", "fettuccine", "pappardelle"]
+                pasta_products = valid_products[valid_products["Item Name"].str.contains('|'.join(pasta_cuts), case=False)]
+                
+                # Connect to database and get today's orders
+                conn = sqlite3.connect(path_to_db)
+                cursor = conn.cursor()
+                
+                # Get today's date
+                today = datetime.date.today()
+                
+                # Query to get product counts for today's orders
+                query = """
+                SELECT 
+                    o.item,
+                    SUM(o.count) as total_count
+                FROM orders o
+                WHERE DATE(o.generatedtimestamp) = ?
+                AND o.packedtimestamp IS NULL
+                GROUP BY o.item
+                """
+                
+                cursor.execute(query, (today,))
+                today_orders = {item.lower(): count for item, count in cursor.fetchall()}
+                conn.close()
+                
+                # Group pasta by type and collect data
+                pasta_by_type = {}
+                
+                for _, row in pasta_products.iterrows():
+                    item_name = str(row["Item Name"]).strip()
+                    upc = str(row["UPC Code"]).strip()
+                    
+                    # Get quantity from today's orders
+                    quantity = today_orders.get(item_name, 0)
+                    
+                    if quantity > 0:  # Only include items with quantity > 0
+                        # Determine pasta type and cut
+                        for cut in pasta_cuts:
+                            if cut in item_name:
+                                # Extract type by removing the cut from the item name
+                                pasta_type = item_name.replace(cut, "").strip()
+                                
+                                if pasta_type not in pasta_by_type:
+                                    pasta_by_type[pasta_type] = []
+                                
+                                pasta_by_type[pasta_type].append({
+                                    'name': item_name,
+                                    'quantity': quantity,
+                                    'upc': upc
+                                })
+                                break
+                
+                if pasta_by_type:
+                    # Create the pick list content
+                    content = []
+                    content.append("PASTA CUTS PICK SHEET")
+                    content.append("=" * 69)
+                    content.append(f"{'Product Name'.ljust(35)} | {'Quantity'.center(10)} | {'UPC'.center(15)}")
+                    content.append("-" * 69)
+                    
+                    # Sort types and add items
+                    for pasta_type in sorted(pasta_by_type.keys()):
+                        items = pasta_by_type[pasta_type]
+                        items.sort(key=lambda x: x['name'])
+                        
+                        for item in items:
+                            truncated_name = item['name'][:35]
+                            content.append(f"{truncated_name.ljust(35)} | {str(item['quantity']).center(10)} | {str(item['upc']).center(15)}")
+                        
+                        # Add empty line between types (except for the last type)
+                        if pasta_type != sorted(pasta_by_type.keys())[-1]:
+                            content.append("")
+                    
+                    content.append("-" * 69)
+                    
+                    # Display the content
+                    print("\n")
+                    for line in content:
+                        print(line)
+                    
+                    # Create a simple text file
+                    filename = os.path.join(application_path, 'pasta_cuts_pick_sheet.txt')
+                    
+                    with open(filename, 'w') as file:
+                        for line in content:
+                            file.write(line + '\n')
+                    
+                    print(f"\nPasta cuts pick sheet saved as: {filename}")
+                    
+                    # Open Notepad with the file and then send Ctrl+P to open print dialog
+                    import subprocess
+                    import time
+                    
+                    try:
+                        # Open the file in Notepad
+                        process = subprocess.Popen(['notepad.exe', filename])
+                        
+                        # Wait a moment for Notepad to fully open
+                        time.sleep(2)
+                        
+                        # Send Ctrl+P to open the print dialog
+                        import pyautogui
+                        pyautogui.hotkey('ctrl', 'p')
+                        
+                        print("Notepad opened with print dialog. Select your printer and print options!")
+                        print("The print dialog should now be open for you to choose printer, copies, etc.")
+                        
+                    except ImportError:
+                        print("pyautogui not installed. Install it with: pip install pyautogui")
+                        print("Or manually press Ctrl+P when Notepad opens.")
+                        # Still open notepad without the automatic Ctrl+P
+                        subprocess.Popen(['notepad.exe', filename])
+                        
+                    except Exception as e:
+                        print(f"Error opening Notepad or sending Ctrl+P: {e}")
+                        print("Trying to open file normally...")
+                        os.startfile(filename)
+                    
+                    # Exit the program
+                    break
+                    
+                else:
+                    print("No pasta cuts needed for today's orders.")
+                    
+            except Exception as e:
+                print(f"Error generating pasta cuts pick sheet: {e}")
+                import traceback
+                traceback.print_exc()
+
+
+
+        
         else:
             print("Invalid option. Try again.")
 

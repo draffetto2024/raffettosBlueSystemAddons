@@ -1,0 +1,24 @@
+PASTA CUTS PICK SHEET
+=====================================================================
+Product Name                        |  Quantity  |       UPC      
+---------------------------------------------------------------------
+black pepper fettuccine             |     1      |   69215901011  
+
+lemon fettuccine                    |     1      |   692159010113 
+lemon linguine                      |     2      |   692159010112 
+
+lemon red pepper fettuccine         |     1      |   692159010116 
+lemon red pepper linguine           |     2      |   692159010115 
+
+plain egg fettuccine                |     1      |   692159010101 
+plain egg linguine                  |     3      |    6921590101  
+
+rosemary fettuccine                 |     2      |   692159010107 
+rosemary pappardelle                |     1      |   692159010108 
+
+spinach fettuccine                  |     2      |   692159010104 
+spinach linguine                    |     2      |   692159010103 
+spinach pappardelle                 |     1      |   692159010105 
+
+whole wheat linguine                |     5      |   692159010118 
+---------------------------------------------------------------------
