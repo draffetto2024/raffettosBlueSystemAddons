@@ -23,6 +23,9 @@ class MatchingApp:
         """Check if block separator or package phrase already exists"""
         conn = sqlite3.connect(path_to_db)
         c = conn.cursor()
+
+        block_seperator = block_seperator.lower()
+        package_phrase = package_phrase.lower()
         
         # Check for either matching block separator or package phrase
         c.execute("""
@@ -48,6 +51,8 @@ class MatchingApp:
         """Check if quantity phrase already exists"""
         conn = sqlite3.connect(path_to_db)
         c = conn.cursor()
+
+        phrase = phrase.lower()
         
         c.execute("SELECT phrases FROM quantitys WHERE phrases = ?", (phrase,))
         result = c.fetchone()
@@ -63,6 +68,8 @@ class MatchingApp:
         """Check if exact phrase already exists"""
         conn = sqlite3.connect(path_to_db)
         c = conn.cursor()
+
+        phrase = phrase.lower()
         
         c.execute("SELECT exactphrases FROM exactphrases WHERE exactphrases = ?", (phrase,))
         result = c.fetchone()
@@ -78,6 +85,8 @@ class MatchingApp:
         """Check if keyword combination already exists"""
         conn = sqlite3.connect(path_to_db)
         c = conn.cursor()
+
+        keywords = keywords.lower()
         
         # Get all existing keywords
         c.execute("SELECT keywords FROM pairings")
@@ -99,6 +108,8 @@ class MatchingApp:
         """Check if incomplete phrase already exists"""
         conn = sqlite3.connect(path_to_db)
         c = conn.cursor()
+
+        phrase = phrase.lower()
         
         c.execute("SELECT phrases FROM incompletephrases WHERE phrases = ?", (phrase,))
         result = c.fetchone()
@@ -1029,7 +1040,7 @@ class MatchingApp:
                 
                 keyword_type = 'blockseperator'
                 c.execute("INSERT INTO blockseperator (keywordstype, blockseperator, packagenumberphrase) VALUES (?, ?, ?)",
-                        (keyword_type, blockseperator, packagenumberphrase))
+                        (keyword_type, blockseperator.lower(), packagenumberphrase.lower()))
                 conn.commit()
                 conn.close()
 
@@ -1081,8 +1092,8 @@ class MatchingApp:
                             (id INTEGER PRIMARY KEY, keywordstype TEXT, keywords TEXT, removals TEXT)''')
                 
                 keyword_type = 'pairing'
-                keywords = '<'.join(keywordslist)
-                removals = '<'.join(unwantedlist)
+                keywords = '<'.join(keywordslist).lower()
+                removals = '<'.join(unwantedlist).lower()
                 c.execute("INSERT INTO pairings (keywordstype, keywords, removals) VALUES (?, ?, ?)",
                         (keyword_type, keywords, removals))
                 conn.commit()
@@ -1140,13 +1151,20 @@ class MatchingApp:
                         phrase = " ".join(words)
                         phrase = self.replace_special_characters(phrase)
                         
+                        print("before dup")
+
                         # Add duplicate check
                         if self.check_quantity_duplicate(phrase):
                             continue
+
+                        print("after dup")
                         
                         c.execute("INSERT INTO quantitys (keywordstype, phrases, positions) VALUES (?, ?, ?)",
-                                (keyword_type, phrase, str(dat)))
+                                (keyword_type, phrase.lower(), str(dat)))
+
+                        
                     except:
+                        print("FAILED TO WRITE TO DATABASE")
                         pass
                 
                 conn.commit()
@@ -1283,7 +1301,7 @@ class MatchingApp:
                 
                 keyword_type = 'exactphrase'
                 c.execute("INSERT INTO exactphrases (keywordstype, exactphrases, items) VALUES (?, ?, ?)",
-                        (keyword_type, self.exactphrase, '<'.join(self.itemslist)))
+                        (keyword_type, self.exactphrase.lower(), '<'.join(self.itemslist).lower()))
                 conn.commit()
                 conn.close()
                 
