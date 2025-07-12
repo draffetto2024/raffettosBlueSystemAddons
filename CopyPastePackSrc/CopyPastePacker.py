@@ -83,6 +83,17 @@ def initialize_database():
         startpackingtimestamp VARCHAR(100)
     )''')
     
+    # Create substitutions table if not exists
+    c.execute('''CREATE TABLE IF NOT EXISTS substitutions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        original_item VARCHAR(100),
+        original_barcode VARCHAR(50),
+        substitute_item VARCHAR(100),
+        substitute_barcode VARCHAR(50),
+        created_timestamp VARCHAR(100),
+        UNIQUE(original_barcode)
+    )''')
+    
     conn.commit()
     conn.close()
 
@@ -1107,6 +1118,223 @@ def read_excel_file(file_path, return_mappings=False):
             return {}, {}
         return []
 
+def view_substitutions():
+    """Display all current substitutions in a table format"""
+    try:
+        conn = sqlite3.connect(path_to_db)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT original_item, original_barcode, substitute_item, substitute_barcode, created_timestamp
+            FROM substitutions
+            ORDER BY created_timestamp DESC
+        """)
+        
+        substitutions = cursor.fetchall()
+        conn.close()
+        
+        if not substitutions:
+            print("\nNo substitutions currently configured.")
+            return
+        
+        print("\nCurrent Item Substitutions:")
+        print("=" * 100)
+        print(f"{'Original Item':<30} {'Original UPC':<15} {'Substitute Item':<30} {'Substitute UPC':<15} {'Created':<10}")
+        print("-" * 100)
+        
+        for row in substitutions:
+            original_item, original_barcode, substitute_item, substitute_barcode, created = row
+            try:
+                created_date = datetime.datetime.fromisoformat(created).strftime("%Y-%m-%d")
+            except:
+                created_date = created[:10] if created else "Unknown"
+            
+            print(f"{original_item[:29]:<30} {original_barcode:<15} {substitute_item[:29]:<30} {substitute_barcode:<15} {created_date:<10}")
+        
+        print("-" * 100)
+        print(f"Total substitutions: {len(substitutions)}")
+        
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+
+def add_substitution():
+    """Add a new substitution rule"""
+    print("\n=== Add New Substitution ===")
+    print("When the original item is not available, it will be replaced with the substitute item.")
+    
+    # Get original item
+    while True:
+        original_barcode = input("\nScan or enter original item barcode (to be replaced): ").strip()
+        if not original_barcode:
+            print("Barcode cannot be empty.")
+            continue
+        
+        # Find item name
+        original_item = find_item_by_barcode(original_barcode)
+        if original_item:
+            print(f"Original item found: {original_item}")
+            break
+        else:
+            print("Item not found. Please check the barcode.")
+    
+    # Get substitute item
+    while True:
+        substitute_barcode = input("\nScan or enter substitute item barcode (replacement): ").strip()
+        if not substitute_barcode:
+            print("Barcode cannot be empty.")
+            continue
+        
+        if substitute_barcode == original_barcode:
+            print("Substitute item cannot be the same as original item.")
+            continue
+        
+        # Find item name
+        substitute_item = find_item_by_barcode(substitute_barcode)
+        if substitute_item:
+            print(f"Substitute item found: {substitute_item}")
+            break
+        else:
+            print("Item not found. Please check the barcode.")
+    
+    # Confirm and save
+    print(f"\nSubstitution Rule:")
+    print(f"Original:   {original_item} ({original_barcode})")
+    print(f"Substitute: {substitute_item} ({substitute_barcode})")
+    
+    confirm = input("\nSave this substitution? (y/n): ").lower()
+    if confirm != 'y':
+        print("Substitution cancelled.")
+        return
+    
+    try:
+        conn = sqlite3.connect(path_to_db)
+        cursor = conn.cursor()
+        
+        # Check if substitution already exists
+        cursor.execute("SELECT * FROM substitutions WHERE original_barcode = ?", (original_barcode,))
+        if cursor.fetchone():
+            update = input("A substitution for this item already exists. Update it? (y/n): ").lower()
+            if update == 'y':
+                cursor.execute("""
+                    UPDATE substitutions 
+                    SET substitute_item = ?, substitute_barcode = ?, created_timestamp = ?
+                    WHERE original_barcode = ?
+                """, (substitute_item, substitute_barcode, datetime.datetime.now(), original_barcode))
+                print("Substitution updated successfully!")
+            else:
+                print("Substitution cancelled.")
+                return
+        else:
+            cursor.execute("""
+                INSERT INTO substitutions 
+                (original_item, original_barcode, substitute_item, substitute_barcode, created_timestamp)
+                VALUES (?, ?, ?, ?, ?)
+            """, (original_item, original_barcode, substitute_item, substitute_barcode, datetime.datetime.now()))
+            print("Substitution added successfully!")
+        
+        conn.commit()
+        conn.close()
+        
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+
+def delete_substitution():
+    """Delete a substitution rule"""
+    view_substitutions()
+    
+    if not has_substitutions():
+        return
+    
+    print("\n=== Delete Substitution ===")
+    barcode = input("Enter the original item barcode to delete its substitution: ").strip()
+    
+    if not barcode:
+        print("No barcode entered.")
+        return
+    
+    try:
+        conn = sqlite3.connect(path_to_db)
+        cursor = conn.cursor()
+        
+        # Check if substitution exists
+        cursor.execute("SELECT original_item, substitute_item FROM substitutions WHERE original_barcode = ?", (barcode,))
+        result = cursor.fetchone()
+        
+        if not result:
+            print("No substitution found for that barcode.")
+            conn.close()
+            return
+        
+        original_item, substitute_item = result
+        print(f"\nFound substitution:")
+        print(f"Original: {original_item} ({barcode})")
+        print(f"Substitute: {substitute_item}")
+        
+        confirm = input("\nDelete this substitution? (y/n): ").lower()
+        if confirm == 'y':
+            cursor.execute("DELETE FROM substitutions WHERE original_barcode = ?", (barcode,))
+            conn.commit()
+            print("Substitution deleted successfully!")
+        else:
+            print("Deletion cancelled.")
+        
+        conn.close()
+        
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+
+def find_item_by_barcode(barcode):
+    """Find item name by barcode from acceptable phrases"""
+    if not barcode:
+        return None
+    
+    try:
+        acceptable_phrases = read_acceptable_phrases()
+        for phrase in acceptable_phrases:
+            words = phrase.split()
+            if words[-1] == barcode:
+                return " ".join(words[:-1])
+        return None
+    except Exception as e:
+        print(f"Error finding item by barcode: {e}")
+        return None
+
+def has_substitutions():
+    """Check if there are any substitutions in the database"""
+    try:
+        conn = sqlite3.connect(path_to_db)
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM substitutions")
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count > 0
+    except:
+        return False
+
+def manage_substitutions_menu():
+    """Terminal-based substitution management menu"""
+    while True:
+        print("\n" + "="*50)
+        print("ITEM SUBSTITUTION MANAGER")
+        print("="*50)
+        print("1. View current substitutions")
+        print("2. Add new substitution")
+        print("3. Delete substitution")
+        print("4. Return to main menu")
+        
+        choice = input("\nEnter your choice (1-4): ").strip()
+        
+        if choice == "1":
+            view_substitutions()
+        elif choice == "2":
+            add_substitution()
+        elif choice == "3":
+            delete_substitution()
+        elif choice == "4":
+            break
+        else:
+            print("Invalid choice. Please try again.")
+
 def start_packing_sequence(order_dict):
     root = tk.Tk()
     root.title("Order Packer")
@@ -1218,6 +1446,52 @@ def replace_special_characters(text: str) -> str:
         processed_text = processed_text.replace(special_char, standard_char)
     
     return processed_text
+
+def apply_substitutions(order_dict):
+    """Apply substitutions to order dictionary before saving to database"""
+    try:
+        conn = sqlite3.connect(path_to_db)
+        cursor = conn.cursor()
+        
+        # Get all active substitutions
+        cursor.execute("SELECT original_barcode, substitute_item, substitute_barcode FROM substitutions")
+        substitutions = {original: (sub_item, sub_barcode) for original, sub_item, sub_barcode in cursor.fetchall()}
+        
+        if not substitutions:
+            return order_dict
+        
+        # Apply substitutions to each order
+        substituted_order_dict = {}
+        substitution_log = []
+        
+        for order_num, items in order_dict.items():
+            substituted_items = []
+            
+            for item, barcode, count in items:
+                if barcode in substitutions:
+                    substitute_item, substitute_barcode = substitutions[barcode]
+                    substituted_items.append((substitute_item, substitute_barcode, count))
+                    substitution_log.append(f"Order {order_num}: Substituted '{item}' ({barcode}) with '{substitute_item}' ({substitute_barcode})")
+                else:
+                    substituted_items.append((item, barcode, count))
+            
+            substituted_order_dict[order_num] = substituted_items
+        
+        conn.close()
+        
+        # Print substitution log
+        if substitution_log:
+            print("\nSubstitutions Applied:")
+            print("-" * 50)
+            for log_entry in substitution_log:
+                print(log_entry)
+            print("-" * 50)
+        
+        return substituted_order_dict
+        
+    except sqlite3.Error as e:
+        print(f"Error applying substitutions: {e}")
+        return order_dict
 
 def enter_text(acceptable_phrases):
     with open(path_to_txt, "r") as file:
@@ -1642,7 +1916,8 @@ def choose_option():
 5. View UPC Codes
 6. Exit
 7. Today's Products at a Glance
-8. Generate and print Pasta Cut Pick List\n""")
+8. Generate and print Pasta Cut Pick List
+9. Manage Item Substitutions\n""")
 
         
         if option == "4":
@@ -1753,6 +2028,9 @@ def choose_option():
                 
                 # Process orders
                 order_dict = enter_text(acceptable_phrases)
+
+                # APPLY SUBSTITUTIONS BEFORE SAVING TO DATABASE
+                order_dict = apply_substitutions(order_dict)
                 
                 # Delete existing orders for today before inserting new ones
                 today = datetime.datetime.now().date()
@@ -1969,6 +2247,8 @@ def choose_option():
                 import traceback
                 traceback.print_exc()
 
+        elif option == "9":
+            manage_substitutions_menu()
 
 
         
