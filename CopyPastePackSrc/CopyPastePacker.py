@@ -155,7 +155,7 @@ class AddItemDialog:
         self.top.grab_set()
         
     def add(self):
-        barcode = self.barcode_var.get().strip()
+        barcode = normalize_upc(self.barcode_var.get().strip())  # Add normalize_upc here
         try:
             quantity = int(self.quantity_var.get())
             if quantity <= 0:
@@ -168,7 +168,7 @@ class AddItemDialog:
         item_found = False
         for phrase in read_acceptable_phrases():
             words = phrase.split()
-            if words[-1] == barcode:
+            if normalize_upc(words[-1]) == barcode:  # Add normalize_upc here
                 item_name = " ".join(words[:-1])
                 item_found = True
                 break
@@ -262,7 +262,7 @@ class SwapItemDialog:
         self.top.grab_set()
         
     def swap(self):
-        new_barcode = self.barcode_var.get().strip()
+        new_barcode = normalize_upc(self.barcode_var.get().strip())  # Add normalize_upc here
         old_item, old_barcode, old_count = self.app.selected_item
 
         # Prevent swapping with same item
@@ -283,7 +283,7 @@ class SwapItemDialog:
         item_found = False
         for phrase in read_acceptable_phrases():
             words = phrase.split()
-            if words[-1] == new_barcode:
+            if normalize_upc(words[-1]) == new_barcode:  # Add normalize_upc here
                 new_item_name = " ".join(words[:-1])
                 item_found = True
                 break
@@ -988,7 +988,7 @@ class App():
 
     def scan_item(self, event):
         """Handle item barcode scanning with real-time updates"""
-        item_barcode = self.item_entry.get()
+        item_barcode = normalize_upc(self.item_entry.get())  # Add normalize_upc here
         remaining_counts = {item[1]: item[2] for item in self.current_order}
         count_remaining = remaining_counts.get(item_barcode)
     
@@ -1068,9 +1068,6 @@ def add_startpacking_column():
 def read_excel_file(file_path, return_mappings=False):
     """
     Reads an Excel file with product information including optional image paths
-    Args:
-        file_path: Path to the Excel file
-        return_mappings: If True, returns dictionaries for image mapping; if False, returns phrases list
     """
     try:
         # Read the Excel file into a dataframe
@@ -1080,21 +1077,22 @@ def read_excel_file(file_path, return_mappings=False):
         num_columns = len(df.columns)
         
         if num_columns == 2:
-            # If only 2 columns, assume they are Item Name and UPC Code
             if "Item Name" not in df.columns or "UPC Code" not in df.columns:
                 df.columns = ["Item Name", "UPC Code"]
-            # Add empty Image Path column
             df["Image Path"] = ""
         elif num_columns >= 3:
-            # If 3 or more columns, use first three
-            df = df.iloc[:, :3]  # Take only first three columns
+            df = df.iloc[:, :3]
             df.columns = ["Item Name", "UPC Code", "Image Path"]
         else:
             raise ValueError(f"Excel file must have at least 2 columns. Found {num_columns} columns.")
 
         # Clean the data
         df["Item Name"] = df["Item Name"].str.lower()
-        df["UPC Code"] = df["UPC Code"].str.rstrip('.0')
+        
+        # Fix: Only remove .0 suffix, not trailing zeros
+        df["UPC Code"] = df["UPC Code"].astype(str).str.replace('.0', '', regex=False)
+        df["UPC Code"] = df["UPC Code"].apply(normalize_upc)
+        
         df["Image Path"] = df["Image Path"].fillna("")
 
         if return_mappings:
@@ -1238,6 +1236,17 @@ def add_substitution():
     except sqlite3.Error as e:
         print(f"Database error: {e}")
 
+def normalize_upc(upc_code):
+    """Normalize UPC code to first 11 digits only"""
+    if not upc_code:
+        return ""
+    # Convert to string and remove .0 if present (but not trailing zeros)
+    upc_str = str(upc_code)
+    if upc_str.endswith('.0'):
+        upc_str = upc_str[:-2]  # Remove only the .0 part
+    # Return first 11 digits only
+    return upc_str[:11]
+
 def delete_substitution():
     """Delete a substitution rule"""
     view_substitutions()
@@ -1288,11 +1297,13 @@ def find_item_by_barcode(barcode):
     if not barcode:
         return None
     
+    normalized_barcode = normalize_upc(barcode)  # Add this line
+    
     try:
         acceptable_phrases = read_acceptable_phrases()
         for phrase in acceptable_phrases:
             words = phrase.split()
-            if words[-1] == barcode:
+            if normalize_upc(words[-1]) == normalized_barcode:  # Add normalize_upc here
                 return " ".join(words[:-1])
         return None
     except Exception as e:
@@ -1678,7 +1689,7 @@ def enter_text(acceptable_phrases):
                 modified_words = clean_modified.split()
                 
                 if set(modified_words) == set(acceptable_words):
-                    barcode = acceptable_phrase.split()[-1]
+                    barcode = normalize_upc(acceptable_phrase.split()[-1])  # Add normalize_upc here
                     item = " ".join(acceptable_words)
                     
                     if order_num not in order_dict:
@@ -1860,14 +1871,16 @@ def load_todays_orders():
         for order_num, item, barcode, count in results:
             print(f"Processing order: {order_num}, item: {item}, barcode: {barcode}, count: {count}")
             
-            # Ensure order_num is a string
+            # Ensure order_num is a string and normalize barcode
             order_num = str(order_num).strip()
+            normalized_barcode = normalize_upc(barcode)  # Add this line
+            
             if order_num not in order_dict:
                 order_dict[order_num] = []
                 print(f"Created new order entry for order number: {order_num}")
                 
-            # Add the item tuple in the format (item_name, barcode, count)
-            item_tuple = (str(item).strip(), str(barcode).strip(), int(count))
+            # Add the item tuple with normalized barcode
+            item_tuple = (str(item).strip(), normalized_barcode, int(count))  # Use normalized_barcode
             order_found = False
             
             # Update count if item already exists
