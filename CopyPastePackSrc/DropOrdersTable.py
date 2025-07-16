@@ -1,6 +1,7 @@
 import sqlite3
 import os
 
+
 # Get the directory where the script is located
 script_dir = os.path.dirname(os.path.abspath(__file__))
 db_path = os.path.join(script_dir, 'CopyPastePack.db')

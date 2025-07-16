@@ -66,7 +66,7 @@ def initialize_database():
     c.execute('''CREATE TABLE IF NOT EXISTS orders (
         order_num INT,
         item VARCHAR(100),
-        item_barcode INT,
+        item_barcode VARCHAR(50),          
         count INT,
         name VARCHAR(100),
         address VARCHAR(100),
@@ -87,9 +87,9 @@ def initialize_database():
     c.execute('''CREATE TABLE IF NOT EXISTS substitutions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         original_item VARCHAR(100),
-        original_barcode VARCHAR(50),
+        original_barcode VARCHAR(50),      
         substitute_item VARCHAR(100),
-        substitute_barcode VARCHAR(50),
+        substitute_barcode VARCHAR(50),   
         created_timestamp VARCHAR(100),
         UNIQUE(original_barcode)
     )''')
@@ -1068,32 +1068,62 @@ def add_startpacking_column():
 def read_excel_file(file_path, return_mappings=False):
     """
     Reads an Excel file with product information including optional image paths
+    Args:
+        file_path: Path to the Excel file
+        return_mappings: If True, returns dictionaries for image mapping; if False, returns phrases list
     """
     try:
-        # Read the Excel file into a dataframe
-        df = pd.read_excel(file_path, engine='openpyxl', dtype=str)
+        # More aggressive approach to preserve UPC codes with leading zeros
+        # First, peek at the file to detect if it has headers
+        try:
+            peek_df = pd.read_excel(file_path, engine='openpyxl', nrows=1, dtype=str)
+            has_headers = any(col.lower() in ['item name', 'product name', 'name', 'upc', 'upc code'] 
+                             for col in peek_df.columns if isinstance(col, str))
+        except:
+            has_headers = False
+        
+        if has_headers:
+            # Read with explicit string dtype for known UPC columns
+            df = pd.read_excel(file_path, engine='openpyxl', 
+                             dtype={'UPC Code': str, 'UPC': str, 'Item Name': str, 'Product Name': str, 'Name': str}, 
+                             keep_default_na=False)
+        else:
+            # No headers detected, read with column indices as strings
+            df = pd.read_excel(file_path, engine='openpyxl', 
+                             dtype={0: str, 1: str, 2: str},  # First three columns as strings
+                             keep_default_na=False)
         
         # Get number of columns
         num_columns = len(df.columns)
         
         if num_columns == 2:
+            # If only 2 columns, assume they are Item Name and UPC Code
             if "Item Name" not in df.columns or "UPC Code" not in df.columns:
                 df.columns = ["Item Name", "UPC Code"]
+            # Add empty Image Path column
             df["Image Path"] = ""
         elif num_columns >= 3:
-            df = df.iloc[:, :3]
+            # If 3 or more columns, use first three
+            df = df.iloc[:, :3]  # Take only first three columns
             df.columns = ["Item Name", "UPC Code", "Image Path"]
         else:
             raise ValueError(f"Excel file must have at least 2 columns. Found {num_columns} columns.")
 
-        # Clean the data
-        df["Item Name"] = df["Item Name"].str.lower()
+        # Clean the data while aggressively preserving leading and trailing zeros
+        df["Item Name"] = df["Item Name"].astype(str).str.lower()
         
-        # Fix: Only remove .0 suffix, not trailing zeros
-        df["UPC Code"] = df["UPC Code"].astype(str).str.replace('.0', '', regex=False)
-        df["UPC Code"] = df["UPC Code"].apply(normalize_upc)
+        # Aggressively clean UPC codes while preserving all zeros
+        df["UPC Code"] = df["UPC Code"].apply(clean_upc_preserve_zeros)
         
-        df["Image Path"] = df["Image Path"].fillna("")
+        df["Image Path"] = df["Image Path"].fillna("").astype(str)
+
+        # Filter out any rows with missing data in first two columns after cleaning
+        df = df[df["Item Name"].notna() & df["UPC Code"].notna()]
+        df = df[df["Item Name"].str.strip() != ""]
+        df = df[df["UPC Code"].str.strip() != ""]
+        
+        # Filter out any rows that still contain headers after processing
+        df = df[~df["Item Name"].str.lower().isin(['item name', 'product name', 'name', 'upc', 'upc code'])]
 
         if return_mappings:
             # Create mappings for image handling
@@ -1107,14 +1137,88 @@ def read_excel_file(file_path, return_mappings=False):
             for _, row in df.iterrows():
                 item_name = row["Item Name"]
                 upc_code = row["UPC Code"]
-                phrases.append(f"{item_name} {upc_code}")
+                # Double check that we have valid data
+                if item_name and upc_code and str(item_name).strip() and str(upc_code).strip():
+                    phrases.append(f"{item_name} {upc_code}")
             return phrases
 
     except Exception as e:
         print(f"Error reading Excel file: {e}")
-        if return_mappings:
-            return {}, {}
-        return []
+        print(f"Attempting fallback method...")
+        
+        # Fallback method - read as completely raw strings
+        try:
+            df = pd.read_excel(file_path, engine='openpyxl', dtype=str, keep_default_na=False)
+            
+            # Force everything to string and handle any remaining issues
+            for col in df.columns:
+                df[col] = df[col].astype(str)
+            
+            # Get number of columns
+            num_columns = len(df.columns)
+            
+            if num_columns >= 2:
+                # Take first two columns
+                df = df.iloc[:, :3] if num_columns >= 3 else df.iloc[:, :2]
+                
+                if num_columns == 2:
+                    df.columns = ["Item Name", "UPC Code"]
+                    df["Image Path"] = ""
+                else:
+                    df.columns = ["Item Name", "UPC Code", "Image Path"]
+                
+                # Clean data
+                df["Item Name"] = df["Item Name"].str.lower()
+                df["UPC Code"] = df["UPC Code"].apply(clean_upc_preserve_zeros)
+                df["Image Path"] = df["Image Path"].fillna("")
+                
+                # Filter valid rows
+                df = df[df["Item Name"].str.strip() != ""]
+                df = df[df["UPC Code"].str.strip() != ""]
+                
+                if return_mappings:
+                    upc_to_image = dict(zip(df["UPC Code"], df["Image Path"]))
+                    items_dict = {row["Item Name"]: (row["UPC Code"], row["Image Path"]) 
+                                 for _, row in df.iterrows()}
+                    return items_dict, upc_to_image
+                else:
+                    phrases = []
+                    for _, row in df.iterrows():
+                        item_name = row["Item Name"]
+                        upc_code = row["UPC Code"]
+                        if item_name and upc_code:
+                            phrases.append(f"{item_name} {upc_code}")
+                    return phrases
+            else:
+                raise ValueError(f"Excel file must have at least 2 columns. Found {num_columns} columns.")
+                
+        except Exception as fallback_error:
+            print(f"Fallback method also failed: {fallback_error}")
+            if return_mappings:
+                return {}, {}
+            return []
+
+def clean_upc_preserve_zeros(upc_code):
+    """Aggressively clean UPC code while preserving leading and trailing zeros"""
+    if not upc_code or pd.isna(upc_code):
+        return ""
+    
+    # Convert to string and handle various pandas string representations
+    upc_str = str(upc_code).strip()
+    
+    # Handle pandas/numpy string representations
+    if upc_str.lower() in ['nan', 'none', '<na>', 'null']:
+        return ""
+    
+    # Only remove .0 if it's at the very end (Excel decimal formatting)
+    if upc_str.endswith('.0'):
+        upc_str = upc_str[:-2]
+    
+    # Remove any non-digit characters (spaces, etc.) but preserve the digits and their order
+    upc_str = ''.join(filter(str.isdigit, upc_str))
+    
+    # Return first 11 digits only, preserving any leading zeros
+    return upc_str[:11] if len(upc_str) >= 11 else upc_str
 
 def view_substitutions():
     """Display all current substitutions in a table format"""
@@ -1237,14 +1341,19 @@ def add_substitution():
         print(f"Database error: {e}")
 
 def normalize_upc(upc_code):
-    """Normalize UPC code to first 11 digits only"""
+    """Normalize UPC code to first 11 digits only (preserving leading zeros)"""
     if not upc_code:
         return ""
-    # Convert to string and remove .0 if present (but not trailing zeros)
-    upc_str = str(upc_code)
+    
+    # Convert to string
+    upc_str = str(upc_code).strip()
+    
+    # Only remove .0 if it's at the very end
     if upc_str.endswith('.0'):
-        upc_str = upc_str[:-2]  # Remove only the .0 part
-    # Return first 11 digits only
+        upc_str = upc_str[:-2]
+    
+    # Don't filter digits - preserve the original string structure
+    # Just take first 11 characters if it's longer
     return upc_str[:11]
 
 def delete_substitution():
@@ -1689,7 +1798,8 @@ def enter_text(acceptable_phrases):
                 modified_words = clean_modified.split()
                 
                 if set(modified_words) == set(acceptable_words):
-                    barcode = normalize_upc(acceptable_phrase.split()[-1])  # Add normalize_upc here
+                    barcode = acceptable_phrase.split()[-1]  # <-- Use ORIGINAL, not cleaned
+                    #barcode has leading 0 here
                     item = " ".join(acceptable_words)
                     
                     if order_num not in order_dict:
