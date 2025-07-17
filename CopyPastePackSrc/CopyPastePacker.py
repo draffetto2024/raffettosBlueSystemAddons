@@ -45,6 +45,9 @@ secondarykeywords = []
 exactphrases = []
 exactphraseitems_2d = []
 
+CLEAR_BARCODE = "123"
+
+
 # Get the directory where the script or executable is located
 if getattr(sys, 'frozen', False):
     # If the application is frozen with PyInstaller, use this path
@@ -377,6 +380,8 @@ class App():
         self.order_dict = order_dict
 
         self.selected_item = None  # Add this line
+        self.waiting_for_clear_barcode = False  # Add this line to track clear barcode state
+
         
         # Create main container frame
         self.main_container = tk.Frame(self.master)
@@ -393,6 +398,7 @@ class App():
         self.barcode_var = tk.StringVar()
         self.barcode_entry = tk.Entry(self.header_frame, textvariable=self.barcode_var, font=("Arial", 16))
         self.barcode_entry.pack(side=tk.LEFT, padx=10)
+        self.master.after(100, self.barcode_entry.focus_set)
         self.barcode_entry.focus()
         self.barcode_entry.bind("<Return>", self.check_order)
         
@@ -465,13 +471,14 @@ class App():
         self.default_photo = self.create_default_image((200, 200))
         
         # Load product data
+        # Load product data
         try:
-            _, self.upc_to_image = read_excel_file(path_to_xlsx, return_mappings=True)
+            _, self.upc_to_image, self.sections = read_excel_file(path_to_xlsx, return_mappings=True)
         except Exception as e:
             print(f"Error loading product data: {e}")
             self.upc_to_image = {}
+            self.sections = []
             messagebox.showwarning("Warning", "Error loading product images. The packer will continue without images.")
-        
         # Initialize other variables
         self.item_entry = None
         self.current_order = None
@@ -634,80 +641,127 @@ class App():
             return self.default_photo
 
     def display_images(self, items):
-        """Display images in a grid layout with selectable text information"""
-        # Clear existing images - modify this part
+        """Display images in a grid layout grouped by sections with selectable text information"""
+        # Clear existing images AND section headers
         for frame_tuple in self.image_frames:
-            frame = frame_tuple[0]  # Get the frame widget from the tuple
+            frame = frame_tuple[0]
             frame.destroy()
         self.image_frames.clear()
         self.photo_references.clear()
         
-        # Configure grid columns
-        grid_columns = 3  # Number of columns in the grid
+        # Clear any existing section headers specifically
+        for widget in self.scrollable_frame.winfo_children():
+            widget.destroy()
+        
+        # Group items by section
+        items_by_section = {}
+        item_to_section = {}
+        
+        # Create mapping from UPC to section
+        for section in self.sections:
+            for product in section['products']:
+                item_to_section[product['upc']] = section['name']
+        
+        # Group current order items by section
+        for item, barcode, count in items:
+            section_name = item_to_section.get(barcode, "Other")
+            if section_name not in items_by_section:
+                items_by_section[section_name] = []
+            items_by_section[section_name].append((item, barcode, count))
+        
+        # Sort items within each section alphabetically
+        for section_name in items_by_section:
+            items_by_section[section_name].sort(key=lambda x: x[0])
+        
+        # Display sections in order they appear in Excel - ONLY sections with items
+        section_order = [section['name'] for section in self.sections if section['name'] in items_by_section]
         current_row = 0
-        current_col = 0
         
         try:
-            for item, barcode, count in items:
-                # Create frame for this item
-                item_frame = tk.Frame(self.scrollable_frame, relief=tk.RAISED, borderwidth=1)
-                item_frame.grid(row=current_row, column=current_col, padx=10, pady=10, sticky="nsew")
+            for section_name in section_order:
+                section_items = items_by_section[section_name]
                 
-                # Make the entire frame clickable
-                item_frame.bind('<Button-1>', lambda e, i=item, b=barcode, c=count: self.select_item(e, i, b, c))
+                # Create NEW section header each time (prevents label merging)
+                header_frame = tk.Frame(self.scrollable_frame)
+                header_frame.grid(row=current_row, column=0, columnspan=3, sticky="w", padx=10, pady=(15, 5))
                 
-                # Get image
-                image_path = self.upc_to_image.get(barcode, "")
-                photo = self.load_and_resize_image(image_path)
-                if photo:
-                    self.photo_references.append(photo)
+                section_label = tk.Label(header_frame, text=section_name, 
+                                    font=("Arial", 16, "bold"), fg="darkblue")
+                section_label.pack(side=tk.LEFT)
                 
-                # Create and pack image label
-                image_label = tk.Label(item_frame, image=photo if photo else self.default_photo)
-                image_label.image = photo if photo else self.default_photo
-                image_label.pack(side=tk.LEFT, padx=5, pady=5)
+                # Store header frame so it gets cleared properly
+                self.image_frames.append((header_frame, "HEADER", section_name, 0))
                 
-                # Make image label clickable too
-                image_label.bind('<Button-1>', lambda e, i=item, b=barcode, c=count: self.select_item(e, i, b, c))
+                current_row += 1
+                current_col = 0
                 
-                # Create frame for text information
-                text_frame = tk.Frame(item_frame)
-                text_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+                # Display items in this section
+                for item, barcode, count in section_items:
+                    # Create frame for this item
+                    item_frame = tk.Frame(self.scrollable_frame, relief=tk.RAISED, borderwidth=1)
+                    item_frame.grid(row=current_row, column=current_col, padx=10, pady=10, sticky="nsew")
+                    
+                    # [Rest of the item display code remains the same...]
+                    
+                    # Make the entire frame clickable
+                    item_frame.bind('<Button-1>', lambda e, i=item, b=barcode, c=count: self.select_item(e, i, b, c))
+                    
+                    # Get image
+                    image_path = self.upc_to_image.get(barcode, "")
+                    photo = self.load_and_resize_image(image_path)
+                    if photo:
+                        self.photo_references.append(photo)
+                    
+                    # Create and pack image label
+                    image_label = tk.Label(item_frame, image=photo if photo else self.default_photo)
+                    image_label.image = photo if photo else self.default_photo
+                    image_label.pack(side=tk.LEFT, padx=5, pady=5)
+                    
+                    # Make image label clickable too
+                    image_label.bind('<Button-1>', lambda e, i=item, b=barcode, c=count: self.select_item(e, i, b, c))
+                    
+                    # Create frame for text information
+                    text_frame = tk.Frame(item_frame)
+                    text_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+                    
+                    # Create Text widget for all information
+                    text_widget = tk.Text(text_frame, wrap=tk.WORD, height=6, width=30)
+                    text_widget.pack(fill=tk.BOTH, expand=True, pady=5)
+                    
+                    # Configure Text widget
+                    text_widget.configure(font=("Arial", 12))
+                    text_widget.tag_configure("bold", font=("Arial", 12, "bold"))
+                    
+                    # Insert information with tags
+                    text_widget.insert(tk.END, item + "\n", "bold")
+                    text_widget.insert(tk.END, f"Quantity: {count}\n")
+                    text_widget.insert(tk.END, f"UPC: {barcode}")
+                    
+                    # Make read-only but still selectable
+                    text_widget.configure(state="disabled")
+                    
+                    # Make text widget clickable too
+                    text_widget.bind('<Button-1>', lambda e, i=item, b=barcode, c=count: self.select_item(e, i, b, c))
+                    
+                    self.image_frames.append((item_frame, item, barcode, count))
+                    
+                    # Highlight if this is the selected item
+                    if self.selected_item and self.selected_item == (item, barcode, count):
+                        item_frame.configure(bg='lightblue')
+                        text_widget.configure(bg='lightblue')
+                        image_label.configure(bg='lightblue')
+                        text_frame.configure(bg='lightblue')
+                    
+                    # Update grid position
+                    current_col += 1
+                    if current_col >= 3:  # 3 columns
+                        current_col = 0
+                        current_row += 1
                 
-                # Create Text widget for all information
-                text_widget = tk.Text(text_frame, wrap=tk.WORD, height=6, width=30)
-                text_widget.pack(fill=tk.BOTH, expand=True, pady=5)
-                
-                # Configure Text widget
-                text_widget.configure(font=("Arial", 12))
-                text_widget.tag_configure("bold", font=("Arial", 12, "bold"))
-                
-                # Insert information with tags
-                text_widget.insert(tk.END, item + "\n", "bold")
-                text_widget.insert(tk.END, f"Quantity: {count}\n")
-                text_widget.insert(tk.END, f"UPC: {barcode}")
-                
-                # Make read-only but still selectable
-                text_widget.configure(state="disabled")
-                
-                # Make text widget clickable too
-                text_widget.bind('<Button-1>', lambda e, i=item, b=barcode, c=count: self.select_item(e, i, b, c))
-                
-                self.image_frames.append((item_frame, item, barcode, count))
-                
-                # Highlight if this is the selected item
-                if self.selected_item and self.selected_item == (item, barcode, count):
-                    item_frame.configure(bg='lightblue')
-                    text_widget.configure(bg='lightblue')
-                    image_label.configure(bg='lightblue')
-                    text_frame.configure(bg='lightblue')
-                
-                # Update grid position
-                current_col += 1
-                if current_col >= grid_columns:
-                    current_col = 0
+                # Move to next row for next section if we're not at column 0
+                if current_col != 0:
                     current_row += 1
-                        
+                            
         except Exception as e:
             print(f"Error displaying images: {e}")
             messagebox.showwarning("Warning", "Error displaying some images.")
@@ -736,6 +790,14 @@ class App():
     def abort_order(self):
         """Handle order abortion"""
         self.current_order = None
+        
+        # Clear section labels and frames
+        for frame_tuple in self.image_frames:
+            frame = frame_tuple[0]
+            frame.destroy()
+        self.image_frames.clear()
+        self.photo_references.clear()
+        
         self.reset_window()
         self.barcode_entry.bind("<Return>", self.check_order)
     
@@ -933,6 +995,9 @@ class App():
                 self.item_entry = None
             except Exception as e:
                 print(f"Error destroying item entry: {str(e)}")
+
+        self.waiting_for_clear_barcode = False
+
             
     def check_order(self, event):
         """Handle order barcode scanning"""
@@ -987,24 +1052,42 @@ class App():
 
 
     def scan_item(self, event):
-        """Handle item barcode scanning with real-time updates"""
-        item_barcode = normalize_upc(self.item_entry.get())  # Add normalize_upc here
+        """Handle item barcode scanning with real-time updates and clear barcode requirement for errors"""
+        item_barcode = normalize_upc(self.item_entry.get())
+        
+        # Check if we're waiting for clear barcode after an error
+        if self.waiting_for_clear_barcode:
+            if item_barcode == CLEAR_BARCODE:
+                # Clear barcode scanned, reset state and return to normal scanning
+                self.waiting_for_clear_barcode = False
+                self.item_entry.delete(0, tk.END)
+                return
+            else:
+                # Still waiting for clear barcode - show error and don't process anything
+                self.show_clear_barcode_dialog()
+                self.item_entry.delete(0, tk.END)
+                return
+        
+        # Normal item scanning logic
         remaining_counts = {item[1]: item[2] for item in self.current_order}
         count_remaining = remaining_counts.get(item_barcode)
-    
+
         if count_remaining is None:
-            tk.messagebox.showerror("Error", "Invalid item barcode")
+            # Invalid barcode - set flag to wait for clear barcode and show dialog
+            self.waiting_for_clear_barcode = True
+            self.show_clear_barcode_dialog()
             self.item_entry.delete(0, tk.END)
             return
-    
+
+        # Valid item - continue with normal processing
         count_remaining -= 1
-    
+
         if count_remaining == 0:
             self.current_order = [item for item in self.current_order if item[1] != item_barcode]
         else:
             self.current_order = [(item[0], item[1], count_remaining) if item[1] == item_barcode else item 
                                 for item in self.current_order]
-    
+
         self.item_entry.delete(0, tk.END)
         
         # Update display immediately
@@ -1014,6 +1097,52 @@ class App():
         # Order has been filled
         if len(self.current_order) == 0:
             self.complete_order()
+
+    def show_clear_barcode_dialog(self):
+        """Show modal dialog that requires clear barcode to proceed"""
+        dialog = tk.Toplevel(self.master)
+        dialog.title("Error - Clear Barcode Required")
+        dialog.geometry("400x200")
+        
+        # Make dialog modal
+        dialog.transient(self.master)
+        dialog.grab_set()
+        
+        # Center the dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (dialog.winfo_width() // 2)
+        y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
+        dialog.geometry(f"+{x}+{y}")
+        
+        # Create content
+        tk.Label(dialog, text="Invalid item barcode scanned!", 
+                font=("Arial", 14, "bold"), fg="red").pack(pady=10)
+        
+        tk.Label(dialog, text=f"Please scan the clear barcode to acknowledge:", 
+                font=("Arial", 12)).pack(pady=5)
+        
+        tk.Label(dialog, text=f"{CLEAR_BARCODE}", 
+                font=("Arial", 16, "bold")).pack(pady=5)
+        
+        # Entry for clear barcode
+        clear_var = tk.StringVar()
+        clear_entry = tk.Entry(dialog, textvariable=clear_var, font=("Arial", 14))
+        clear_entry.pack(pady=10)
+        clear_entry.focus_set()
+        
+        def check_clear_barcode(event=None):
+            if normalize_upc(clear_var.get()) == CLEAR_BARCODE:
+                self.waiting_for_clear_barcode = False
+                dialog.destroy()
+            else:
+                tk.messagebox.showerror("Error", "Incorrect clear barcode. Please try again.")
+                clear_var.set("")
+                clear_entry.focus_set()
+        
+        clear_entry.bind("<Return>", check_clear_barcode)
+        
+        # Disable closing the dialog with X button
+        dialog.protocol("WM_DELETE_WINDOW", lambda: None)
         
     def complete_order(self):
         """Handle order completion"""
@@ -1067,136 +1196,108 @@ def add_startpacking_column():
 
 def read_excel_file(file_path, return_mappings=False):
     """
-    Reads an Excel file with product information including optional image paths
+    Reads an Excel file with product information including optional image paths and section labels
     Args:
         file_path: Path to the Excel file
         return_mappings: If True, returns dictionaries for image mapping; if False, returns phrases list
     """
     try:
-        # More aggressive approach to preserve UPC codes with leading zeros
-        # First, peek at the file to detect if it has headers
-        try:
-            peek_df = pd.read_excel(file_path, engine='openpyxl', nrows=1, dtype=str)
-            has_headers = any(col.lower() in ['item name', 'product name', 'name', 'upc', 'upc code'] 
-                             for col in peek_df.columns if isinstance(col, str))
-        except:
-            has_headers = False
-        
-        if has_headers:
-            # Read with explicit string dtype for known UPC columns
-            df = pd.read_excel(file_path, engine='openpyxl', 
-                             dtype={'UPC Code': str, 'UPC': str, 'Item Name': str, 'Product Name': str, 'Name': str}, 
-                             keep_default_na=False)
-        else:
-            # No headers detected, read with column indices as strings
-            df = pd.read_excel(file_path, engine='openpyxl', 
-                             dtype={0: str, 1: str, 2: str},  # First three columns as strings
-                             keep_default_na=False)
+        # Read with explicit string dtype for known UPC columns
+        df = pd.read_excel(file_path, engine='openpyxl', 
+                         dtype={'UPC Code': str, 'UPC': str, 'Item Name': str, 'Product Name': str, 'Name': str}, 
+                         keep_default_na=False)
         
         # Get number of columns
         num_columns = len(df.columns)
         
         if num_columns == 2:
-            # If only 2 columns, assume they are Item Name and UPC Code
-            if "Item Name" not in df.columns or "UPC Code" not in df.columns:
-                df.columns = ["Item Name", "UPC Code"]
-            # Add empty Image Path column
+            df.columns = ["Item Name", "UPC Code"]
             df["Image Path"] = ""
         elif num_columns >= 3:
-            # If 3 or more columns, use first three
-            df = df.iloc[:, :3]  # Take only first three columns
+            df = df.iloc[:, :3]
             df.columns = ["Item Name", "UPC Code", "Image Path"]
         else:
             raise ValueError(f"Excel file must have at least 2 columns. Found {num_columns} columns.")
 
-        # Clean the data while aggressively preserving leading and trailing zeros
-        df["Item Name"] = df["Item Name"].astype(str).str.lower()
-        
-        # Aggressively clean UPC codes while preserving all zeros
-        df["UPC Code"] = df["UPC Code"].apply(clean_upc_preserve_zeros)
-        
+        # Clean the data
+        df["Item Name"] = df["Item Name"].astype(str).str.strip()
+        df["UPC Code"] = df["UPC Code"].astype(str).str.strip()
         df["Image Path"] = df["Image Path"].fillna("").astype(str)
 
-        # Filter out any rows with missing data in first two columns after cleaning
-        df = df[df["Item Name"].notna() & df["UPC Code"].notna()]
-        df = df[df["Item Name"].str.strip() != ""]
-        df = df[df["UPC Code"].str.strip() != ""]
+        # Parse sections and products
+        sections = []
+        current_section = None
+        products = []
         
-        # Filter out any rows that still contain headers after processing
-        df = df[~df["Item Name"].str.lower().isin(['item name', 'product name', 'name', 'upc', 'upc code'])]
+        for _, row in df.iterrows():
+            item_name = row["Item Name"]
+            upc_code = row["UPC Code"]
+            image_path = row["Image Path"]
+            
+            # Check if this is an empty row (spacer)
+            if not item_name or item_name.lower() in ['nan', 'none', '']:
+                if current_section and products:
+                    sections.append({
+                        'name': current_section,
+                        'products': products.copy()
+                    })
+                    products = []
+                current_section = None
+                continue
+            
+            # Check if this is a section label (has item name but no UPC)
+            if item_name and (not upc_code or upc_code.lower() in ['nan', 'none', '']):
+                if current_section and products:
+                    sections.append({
+                        'name': current_section,
+                        'products': products.copy()
+                    })
+                    products = []
+                current_section = item_name
+                continue
+            
+            # This is a product row
+            if item_name and upc_code:
+                # Clean UPC code
+                cleaned_upc = clean_upc_preserve_zeros(upc_code)
+                if cleaned_upc:
+                    products.append({
+                        'name': item_name.lower(),
+                        'upc': cleaned_upc,
+                        'image_path': image_path
+                    })
+        
+        # Add the last section if exists
+        if current_section and products:
+            sections.append({
+                'name': current_section,
+                'products': products.copy()
+            })
 
         if return_mappings:
             # Create mappings for image handling
-            upc_to_image = dict(zip(df["UPC Code"], df["Image Path"]))
-            items_dict = {row["Item Name"]: (row["UPC Code"], row["Image Path"]) 
-                         for _, row in df.iterrows()}
-            return items_dict, upc_to_image
+            upc_to_image = {}
+            items_dict = {}
+            
+            for section in sections:
+                for product in section['products']:
+                    upc_to_image[product['upc']] = product['image_path']
+                    items_dict[product['name']] = (product['upc'], product['image_path'])
+            
+            return items_dict, upc_to_image, sections
         else:
             # Return phrases for order processing
             phrases = []
-            for _, row in df.iterrows():
-                item_name = row["Item Name"]
-                upc_code = row["UPC Code"]
-                # Double check that we have valid data
-                if item_name and upc_code and str(item_name).strip() and str(upc_code).strip():
-                    phrases.append(f"{item_name} {upc_code}")
+            for section in sections:
+                for product in section['products']:
+                    phrases.append(f"{product['name']} {product['upc']}")
             return phrases
 
     except Exception as e:
         print(f"Error reading Excel file: {e}")
-        print(f"Attempting fallback method...")
-        
-        # Fallback method - read as completely raw strings
-        try:
-            df = pd.read_excel(file_path, engine='openpyxl', dtype=str, keep_default_na=False)
-            
-            # Force everything to string and handle any remaining issues
-            for col in df.columns:
-                df[col] = df[col].astype(str)
-            
-            # Get number of columns
-            num_columns = len(df.columns)
-            
-            if num_columns >= 2:
-                # Take first two columns
-                df = df.iloc[:, :3] if num_columns >= 3 else df.iloc[:, :2]
-                
-                if num_columns == 2:
-                    df.columns = ["Item Name", "UPC Code"]
-                    df["Image Path"] = ""
-                else:
-                    df.columns = ["Item Name", "UPC Code", "Image Path"]
-                
-                # Clean data
-                df["Item Name"] = df["Item Name"].str.lower()
-                df["UPC Code"] = df["UPC Code"].apply(clean_upc_preserve_zeros)
-                df["Image Path"] = df["Image Path"].fillna("")
-                
-                # Filter valid rows
-                df = df[df["Item Name"].str.strip() != ""]
-                df = df[df["UPC Code"].str.strip() != ""]
-                
-                if return_mappings:
-                    upc_to_image = dict(zip(df["UPC Code"], df["Image Path"]))
-                    items_dict = {row["Item Name"]: (row["UPC Code"], row["Image Path"]) 
-                                 for _, row in df.iterrows()}
-                    return items_dict, upc_to_image
-                else:
-                    phrases = []
-                    for _, row in df.iterrows():
-                        item_name = row["Item Name"]
-                        upc_code = row["UPC Code"]
-                        if item_name and upc_code:
-                            phrases.append(f"{item_name} {upc_code}")
-                    return phrases
-            else:
-                raise ValueError(f"Excel file must have at least 2 columns. Found {num_columns} columns.")
-                
-        except Exception as fallback_error:
-            print(f"Fallback method also failed: {fallback_error}")
-            if return_mappings:
-                return {}, {}
-            return []
+        if return_mappings:
+            return {}, {}, []
+        return []
 
 def clean_upc_preserve_zeros(upc_code):
     """Aggressively clean UPC code while preserving leading and trailing zeros"""
