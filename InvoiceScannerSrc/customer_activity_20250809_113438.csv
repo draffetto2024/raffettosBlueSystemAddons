@@ -1,0 +1,2 @@
+customer_id,invoice_count,first_order_date,last_order_date,total_spent,avg_order_value,unique_products_ordered
+CESARE,1,01/02/25,01/02/25,223.39999999999998,111.69999999999999,2

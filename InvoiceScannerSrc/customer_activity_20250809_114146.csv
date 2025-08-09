@@ -1,0 +1,2 @@
+customer_id,invoice_count,first_order_date,last_order_date,total_spent,avg_order_value,unique_products_ordered
+JENNYS,1,07/01/25,07/01/25,582.5699999999999,194.18999999999997,3

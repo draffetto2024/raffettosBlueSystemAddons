@@ -1,0 +1,333 @@
+2025-06-14 09:56:48,228 - DEBUG: Processing image: C:\Users\Raffetto\AppData\Local\Temp\temp_1749909408154_8say7o.png
+2025-06-14 09:56:48,554 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:56:48,555 - Keyphrase 'INVOICE NO' bounding box:
+2025-06-14 09:56:48,555 -   Top-left: (663, 19)
+2025-06-14 09:56:48,555 -   Bottom-right: (754, 29)
+2025-06-14 09:56:48,569 - No valid matching text found near 'INVOICE NO'
+2025-06-14 09:56:48,569 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,570 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,571 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:56:48,571 - Keyphrase 'INVOICE DATE' bounding box:
+2025-06-14 09:56:48,571 -   Top-left: (665, 56)
+2025-06-14 09:56:48,571 -   Bottom-right: (768, 66)
+2025-06-14 09:56:48,586 - 
+MATCH FOUND: '01/02/25'
+2025-06-14 09:56:48,586 - Match bounding box:
+2025-06-14 09:56:48,586 -   Top-left: (698, 77)
+2025-06-14 09:56:48,586 -   Bottom-right: (779, 83)
+2025-06-14 09:56:48,586 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:56:48,587 - Keyphrase 'INVOICE NO' bounding box:
+2025-06-14 09:56:48,587 -   Top-left: (663, 19)
+2025-06-14 09:56:48,587 -   Bottom-right: (754, 29)
+2025-06-14 09:56:48,601 - 
+MATCH FOUND: '435323'
+2025-06-14 09:56:48,601 - Match bounding box:
+2025-06-14 09:56:48,601 -   Top-left: (691, 45)
+2025-06-14 09:56:48,601 -   Bottom-right: (752, 50)
+2025-06-14 09:56:48,601 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,601 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,602 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,603 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,603 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,603 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,604 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,604 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,605 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,605 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,605 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,606 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,606 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,607 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,607 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,608 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,608 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,609 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,609 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,610 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,610 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,611 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,611 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,611 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,612 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,612 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,613 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,613 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,614 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,614 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,614 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,615 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,615 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,616 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,616 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,616 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,617 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,617 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,617 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,618 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,618 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,619 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,619 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,620 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,620 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,620 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,621 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,621 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,621 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,622 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,622 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,623 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,623 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,624 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,624 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,624 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,625 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,625 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,625 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,626 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,626 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,627 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,627 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,628 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,628 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,628 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,629 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,629 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,629 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,630 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,630 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,631 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,631 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,632 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,632 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,632 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,633 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,633 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,633 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,634 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,634 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,635 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,635 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,636 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,636 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,636 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,637 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,637 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,638 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,638 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,638 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,639 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,639 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,640 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,640 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,641 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,641 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,642 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,642 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,643 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,643 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,643 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,644 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,644 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,644 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,645 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,645 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,646 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,646 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,647 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,647 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,647 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,648 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,648 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,649 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,649 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,649 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,650 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,650 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,651 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,651 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,651 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,652 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,652 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,653 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,653 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,653 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,654 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,654 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,655 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,655 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,655 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,656 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,656 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,657 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,657 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,658 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,658 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,658 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,659 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,659 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,660 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,660 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,661 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,661 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,661 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,662 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,662 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,662 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,663 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,663 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,664 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,664 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,665 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,665 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,665 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,666 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,666 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,667 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,667 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,668 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,668 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,668 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,669 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,669 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,670 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,670 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,670 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,671 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,671 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,672 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,672 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,673 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,673 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,674 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,674 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,675 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,675 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,675 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,676 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,676 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,677 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,677 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,678 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,678 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,678 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,679 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,679 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,680 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,680 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,680 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,681 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,681 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,682 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,682 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,683 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,683 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:56:48,684 - Complete keyphrase 'ACCOUNT NO' not found within threshold.
+2025-06-14 09:56:48,684 - DEBUG: Automatic detection failed
+2025-06-14 09:56:48,684 - DEBUG: Processing image: C:\Users\Raffetto\AppData\Local\Temp\temp_1749909408154_8say7o.png
+2025-06-14 09:56:48,730 - STREAM b'IHDR' 16 13
+2025-06-14 09:56:48,730 - STREAM b'pHYs' 41 9
+2025-06-14 09:56:48,730 - STREAM b'IDAT' 62 407083
+2025-06-14 09:56:54,681 - DEBUG: Manual input cancelled or invalid, copying to unsorted folder

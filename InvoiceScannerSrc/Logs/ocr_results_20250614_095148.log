@@ -1,0 +1,118 @@
+2025-06-14 09:51:49,246 - DEBUG: Processing image: C:\Users\Raffetto\AppData\Local\Temp\temp_1749909109156_0kgtjt.png
+2025-06-14 09:51:49,627 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:51:49,627 - Keyphrase 'INVOICE NO' bounding box:
+2025-06-14 09:51:49,627 -   Top-left: (734, 40)
+2025-06-14 09:51:49,627 -   Bottom-right: (824, 51)
+2025-06-14 09:51:49,648 - No valid matching text found near 'INVOICE NO'
+2025-06-14 09:51:49,648 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:51:49,649 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-06-14 09:51:49,651 -   Top-left: (19, 153)
+2025-06-14 09:51:49,651 -   Bottom-right: (89, 161)
+2025-06-14 09:51:49,672 - No valid matching text found near 'ACCOUNT NO'
+2025-06-14 09:51:49,672 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:51:49,673 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:51:49,673 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:51:49,673 - Keyphrase 'INVOICE NO' bounding box:
+2025-06-14 09:51:49,673 -   Top-left: (734, 40)
+2025-06-14 09:51:49,673 -   Bottom-right: (824, 51)
+2025-06-14 09:51:49,694 - No valid matching text found near 'INVOICE NO'
+2025-06-14 09:51:49,694 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:51:49,695 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-06-14 09:51:49,695 -   Top-left: (19, 153)
+2025-06-14 09:51:49,695 -   Bottom-right: (89, 161)
+2025-06-14 09:51:49,716 - No valid matching text found near 'ACCOUNT NO'
+2025-06-14 09:51:49,716 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:51:49,716 - Keyphrase 'INVOICE DATE' bounding box:
+2025-06-14 09:51:49,716 -   Top-left: (729, 76)
+2025-06-14 09:51:49,716 -   Bottom-right: (833, 89)
+2025-06-14 09:51:49,738 - 
+MATCH FOUND: '01/02/25'
+2025-06-14 09:51:49,738 - Match bounding box:
+2025-06-14 09:51:49,738 -   Top-left: (757, 97)
+2025-06-14 09:51:49,738 -   Bottom-right: (837, 110)
+2025-06-14 09:51:49,738 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:51:49,738 - Keyphrase 'INVOICE NO' bounding box:
+2025-06-14 09:51:49,739 -   Top-left: (734, 40)
+2025-06-14 09:51:49,739 -   Bottom-right: (824, 51)
+2025-06-14 09:51:49,760 - 
+MATCH FOUND: '435327'
+2025-06-14 09:51:49,760 - Match bounding box:
+2025-06-14 09:51:49,760 -   Top-left: (757, 65)
+2025-06-14 09:51:49,760 -   Bottom-right: (818, 75)
+2025-06-14 09:51:49,760 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:51:49,761 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-06-14 09:51:49,761 -   Top-left: (19, 153)
+2025-06-14 09:51:49,761 -   Bottom-right: (89, 161)
+2025-06-14 09:51:49,782 - 
+MATCH FOUND: 'AGATHA'
+2025-06-14 09:51:49,782 - Match bounding box:
+2025-06-14 09:51:49,782 -   Top-left: (33, 172)
+2025-06-14 09:51:49,782 -   Bottom-right: (94, 182)
+2025-06-14 09:51:49,783 - DEBUG: Automatic detection successful, copying image to sorted folder
+2025-06-14 09:51:50,299 - DEBUG: Processing image: C:\Users\Raffetto\AppData\Local\Temp\temp_1749909110227_17xg89.png
+2025-06-14 09:51:50,595 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:51:50,596 - Complete keyphrase 'INVOICE NO' not found within threshold.
+2025-06-14 09:51:50,596 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:51:50,596 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-06-14 09:51:50,597 -   Top-left: (21, 153)
+2025-06-14 09:51:50,597 -   Bottom-right: (90, 163)
+2025-06-14 09:51:50,611 - No valid matching text found near 'ACCOUNT NO'
+2025-06-14 09:51:50,611 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:51:50,611 - Keyphrase 'INVOICE DATE' bounding box:
+2025-06-14 09:51:50,611 -   Top-left: (729, 75)
+2025-06-14 09:51:50,611 -   Bottom-right: (833, 87)
+2025-06-14 09:51:50,626 - No valid matching text found near 'INVOICE DATE'
+2025-06-14 09:51:50,626 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:51:50,626 - Keyphrase 'INVOICE NO' bounding box:
+2025-06-14 09:51:50,626 -   Top-left: (734, 37)
+2025-06-14 09:51:50,626 -   Bottom-right: (825, 49)
+2025-06-14 09:51:50,641 - No valid matching text found near 'INVOICE NO'
+2025-06-14 09:51:50,641 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:51:50,641 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-06-14 09:51:50,641 -   Top-left: (21, 153)
+2025-06-14 09:51:50,641 -   Bottom-right: (90, 163)
+2025-06-14 09:51:50,655 - No valid matching text found near 'ACCOUNT NO'
+2025-06-14 09:51:50,655 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:51:50,656 - Keyphrase 'INVOICE DATE' bounding box:
+2025-06-14 09:51:50,656 -   Top-left: (729, 75)
+2025-06-14 09:51:50,656 -   Bottom-right: (833, 87)
+2025-06-14 09:51:50,670 - 
+MATCH FOUND: '01/02/25'
+2025-06-14 09:51:50,670 - Match bounding box:
+2025-06-14 09:51:50,670 -   Top-left: (758, 96)
+2025-06-14 09:51:50,670 -   Bottom-right: (838, 108)
+2025-06-14 09:51:50,670 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:51:50,671 - Keyphrase 'INVOICE NO' bounding box:
+2025-06-14 09:51:50,671 -   Top-left: (734, 37)
+2025-06-14 09:51:50,671 -   Bottom-right: (825, 49)
+2025-06-14 09:51:50,685 - 
+MATCH FOUND: '435323'
+2025-06-14 09:51:50,685 - Match bounding box:
+2025-06-14 09:51:50,685 -   Top-left: (758, 63)
+2025-06-14 09:51:50,685 -   Bottom-right: (818, 72)
+2025-06-14 09:51:50,685 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:51:50,686 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-06-14 09:51:50,686 -   Top-left: (21, 153)
+2025-06-14 09:51:50,686 -   Bottom-right: (90, 163)
+2025-06-14 09:51:50,700 - 
+MATCH FOUND: 'CESARE'
+2025-06-14 09:51:50,700 - Match bounding box:
+2025-06-14 09:51:50,700 -   Top-left: (35, 174)
+2025-06-14 09:51:50,700 -   Bottom-right: (96, 184)
+2025-06-14 09:51:50,700 - DEBUG: Automatic detection successful, copying image to sorted folder

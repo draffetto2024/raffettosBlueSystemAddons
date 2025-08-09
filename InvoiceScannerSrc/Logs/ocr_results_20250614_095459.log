@@ -1,0 +1,342 @@
+2025-06-14 09:54:59,845 - DEBUG: Processing image: C:\Users\Raffetto\AppData\Local\Temp\temp_1749909299771_7og3cl.png
+2025-06-14 09:55:00,184 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:55:00,185 - Complete keyphrase 'INVOICE NO' not found within threshold.
+2025-06-14 09:55:00,186 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:55:00,186 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-06-14 09:55:00,186 -   Top-left: (42, 141)
+2025-06-14 09:55:00,186 -   Bottom-right: (112, 153)
+2025-06-14 09:55:00,200 - No valid matching text found near 'ACCOUNT NO'
+2025-06-14 09:55:00,202 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,202 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,202 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:55:00,203 - Keyphrase 'INVOICE NO' bounding box:
+2025-06-14 09:55:00,203 -   Top-left: (766, 59)
+2025-06-14 09:55:00,203 -   Bottom-right: (849, 73)
+2025-06-14 09:55:00,218 - No valid matching text found near 'INVOICE NO'
+2025-06-14 09:55:00,218 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:55:00,218 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-06-14 09:55:00,218 -   Top-left: (42, 141)
+2025-06-14 09:55:00,218 -   Bottom-right: (112, 153)
+2025-06-14 09:55:00,232 - 
+MATCH FOUND: 'CESARE'
+2025-06-14 09:55:00,232 - Match bounding box:
+2025-06-14 09:55:00,232 -   Top-left: (56, 163)
+2025-06-14 09:55:00,232 -   Bottom-right: (115, 175)
+2025-06-14 09:55:00,232 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,233 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,233 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:55:00,234 - Keyphrase 'INVOICE NO' bounding box:
+2025-06-14 09:55:00,234 -   Top-left: (766, 59)
+2025-06-14 09:55:00,234 -   Bottom-right: (849, 73)
+2025-06-14 09:55:00,248 - 
+MATCH FOUND: '435323'
+2025-06-14 09:55:00,248 - Match bounding box:
+2025-06-14 09:55:00,248 -   Top-left: (787, 85)
+2025-06-14 09:55:00,248 -   Bottom-right: (847, 97)
+2025-06-14 09:55:00,248 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,249 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,250 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,251 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,251 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,252 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,252 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,253 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,253 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,254 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,254 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,255 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,256 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,256 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,257 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,257 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,258 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,258 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,259 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,260 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,260 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,261 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,261 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,262 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,262 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,263 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,263 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,264 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,264 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,265 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,265 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,266 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,267 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,268 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,268 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,269 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,269 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,270 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,270 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,271 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,271 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,272 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,272 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,273 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,273 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,274 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,275 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,275 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,276 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,276 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,277 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,277 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,278 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,278 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,279 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,280 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,280 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,281 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,281 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,283 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,283 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,285 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,285 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,286 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,286 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,287 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,287 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,288 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,289 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,290 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,291 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,291 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,292 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,293 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,293 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,294 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,295 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,295 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,296 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,296 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,297 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,298 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,298 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,299 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,299 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,300 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,300 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,301 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,302 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,303 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,303 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,304 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,305 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,305 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,306 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,306 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,307 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,307 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,308 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,308 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,309 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,310 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,310 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,311 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,311 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,312 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,312 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,313 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,313 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,314 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,314 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,315 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,315 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,316 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,316 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,317 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,318 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,318 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,319 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,319 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,320 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,320 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,321 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,321 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,322 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,323 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,323 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,324 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,324 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,325 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,325 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,326 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,326 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,327 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,327 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,328 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,328 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,329 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,330 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,330 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,331 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,331 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,332 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,333 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,333 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,334 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,334 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,335 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,335 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,336 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,336 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,337 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,337 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,338 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,338 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,339 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,340 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,340 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,341 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,341 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,342 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,342 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,343 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,343 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,344 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,344 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,345 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,346 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,346 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,347 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,347 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,348 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,348 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,349 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,349 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,350 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,351 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,351 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,352 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,353 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,353 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,354 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,354 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,355 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,355 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,356 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,356 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,357 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,358 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,358 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,359 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,359 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,360 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,360 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,361 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:55:00,362 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:55:00,362 - DEBUG: Automatic detection failed
+2025-06-14 09:55:00,362 - DEBUG: Processing image: C:\Users\Raffetto\AppData\Local\Temp\temp_1749909299771_7og3cl.png
+2025-06-14 09:55:00,711 - STREAM b'IHDR' 16 13
+2025-06-14 09:55:00,711 - STREAM b'pHYs' 41 9
+2025-06-14 09:55:00,711 - STREAM b'IDAT' 62 407083
+2025-06-14 09:55:06,583 - DEBUG: Manual input cancelled or invalid, copying to unsorted folder

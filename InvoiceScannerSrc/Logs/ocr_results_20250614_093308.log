@@ -1,0 +1,118 @@
+2025-06-14 09:33:10,316 - DEBUG: Processing image: C:\Users\Raffetto\AppData\Local\Temp\temp_1749907990190_l0fye7.png
+2025-06-14 09:33:10,817 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:33:10,818 - Keyphrase 'INVOICE NO' bounding box:
+2025-06-14 09:33:10,818 -   Top-left: (701, 17)
+2025-06-14 09:33:10,818 -   Bottom-right: (792, 26)
+2025-06-14 09:33:10,840 - No valid matching text found near 'INVOICE NO'
+2025-06-14 09:33:10,840 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:33:10,840 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-06-14 09:33:10,842 -   Top-left: (0, 165)
+2025-06-14 09:33:10,842 -   Bottom-right: (68, 171)
+2025-06-14 09:33:10,862 - No valid matching text found near 'ACCOUNT NO'
+2025-06-14 09:33:10,862 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:33:10,863 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-06-14 09:33:10,863 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:33:10,864 - Keyphrase 'INVOICE NO' bounding box:
+2025-06-14 09:33:10,864 -   Top-left: (701, 17)
+2025-06-14 09:33:10,864 -   Bottom-right: (792, 26)
+2025-06-14 09:33:10,885 - No valid matching text found near 'INVOICE NO'
+2025-06-14 09:33:10,885 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:33:10,885 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-06-14 09:33:10,885 -   Top-left: (0, 165)
+2025-06-14 09:33:10,885 -   Bottom-right: (68, 171)
+2025-06-14 09:33:10,906 - No valid matching text found near 'ACCOUNT NO'
+2025-06-14 09:33:10,906 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:33:10,907 - Keyphrase 'INVOICE DATE' bounding box:
+2025-06-14 09:33:10,907 -   Top-left: (700, 55)
+2025-06-14 09:33:10,907 -   Bottom-right: (803, 66)
+2025-06-14 09:33:10,928 - 
+MATCH FOUND: '01/02/25'
+2025-06-14 09:33:10,928 - Match bounding box:
+2025-06-14 09:33:10,928 -   Top-left: (729, 76)
+2025-06-14 09:33:10,928 -   Bottom-right: (809, 85)
+2025-06-14 09:33:10,928 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:33:10,929 - Keyphrase 'INVOICE NO' bounding box:
+2025-06-14 09:33:10,929 -   Top-left: (701, 17)
+2025-06-14 09:33:10,929 -   Bottom-right: (792, 26)
+2025-06-14 09:33:10,950 - 
+MATCH FOUND: '435327'
+2025-06-14 09:33:10,950 - Match bounding box:
+2025-06-14 09:33:10,950 -   Top-left: (727, 42)
+2025-06-14 09:33:10,950 -   Bottom-right: (788, 50)
+2025-06-14 09:33:10,950 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:33:10,951 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-06-14 09:33:10,951 -   Top-left: (0, 165)
+2025-06-14 09:33:10,951 -   Bottom-right: (68, 171)
+2025-06-14 09:33:10,972 - 
+MATCH FOUND: 'AGATHA'
+2025-06-14 09:33:10,972 - Match bounding box:
+2025-06-14 09:33:10,972 -   Top-left: (14, 185)
+2025-06-14 09:33:10,972 -   Bottom-right: (73, 193)
+2025-06-14 09:33:10,973 - DEBUG: Automatic detection successful, copying image to sorted folder
+2025-06-14 09:33:11,055 - DEBUG: Processing image: C:\Users\Raffetto\AppData\Local\Temp\temp_1749907990981_rtm6la.png
+2025-06-14 09:33:11,356 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:33:11,357 - Complete keyphrase 'INVOICE NO' not found within threshold.
+2025-06-14 09:33:11,357 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:33:11,357 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-06-14 09:33:11,357 -   Top-left: (5, 159)
+2025-06-14 09:33:11,357 -   Bottom-right: (75, 166)
+2025-06-14 09:33:11,371 - No valid matching text found near 'ACCOUNT NO'
+2025-06-14 09:33:11,371 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:33:11,372 - Keyphrase 'INVOICE DATE' bounding box:
+2025-06-14 09:33:11,372 -   Top-left: (708, 54)
+2025-06-14 09:33:11,372 -   Bottom-right: (812, 64)
+2025-06-14 09:33:11,386 - No valid matching text found near 'INVOICE DATE'
+2025-06-14 09:33:11,386 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:33:11,387 - Keyphrase 'INVOICE NO' bounding box:
+2025-06-14 09:33:11,387 -   Top-left: (711, 15)
+2025-06-14 09:33:11,387 -   Bottom-right: (802, 24)
+2025-06-14 09:33:11,401 - No valid matching text found near 'INVOICE NO'
+2025-06-14 09:33:11,401 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:33:11,402 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-06-14 09:33:11,402 -   Top-left: (5, 159)
+2025-06-14 09:33:11,402 -   Bottom-right: (75, 166)
+2025-06-14 09:33:11,416 - No valid matching text found near 'ACCOUNT NO'
+2025-06-14 09:33:11,416 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-06-14 09:33:11,417 - Keyphrase 'INVOICE DATE' bounding box:
+2025-06-14 09:33:11,417 -   Top-left: (708, 54)
+2025-06-14 09:33:11,417 -   Bottom-right: (812, 64)
+2025-06-14 09:33:11,431 - 
+MATCH FOUND: '01/02/25'
+2025-06-14 09:33:11,431 - Match bounding box:
+2025-06-14 09:33:11,431 -   Top-left: (739, 76)
+2025-06-14 09:33:11,431 -   Bottom-right: (818, 86)
+2025-06-14 09:33:11,431 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-06-14 09:33:11,432 - Keyphrase 'INVOICE NO' bounding box:
+2025-06-14 09:33:11,432 -   Top-left: (711, 15)
+2025-06-14 09:33:11,432 -   Bottom-right: (802, 24)
+2025-06-14 09:33:11,446 - 
+MATCH FOUND: '435323'
+2025-06-14 09:33:11,446 - Match bounding box:
+2025-06-14 09:33:11,446 -   Top-left: (737, 41)
+2025-06-14 09:33:11,446 -   Bottom-right: (798, 50)
+2025-06-14 09:33:11,446 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-06-14 09:33:11,447 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-06-14 09:33:11,447 -   Top-left: (5, 159)
+2025-06-14 09:33:11,447 -   Bottom-right: (75, 166)
+2025-06-14 09:33:11,461 - 
+MATCH FOUND: 'CESARE'
+2025-06-14 09:33:11,461 - Match bounding box:
+2025-06-14 09:33:11,461 -   Top-left: (22, 180)
+2025-06-14 09:33:11,461 -   Bottom-right: (82, 189)
+2025-06-14 09:33:11,462 - DEBUG: Automatic detection successful, copying image to sorted folder

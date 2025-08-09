@@ -1,0 +1,80 @@
+2025-05-15 09:10:03,563 - DEBUG: Processing image: ./Invoices/InvoicePictures\AGATHA_435327.png
+2025-05-15 09:10:04,036 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-05-15 09:10:04,037 - Complete keyphrase 'INVOICE NO' not found within threshold.
+2025-05-15 09:10:04,037 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-05-15 09:10:04,038 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-05-15 09:10:04,038 -   Top-left: (5, 195)
+2025-05-15 09:10:04,038 -   Bottom-right: (73, 204)
+2025-05-15 09:10:04,060 - No valid matching text found near 'ACCOUNT NO'
+2025-05-15 09:10:04,061 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-05-15 09:10:04,061 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-05-15 09:10:04,061 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-05-15 09:10:04,062 - Keyphrase 'INVOICE NO' bounding box:
+2025-05-15 09:10:04,062 -   Top-left: (711, 9)
+2025-05-15 09:10:04,062 -   Bottom-right: (803, 20)
+2025-05-15 09:10:04,085 - No valid matching text found near 'INVOICE NO'
+2025-05-15 09:10:04,085 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-05-15 09:10:04,086 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-05-15 09:10:04,086 -   Top-left: (5, 195)
+2025-05-15 09:10:04,086 -   Bottom-right: (73, 204)
+2025-05-15 09:10:04,107 - No valid matching text found near 'ACCOUNT NO'
+2025-05-15 09:10:04,108 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-05-15 09:10:04,108 - Keyphrase 'INVOICE DATE' bounding box:
+2025-05-15 09:10:04,108 -   Top-left: (708, 61)
+2025-05-15 09:10:04,108 -   Bottom-right: (812, 73)
+2025-05-15 09:10:04,131 - No valid matching text found near 'INVOICE DATE'
+2025-05-15 09:10:04,131 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-05-15 09:10:04,131 - Keyphrase 'INVOICE NO' bounding box:
+2025-05-15 09:10:04,131 -   Top-left: (711, 9)
+2025-05-15 09:10:04,131 -   Bottom-right: (803, 20)
+2025-05-15 09:10:04,154 - No valid matching text found near 'INVOICE NO'
+2025-05-15 09:10:04,154 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-05-15 09:10:04,155 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-05-15 09:10:04,155 -   Top-left: (5, 195)
+2025-05-15 09:10:04,155 -   Bottom-right: (73, 204)
+2025-05-15 09:10:04,177 - No valid matching text found near 'ACCOUNT NO'
+2025-05-15 09:10:04,177 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-05-15 09:10:04,178 - Keyphrase 'INVOICE DATE' bounding box:
+2025-05-15 09:10:04,178 -   Top-left: (708, 61)
+2025-05-15 09:10:04,178 -   Bottom-right: (812, 73)
+2025-05-15 09:10:04,200 - 
+MATCH FOUND: '01/02/25'
+2025-05-15 09:10:04,200 - Match bounding box:
+2025-05-15 09:10:04,200 -   Top-left: (737, 89)
+2025-05-15 09:10:04,201 -   Bottom-right: (818, 101)
+2025-05-15 09:10:04,201 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-05-15 09:10:04,201 - Keyphrase 'INVOICE NO' bounding box:
+2025-05-15 09:10:04,201 -   Top-left: (711, 9)
+2025-05-15 09:10:04,201 -   Bottom-right: (803, 20)
+2025-05-15 09:10:04,224 - No valid matching text found near 'INVOICE NO'
+2025-05-15 09:10:04,224 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-05-15 09:10:04,225 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-05-15 09:10:04,225 -   Top-left: (5, 195)
+2025-05-15 09:10:04,225 -   Bottom-right: (73, 204)
+2025-05-15 09:10:04,247 - 
+MATCH FOUND: 'AGATHA'
+2025-05-15 09:10:04,247 - Match bounding box:
+2025-05-15 09:10:04,247 -   Top-left: (19, 222)
+2025-05-15 09:10:04,247 -   Bottom-right: (81, 232)
+2025-05-15 09:10:04,248 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-05-15 09:10:04,249 - Keyphrase 'INVOICE NO' bounding box:
+2025-05-15 09:10:04,249 -   Top-left: (711, 9)
+2025-05-15 09:10:04,249 -   Bottom-right: (803, 20)
+2025-05-15 09:10:04,273 - 
+MATCH FOUND: '435327'
+2025-05-15 09:10:04,273 - Match bounding box:
+2025-05-15 09:10:04,273 -   Top-left: (736, 43)
+2025-05-15 09:10:04,273 -   Bottom-right: (796, 53)
+2025-05-15 09:10:04,274 - DEBUG: Automatic detection successful, copying image to sorted folder

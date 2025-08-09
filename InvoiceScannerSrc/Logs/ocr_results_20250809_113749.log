@@ -1,0 +1,116 @@
+2025-08-09 11:37:49,009 - DEBUG: Processing image: C:\Users\Raffetto\AppData\Local\Temp\temp_1754753868935_imfitm.png
+2025-08-09 11:37:49,580 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-08-09 11:37:49,581 - Complete keyphrase 'INVOICE NO' not found within threshold.
+2025-08-09 11:37:49,581 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-08-09 11:37:49,582 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-08-09 11:37:49,582 -   Top-left: (7, 362)
+2025-08-09 11:37:49,582 -   Bottom-right: (104, 375)
+2025-08-09 11:37:49,597 - No valid matching text found near 'ACCOUNT NO'
+2025-08-09 11:37:49,598 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-08-09 11:37:49,598 - Complete keyphrase 'INVOICE DATE' not found within threshold.
+2025-08-09 11:37:49,598 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-08-09 11:37:49,599 - Keyphrase 'INVOICE NO' bounding box:
+2025-08-09 11:37:49,599 -   Top-left: (995, 81)
+2025-08-09 11:37:49,599 -   Bottom-right: (1123, 99)
+2025-08-09 11:37:49,614 - No valid matching text found near 'INVOICE NO'
+2025-08-09 11:37:49,614 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-08-09 11:37:49,614 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-08-09 11:37:49,614 -   Top-left: (7, 362)
+2025-08-09 11:37:49,614 -   Bottom-right: (104, 375)
+2025-08-09 11:37:49,629 - No valid matching text found near 'ACCOUNT NO'
+2025-08-09 11:37:49,629 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-08-09 11:37:49,629 - Keyphrase 'INVOICE DATE' bounding box:
+2025-08-09 11:37:49,629 -   Top-left: (992, 160)
+2025-08-09 11:37:49,629 -   Bottom-right: (1136, 177)
+2025-08-09 11:37:49,644 - No valid matching text found near 'INVOICE DATE'
+2025-08-09 11:37:49,644 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-08-09 11:37:49,644 - Keyphrase 'INVOICE NO' bounding box:
+2025-08-09 11:37:49,644 -   Top-left: (995, 81)
+2025-08-09 11:37:49,644 -   Bottom-right: (1123, 99)
+2025-08-09 11:37:49,659 - No valid matching text found near 'INVOICE NO'
+2025-08-09 11:37:49,659 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-08-09 11:37:49,659 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-08-09 11:37:49,659 -   Top-left: (7, 362)
+2025-08-09 11:37:49,659 -   Bottom-right: (104, 375)
+2025-08-09 11:37:49,674 - No valid matching text found near 'ACCOUNT NO'
+2025-08-09 11:37:49,674 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-08-09 11:37:49,674 - Keyphrase 'INVOICE DATE' bounding box:
+2025-08-09 11:37:49,674 -   Top-left: (992, 160)
+2025-08-09 11:37:49,674 -   Bottom-right: (1136, 177)
+2025-08-09 11:37:49,689 - No valid matching text found near 'INVOICE DATE'
+2025-08-09 11:37:49,689 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-08-09 11:37:49,689 - Keyphrase 'INVOICE NO' bounding box:
+2025-08-09 11:37:49,689 -   Top-left: (995, 81)
+2025-08-09 11:37:49,689 -   Bottom-right: (1123, 99)
+2025-08-09 11:37:49,704 - No valid matching text found near 'INVOICE NO'
+2025-08-09 11:37:49,704 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-08-09 11:37:49,704 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-08-09 11:37:49,704 -   Top-left: (7, 362)
+2025-08-09 11:37:49,704 -   Bottom-right: (104, 375)
+2025-08-09 11:37:49,719 - No valid matching text found near 'ACCOUNT NO'
+2025-08-09 11:37:49,719 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-08-09 11:37:49,719 - Keyphrase 'INVOICE DATE' bounding box:
+2025-08-09 11:37:49,719 -   Top-left: (992, 160)
+2025-08-09 11:37:49,719 -   Bottom-right: (1136, 177)
+2025-08-09 11:37:49,733 - No valid matching text found near 'INVOICE DATE'
+2025-08-09 11:37:49,733 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-08-09 11:37:49,734 - Keyphrase 'INVOICE NO' bounding box:
+2025-08-09 11:37:49,734 -   Top-left: (995, 81)
+2025-08-09 11:37:49,734 -   Bottom-right: (1123, 99)
+2025-08-09 11:37:49,748 - No valid matching text found near 'INVOICE NO'
+2025-08-09 11:37:49,748 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-08-09 11:37:49,749 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-08-09 11:37:49,749 -   Top-left: (7, 362)
+2025-08-09 11:37:49,749 -   Bottom-right: (104, 375)
+2025-08-09 11:37:49,763 - No valid matching text found near 'ACCOUNT NO'
+2025-08-09 11:37:49,763 - 
+Searching for text near 'INVOICE DATE' in 'below' position:
+2025-08-09 11:37:49,763 - Keyphrase 'INVOICE DATE' bounding box:
+2025-08-09 11:37:49,763 -   Top-left: (992, 160)
+2025-08-09 11:37:49,763 -   Bottom-right: (1136, 177)
+2025-08-09 11:37:49,778 - 
+MATCH FOUND: '01/02/25'
+2025-08-09 11:37:49,778 - Match bounding box:
+2025-08-09 11:37:49,778 -   Top-left: (1034, 201)
+2025-08-09 11:37:49,778 -   Bottom-right: (1146, 219)
+2025-08-09 11:37:49,778 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-08-09 11:37:49,778 - Keyphrase 'INVOICE NO' bounding box:
+2025-08-09 11:37:49,778 -   Top-left: (995, 81)
+2025-08-09 11:37:49,778 -   Bottom-right: (1123, 99)
+2025-08-09 11:37:49,792 - No valid matching text found near 'INVOICE NO'
+2025-08-09 11:37:49,793 - 
+Searching for text near 'ACCOUNT NO' in 'below' position:
+2025-08-09 11:37:49,793 - Keyphrase 'ACCOUNT NO' bounding box:
+2025-08-09 11:37:49,793 -   Top-left: (7, 362)
+2025-08-09 11:37:49,793 -   Bottom-right: (104, 375)
+2025-08-09 11:37:49,807 - 
+MATCH FOUND: 'CESARE'
+2025-08-09 11:37:49,807 - Match bounding box:
+2025-08-09 11:37:49,807 -   Top-left: (30, 404)
+2025-08-09 11:37:49,808 -   Bottom-right: (114, 418)
+2025-08-09 11:37:49,808 - 
+Searching for text near 'INVOICE NO' in 'below' position:
+2025-08-09 11:37:49,808 - Keyphrase 'INVOICE NO' bounding box:
+2025-08-09 11:37:49,808 -   Top-left: (995, 81)
+2025-08-09 11:37:49,809 -   Bottom-right: (1123, 99)
+2025-08-09 11:37:49,823 - 
+MATCH FOUND: '435323'
+2025-08-09 11:37:49,823 - Match bounding box:
+2025-08-09 11:37:49,823 -   Top-left: (1031, 134)
+2025-08-09 11:37:49,823 -   Bottom-right: (1117, 149)
+2025-08-09 11:37:49,824 - DEBUG: Automatic detection successful
