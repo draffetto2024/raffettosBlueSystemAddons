@@ -656,10 +656,10 @@ def align_invoice_image(image, texts):
     
     return rotated_image, rotation_angle
 
-def extract_line_items_precise(image, debug=True):
+def extract_line_items_precise(image, texts, debug=True):
     """
     Extract line items using precise pixel coordinates after alignment.
-    Based on the invoice format, we know exactly where each column should be.
+    Uses the pre-existing OCR results instead of making new API calls.
     """
     print("="*60)
     print("DEBUG: STARTING PRECISE LINE ITEM EXTRACTION")
@@ -675,19 +675,19 @@ def extract_line_items_precise(image, debug=True):
         return []
     
     print(f"DEBUG: Image is valid, dimensions: {image.shape[1]}x{image.shape[0]}")
+    print(f"DEBUG: Using existing OCR results with {len(texts)} text elements")
 
     img_height, img_width = image.shape[:2]
-
     
     # Define precise pixel boundaries for each column (after alignment)
-    ITEM_CODE_X_START = 20
+    ITEM_CODE_X_START = 0
     ITEM_CODE_X_END = 140 
     
     QTY_ORDERED_X_START = 145
     QTY_ORDERED_X_END = 200
     
     QTY_SHIPPED_X_START = 200
-    QTY_SHIPPED_X_END = 240
+    QTY_SHIPPED_X_END = 280
     
     EXTENSION_X_START = 1090
     EXTENSION_X_END = img_width
@@ -705,14 +705,6 @@ def extract_line_items_precise(image, debug=True):
     print(f"  ROW_HEIGHT:   {ROW_HEIGHT}")
     
     line_items = []
-    
-    # Convert to grayscale for better OCR
-    try:
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        print(f"DEBUG: Successfully converted to grayscale")
-    except Exception as e:
-        print(f"ERROR: Failed to convert to grayscale: {e}")
-        return []
     
     if debug:
         print(f"\nDEBUG: CREATING DEBUG VISUALIZATION...")
@@ -771,8 +763,8 @@ def extract_line_items_precise(image, debug=True):
         
         print(f"DEBUG: Drawing row boundaries...")
     
-    # Extract each row
-    for row_index in range(min(MAX_ROWS, 5)):  # Limit to 5 rows for debugging
+    # Extract each row using existing OCR results
+    for row_index in range(min(MAX_ROWS, 15)):  # Increased limit for debugging
         row_y_start = FIRST_ROW_Y + (row_index * ROW_HEIGHT)
         row_y_end = row_y_start + ROW_HEIGHT
         
@@ -792,46 +784,29 @@ def extract_line_items_precise(image, debug=True):
             except Exception as e:
                 print(f"ERROR: Failed to draw row boundaries: {e}")
         
-        # Extract item code
-        try:
-            item_code_roi = gray[row_y_start:row_y_end, ITEM_CODE_X_START:ITEM_CODE_X_END]
-            item_code = extract_text_from_roi(item_code_roi)
-            print(f"  Item code extracted: '{item_code}'")
-        except Exception as e:
-            print(f"  ERROR extracting item code: {e}")
-            continue
+        # Find text within each column for this row using existing OCR results
+        item_code = find_text_in_region(texts, ITEM_CODE_X_START, ITEM_CODE_X_END, row_y_start, row_y_end)
+        qty_ordered = find_text_in_region(texts, QTY_ORDERED_X_START, QTY_ORDERED_X_END, row_y_start, row_y_end)
+        qty_shipped = find_text_in_region(texts, QTY_SHIPPED_X_START, QTY_SHIPPED_X_END, row_y_start, row_y_end)
+        extension = find_text_in_region(texts, EXTENSION_X_START, EXTENSION_X_END, row_y_start, row_y_end)
+        
+        print(f"  OCR found: Item='{item_code}', QtyOrd='{qty_ordered}', QtyShip='{qty_shipped}', Ext='{extension}'")
         
         # Only process if we found a valid 6-character item code
-        if not item_code or not re.match(r'^[A-Za-z0-9]{6}', item_code):
+        if not item_code or not re.match(r'^[A-Za-z0-9]{6}$', item_code):
             print(f"  -> Skipping row {row_index + 1}: Invalid item code")
             continue
         
-        # Extract other fields (simplified for debugging)
-        # try:
-        qty_ordered_roi = gray[row_y_start:row_y_end, QTY_ORDERED_X_START:QTY_ORDERED_X_END]
-        qty_ordered = extract_text_from_roi(qty_ordered_roi)
-        
-        if EXTENSION_X_END <= img_width:
-            extension_roi = gray[row_y_start:row_y_end, EXTENSION_X_START:EXTENSION_X_END]
-            extension = extract_text_from_roi(extension_roi)
-        else:
-            extension = ""
-        
-        print(f"  Raw extracted: Item='{item_code}', QtyOrd='{qty_ordered}', Ext='{extension}'")
-        
-        # Create simplified line item for debugging
+        # Create line item
         line_item = {
             "item_no": item_code,
             "qty_ordered": clean_quantity(qty_ordered),
-            "qty_shipped": clean_quantity(qty_ordered),  # Use same as ordered for now
+            "qty_shipped": clean_quantity(qty_shipped),  # Now using actual qty_shipped!
             "extension": clean_price(extension)
         }
         
         line_items.append(line_item)
         print(f"  -> ✓ Added line item: {line_item}")
-            
-        # except Exception as e:
-        # print(f"  ERROR processing row data: {e}")
     
     if debug:
         print(f"\nDEBUG: ATTEMPTING TO SAVE DEBUG IMAGE...")
@@ -865,25 +840,81 @@ def extract_line_items_precise(image, debug=True):
         
         if not saved_successfully:
             print(f"DEBUG: ✗ FAILED TO SAVE DEBUG IMAGE TO ANY LOCATION!")
-            
-            # Try to save a simple test image
-            try:
-                test_img = np.zeros((100, 100, 3), dtype=np.uint8)
-                test_path = os.path.join(os.getcwd(), "test_save.jpg")
-                test_success = cv2.imwrite(test_path, test_img)
-                print(f"DEBUG: Test image save result: {test_success}")
-                if test_success:
-                    print(f"DEBUG: Basic cv2.imwrite works, issue is with our debug image")
-                else:
-                    print(f"DEBUG: cv2.imwrite is completely broken")
-            except Exception as e:
-                print(f"DEBUG: Test save failed: {e}")
     
     print(f"\nDEBUG: EXTRACTION COMPLETE")
     print(f"DEBUG: Extracted {len(line_items)} line items")
     print("="*60)
     
     return line_items
+
+def find_text_in_region(texts, x_start, x_end, y_start, y_end):
+    """
+    Find text within a specific rectangular region using existing OCR results.
+    Now combines adjacent text elements to handle split product codes.
+    """
+    found_texts = []
+    
+    # Skip the first element which is the full document text
+    for text in texts[1:]:
+        if not hasattr(text, 'bounding_poly') or not text.bounding_poly.vertices:
+            continue
+            
+        box = text.bounding_poly.vertices
+        
+        # Get text center point
+        text_x = (box[0].x + box[2].x) / 2
+        text_y = (box[0].y + box[2].y) / 2
+        
+        # Check if text center is within our region
+        if (x_start <= text_x <= x_end and y_start <= text_y <= y_end):
+            found_texts.append({
+                'text': text.description.strip(),
+                'x': text_x,
+                'y': text_y,
+                'box': box
+            })
+    
+    if not found_texts:
+        return ""
+    
+    # Sort by x position (left to right)
+    found_texts.sort(key=lambda x: x['x'])
+    
+    # Try different combinations
+    candidates = []
+    
+    # Single longest text
+    if found_texts:
+        longest_single = max(found_texts, key=lambda x: len(x['text']))
+        candidates.append(longest_single['text'])
+    
+    # Try combining adjacent texts (up to 3 elements)
+    for i in range(len(found_texts)):
+        # Combine 2 adjacent
+        if i < len(found_texts) - 1:
+            combined = found_texts[i]['text'] + found_texts[i+1]['text']
+            candidates.append(combined)
+        
+        # Combine 3 adjacent
+        if i < len(found_texts) - 2:
+            combined = found_texts[i]['text'] + found_texts[i+1]['text'] + found_texts[i+2]['text']
+            candidates.append(combined)
+    
+    # Try all texts concatenated
+    if len(found_texts) > 1:
+        all_combined = ''.join([t['text'] for t in found_texts])
+        candidates.append(all_combined)
+    
+    # Check which candidate looks most like a product code (6 alphanumeric)
+    for candidate in candidates:
+        if re.match(r'^[A-Za-z0-9]{6}$', candidate):
+            return candidate
+    
+    # If no perfect 6-char match, return the longest candidate
+    if candidates:
+        return max(candidates, key=len)
+    
+    return ""
 
 def extract_text_from_roi(roi):
     """
@@ -1060,7 +1091,10 @@ def send_email_with_attachment(file_path, customer_id, invoice_number, date):
         return
 
     subject = f"RAFFETTO'S FRESH PASTA INVOICE Invoice {invoice_number}"
-    body = f"Please find the attached invoice,  {invoice_number}, shipped, {date}."
+    body = f"""Please find the attached invoice, {invoice_number} shipped, {date}. Thank you.
+    
+    Derek Raffetto
+    Raffetto's Fresh Pasta"""
 
     message = MIMEMultipart()
     message["From"] = sender_email
@@ -1165,6 +1199,28 @@ def process_invoice_image(image_path, manual_mode=False):
         print(f"DEBUG: Extracting text using Google Vision API...")
         texts = extract_text_and_positions(image)
         print(f"DEBUG: Found {len(texts)} text elements")
+
+        # LOG ALL OCR RESULTS FOR DEBUGGING
+        logging.info("="*80)
+        logging.info("COMPLETE OCR RESULTS FROM GOOGLE VISION API")
+        logging.info("="*80)
+        logging.info(f"Total text elements found: {len(texts)}")
+        logging.info("-"*80)
+
+        for i, text in enumerate(texts):
+            if hasattr(text, 'bounding_poly') and text.bounding_poly.vertices:
+                box = text.bounding_poly.vertices
+                content = text.description.strip()
+                logging.info(f"Element {i:2d}: '{content}'")
+                logging.info(f"   Position: ({box[0].x:3d}, {box[0].y:3d}) to ({box[2].x:3d}, {box[2].y:3d})")
+                logging.info(f"   Size: {box[2].x - box[0].x}x{box[2].y - box[0].y} pixels")
+                logging.info("-"*40)
+            else:
+                logging.info(f"Element {i:2d}: '{text.description.strip() if hasattr(text, 'description') else 'NO DESCRIPTION'}'")
+                logging.info("   Position: NO BOUNDING BOX")
+                logging.info("-"*40)
+
+        logging.info("="*80)
         
         # Align the image using INVOICE DATE as reference
         print(f"DEBUG: Aligning (rotating) image using INVOICE DATE...")
@@ -1200,7 +1256,7 @@ def process_invoice_image(image_path, manual_mode=False):
             
             # Use precise pixel-based extraction for line items
             print(f"DEBUG: Starting line item extraction...")
-            line_items = extract_line_items_precise(aligned_image, debug=True)
+            line_items = extract_line_items_precise(aligned_image, texts, debug=True)
             print(f"DEBUG: Extracted {len(line_items)} line items")
             
             # Process the extracted data
@@ -1783,7 +1839,7 @@ def test_invoice_extraction(image_path):
     
     # Extract line items using precise pixel method
     print(f"\nStarting line item extraction...")
-    line_items = extract_line_items_precise(aligned_image, debug=True)
+    line_items = extract_line_items_precise(aligned_image, texts, debug=True)
     
     # Display results in invoice format
     if line_items:
